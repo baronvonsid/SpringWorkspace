@@ -69,7 +69,7 @@ public class AccountService {
 	//Account close requested
 	//Account close completed
 
-	public void CreateAccount(Account account, CustomResponse customResponse)
+	public void CreateAccount(Account account, CustomResponse customResponse, CustomSessionState customSession)
 	{
 		String email = "";
 		long startMS = System.currentTimeMillis();
@@ -125,6 +125,19 @@ public class AccountService {
 				return;
 			}
 
+			//New User created OK, auto-login session.
+			synchronized(customSession) 
+			{
+				customSession.getCustomSessionIds().add(UserTools.GetComplexString());
+				customSession.setFailedLogonCount(0);
+				customSession.setFailedLogonLast(null);
+				customSession.setAuthenticated(true);
+				customSession.setAdmin(true);
+				customSession.setProfileName(account.getProfileName());
+				customSession.setUserId(newUserId);
+			}
+			accountDataHelper.UpdateLogonState(newUserId, 0, null);
+			
 			//TODO decouple.
 			SendEmailConfirm(newUserId);
 			

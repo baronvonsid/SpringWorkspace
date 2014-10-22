@@ -286,20 +286,20 @@ public final class UserTools {
 		return customSession;
 	}
 
-	public static boolean CheckNewUserSession(Account account, HttpServletRequest request, Logger meLogger)
+	public static CustomSessionState CheckNewUserSession(Account account, HttpServletRequest request, Logger meLogger)
 	{		
 		HttpSession session = request.getSession(false);
 		if (session == null)
 		{
 			meLogger.warn("The tomcat session has not been established.");
-			return false;
+			return null;
 		}
 
 		CustomSessionState customSession = (CustomSessionState)session.getAttribute("CustomSessionState");
 		if (customSession == null)
 		{
 			meLogger.warn("The custom session state has not been established.");
-			return false;
+			return null;
 		}
 		
 		String requestKey = (account.getKey() == null) ? "" : account.getKey();
@@ -312,24 +312,24 @@ public final class UserTools {
 		if (sessionKey.compareTo(requestKey) != 0)
 		{
 			meLogger.warn("One off new user key, does not match request.  ServerKey:" + sessionKey + " RequestKey:" + requestKey);
-			return false;
+			return null;
 		}
 		
 		if (customSession.isAuthenticated())
 		{
 			meLogger.warn("The session has already been authenticated and is not valid for creating a user");
-			return false;
+			return null;
 		}	
 		
 		if (customSession.getRemoteAddress().compareTo(GetIpAddress(request)) != 0)
 		{
 			meLogger.warn("IP address of the session has changed since the logon key was issued.");
-			return false;
+			return null;
 		}
 
 		//TODO add isHuman check.
 		
-		return true;
+		return customSession;
 	}
 	
 

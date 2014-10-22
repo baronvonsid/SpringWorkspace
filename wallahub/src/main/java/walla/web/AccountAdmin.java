@@ -126,17 +126,21 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 				account.setAccountType(newProfile.getAccountType());
 				account.setKey(newProfile.getKey());
 				
-				if (UserTools.CheckNewUserSession(account, request, meLogger))
+				CustomSessionState customSession = UserTools.CheckNewUserSession(account, request, meLogger);
+				if (customSession != null)
 				{
 					CustomResponse customResponse = new CustomResponse();
-					accountService.CreateAccount(account, customResponse);
+					accountService.CreateAccount(account, customResponse, customSession);
 					if (customResponse.getResponseCode() == HttpStatus.CREATED.value())
 					{
+						Cookie wallaSessionIdCookie = new Cookie("X-Walla-Id", UserTools.GetLatestWallaId(customSession));
+						wallaSessionIdCookie.setPath("/wallahub/");
+						response.addCookie(wallaSessionIdCookie);
+						
 						responseJsp = "redirect:" + account.getProfileName() + "/profilesummary";
 					}
 					else if (customResponse.getResponseCode() == HttpStatus.BAD_REQUEST.value())
 					{			
-						CustomSessionState customSession = (CustomSessionState)request.getSession().getAttribute("CustomSessionState");
 						String key = accountService.GetNewUserToken(request, customSession, customResponse);
 
 						if (customResponse.getResponseCode() == HttpStatus.OK.value())
@@ -334,10 +338,10 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 	
 	@RequestMapping(value="/{profileName}/profilesummary", method=RequestMethod.POST)
 	public String ProfileSummaryPost(
-			@PathVariable("profileName") String profileName,
 			@Valid Account account, 
 			BindingResult bindingResult,
 			Model model,
+			@PathVariable("profileName") String profileName,
 			HttpServletRequest request,
 			HttpServletResponse response)
 	{
@@ -348,7 +352,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 		{
 			response.addHeader("Cache-Control", "no-cache");
 						
-			Account simon = (Account)model.asMap().get("account");
+			//Account simon = (Account)model.asMap().get("account");
 			if (bindingResult.hasErrors())
 			{
 				responseJsp = "profilesummary";

@@ -171,10 +171,11 @@ public class AccountController {
 			}
 			else
 			{
-				if (UserTools.CheckNewUserSession(account, request, meLogger))
+				CustomSessionState customSession = UserTools.CheckNewUserSession(account, request, meLogger);
+				if (customSession == null)
 				{
 					CustomResponse customResponse = new CustomResponse();
-					accountService.CreateAccount(account, customResponse);
+					accountService.CreateAccount(account, customResponse, customSession);
 					responseCode = customResponse.getResponseCode();
 				}
 				else
