@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="ISO-8859-1" />
+<title>fotowalla - new profile</title>
+</head>
+<body>
+	<form action="#" th:action="@{./newprofile}" th:object="${newProfile}" method="post">
+		<input type="hidden" name="key" th:field="${session.CustomSessionState.getNonceKey()}" />
+		<table>
+			<tr>
+				<td>Profile Name</td>
+				<td><input type="text" th:field="*{profileName}" /></td>
+				<td th:if="${#fields.hasErrors('profileName')}" th:errors="*{profileName}">Name error</td>
+			</tr>
+			<tr>
+				<td>Description</td>
+				<td><input type="text" th:field="*{description}" /></td>
+				<td th:if="${#fields.hasErrors('description')}" th:errors="*{description}">Description error</td>
+			</tr>
+			<tr>
+				<td>Email</td>
+				<td><input type="text" th:field="*{email}" /></td>
+				<td th:if="${#fields.hasErrors('email')}" th:errors="*{email}">Email error</td>
+			</tr>
+			<tr>
+				<td>Password</td>
+				<td><input type="text" th:field="*{password}" /></td>
+				<td th:if="${#fields.hasErrors('password')}" th:errors="*{password}">Password error</td>
+			</tr>
+			
+			<tr>
+				<td th:if="${message.length() > 0}" th:errors="${message}">Server errors</td>
+			</tr>
+			<tr>
+				<td><button type="submit">Create profile</button></td>
+			</tr>
+		</table>
+	</form>
+</body>
+</html>

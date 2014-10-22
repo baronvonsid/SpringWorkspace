@@ -1,0 +1,63 @@
+#imageNav
+{
+    float: right;
+    margin-top:15px;
+    margin-right:20px;
+}
+
+#sectNavHor {
+    float: left;
+    margin-top:15px;
+}
+
+#pageHeader {
+	float: left;
+}
+
+#pageNavigations{
+	width: 1200px;
+    margin-bottom: 0px;
+    margin-top:0px;
+    margin-left:auto;
+    margin-right:auto;
+}
+
+section.ImagesPaneStyle {
+    margin-bottom: 0px;
+    margin-top:0px;
+    margin-left:auto;
+    margin-right:auto;
+    padding: 10px;
+    width: 1200px;
+}
+
+article.ImagesArticleStyle  {
+    margin: 2px;
+    padding: 0px;
+    float:left;
+}
+
+div.ImagesArticleStyle {
+    visibility:visible;
+    text-align: center;
+}
+article.ImagesArticleNoNameStyle  {
+    cursor: -webkit-grab;
+    margin: 2px;
+    padding: 0px;
+    float:left;
+}
+
+div.ImagesArticleNoNameStyle {
+    display:inline;
+    visibility:hidden;
+    text-align: center;
+}
+
+.thumbStyle {
+    border: 1px solid;
+}
+
+.thumbStyle:hover {
+    border: 1px solid;
+}

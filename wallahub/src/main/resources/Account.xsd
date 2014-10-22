@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema xmlns="http://www.w3.org/2001/XMLSchema" 
+targetNamespace="http://ws.fotowalla.com/Account"
+	xmlns:tns="http://ws.fotowalla.com/Account" 
+	elementFormDefault="qualified">
+
+  <element name="Account">
+    <complexType>
+      <sequence maxOccurs="1" minOccurs="0">
+        <element type="string" name="ProfileName"/>
+        <element type="string" name="Desc"/>
+        <element type="string" name="Email"/>
+        <element type="string" name="Password"/>
+        <element type="int" name="Status" /> <!-- 1 - Initial details received, 2 - Email confirmed, 
+        											3 - billing confirmed, 4 - billing issue
+        											5 - live, 6 - shutdown pending, 7 closed. -->
+        <element type="int" name="AccountType" />
+        <element type="string" name="AccountTypeName" />
+        <element type="date" name="OpenDate" />
+        <element type="date" name="CloseDate" />
+        <element type="double" name="StorageGBLimit" />
+        <element type="double" name="StorageGBCurrent" />
+        <element type="int" name="TotalImages" />
+        <element type="int" name="MonthlyUploadCap" />
+        <element type="int" name="UploadCount30Days" />
+        <element type="string" name="Key" />
+       </sequence>
+      <attribute type="long" name="id" default="0"/>
+      <attribute type="int" name="version" default="0"/>
+    </complexType>
+  </element>
+</schema>

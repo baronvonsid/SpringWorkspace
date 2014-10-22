@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema xmlns="http://www.w3.org/2001/XMLSchema" targetNamespace="http://ws.fotowalla.com/ImageIdList"
+	xmlns:tns="http://ws.fotowalla.com/ImageIdList" elementFormDefault="qualified">
+
+	<element name="ImageIdList">
+	<complexType>
+	<sequence>
+		<element name="ImageRef" maxOccurs="unbounded" minOccurs="0">
+		<simpleType>
+		<restriction base="long"></restriction>
+				</simpleType>
+		</element>
+		</sequence>
+	</complexType>
+	</element>
+
+</schema>

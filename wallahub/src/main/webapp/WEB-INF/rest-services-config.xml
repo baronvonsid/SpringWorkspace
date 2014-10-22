@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:oxm="http://www.springframework.org/schema/oxm"
+	xmlns:util="http://www.springframework.org/schema/util" xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd  
+                                    http://www.springframework.org/schema/mvc 
+                                    http://www.springframework.org/schema/mvc/spring-mvc-3.0.xsd  
+                                    http://www.springframework.org/schema/context 
+                                    http://www.springframework.org/schema/context/spring-context-3.0.xsd  
+                                    http://www.springframework.org/schema/oxm  
+                                    http://www.springframework.org/schema/oxm/spring-oxm-3.0.xsd  
+                                    http://www.springframework.org/schema/util  
+                                    http://www.springframework.org/schema/util/spring-util-3.0.xsd">
+
+	<!-- Enables automatic mapping of fund objects to and from JSON -->
+	<mvc:annotation-driven />
+	
+	<!-- Setup spring to pull in @Controller, @RequestMapping, etc Configuration 
+		scans specified packages for classes configured as Spring managed beans and 
+		automatically sets up objects annotated with @Controller, @Service etc. -->
+	<context:annotation-config />
+	
+	<context:component-scan base-package="walla.ws" />
+	<context:component-scan base-package="walla.web" />
+	<context:component-scan base-package="walla.business" />
+	<context:component-scan base-package="walla.db" />
+	
+	<bean
+		class="org.springframework.web.servlet.mvc.annotation.DefaultAnnotationHandlerMapping" />
+	<!-- Configures view for returning JSON to the client -->
+	<bean
+		class="org.springframework.web.servlet.view.json.MappingJacksonJsonView">
+		<property name="contentType" value="text/plain" />
+	</bean>
+	
+	<!-- JSP view mapping config -->
+	<bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+		<property name="prefix" value="/WEB-INF/jsp/" />
+		<property name="suffix" value=".jsp" />
+	</bean>
+	
+	<bean id="templateResolver" class="org.thymeleaf.templateresolver.ServletContextTemplateResolver">
+		<property name="prefix" value="/WEB-INF/template/" />
+		<property name="suffix" value=".html" />
+		<property name="templateMode" value="HTML5" />
+	</bean>
+	
+	<bean id="templateEngine" class="org.thymeleaf.spring3.SpringTemplateEngine">
+		<property name="templateResolver" ref="templateResolver" />
+	</bean>
+	
+	<bean class="org.thymeleaf.spring3.view.ThymeleafViewResolver">
+		<property name="templateEngine" ref="templateEngine" />
+		<property name="order" value="1" />
+		
+	</bean>
+	
+	<!--  <property name="viewNames" value="*.html" />  -->
+	
+	<!-- maps handler methods based on HTTP paths -->
+	<bean
+		class="org.springframework.web.servlet.mvc.annotation.AnnotationMethodHandlerAdapter">
+		<property name="messageConverters">
+			<util:list id="beanList">
+				<ref bean="jsonMessageConverter" />
+			</util:list>
+		</property>
+	</bean>
+	
+	<!-- Converts JSON to POJO and vice versa -->
+	<bean id="jsonMessageConverter"
+		class="org.springframework.http.converter.json.MappingJacksonHttpMessageConverter" />
+
+	<bean class="org.springframework.web.servlet.view.BeanNameViewResolver" />
+
+	<bean class="org.springframework.remoting.jaxws.SimpleJaxWsServiceExporter" />
+
+	
+	<!-- <bean id="sessionState" class="walla.datatypes.java.CustomSessionState" />-->
+	
+	
+	<bean id="meSqlDataSource" class="org.apache.tomcat.jdbc.pool.DataSource"
+	    destroy-method="close">
+	    <property name="driverClassName" value="com.microsoft.sqlserver.jdbc.SQLServerDriver" />
+	    <property name="url" value="jdbc:sqlserver://CLUBWALLA\SQLSERVER2012:1433;databaseName=fotowalla" />
+	    <property name="username" value="TM_DEV" />
+	    <property name="password" value="TM_DEV" />
+	    <property name="initialSize" value="2" />
+	    <property name="maxActive" value="20" />
+	    <property name="maxIdle" value="20" />
+	</bean>
+
+
+	<!-- Database objects -->
+	
+
+	<bean id="tagDataHelper" class="walla.db.TagDataHelperImpl" scope="prototype">
+		<property name="dataSource" ref="meSqlDataSource" />
+	</bean>
+
+	<bean id="utilityDataHelper" class="walla.db.UtilityDataHelperImpl" scope="prototype">
+		<property name="dataSource" ref="meSqlDataSource" />
+	</bean>
+	
+	<bean id="imageDataHelper" class="walla.db.ImageDataHelperImpl" scope="prototype">
+		<property name="dataSource" ref="meSqlDataSource" />
+	</bean>
+	
+	<bean id="categoryDataHelper" class="walla.db.CategoryDataHelperImpl" scope="prototype">
+		<property name="dataSource" ref="meSqlDataSource" />
+	</bean>
+	
+	<bean id="galleryDataHelper" class="walla.db.GalleryDataHelperImpl" scope="prototype">
+		<property name="dataSource" ref="meSqlDataSource" />
+	</bean>
+	
+	<bean id="accountDataHelper" class="walla.db.AccountDataHelperImpl" scope="prototype">
+		<property name="dataSource" ref="meSqlDataSource" />
+	</bean>
+	
+	<bean id="tagServiceTarget" class="walla.business.TagService" scope="prototype">
+		<property name="tagDataHelper" ref="tagDataHelper" />
+		<property name="cachedData" ref="cachedData" />
+		<property name="utilityDataHelper" ref="utilityDataHelper" />
+		<property name="galleryService" ref="galleryService" />
+	</bean>
+
+	<bean id="tagPoolTargetSource" class="org.springframework.aop.target.CommonsPoolTargetSource">
+	  <property name="targetBeanName" value="tagServiceTarget"/>
+	  <property name="maxSize" value="2"/>
+	  <property name="maxIdle" value="2"/>
+	  <property name="minIdle" value="2"/>
+	</bean>
+	
+	<bean id="tagService" class="org.springframework.aop.framework.ProxyFactoryBean">
+	  <property name="targetSource" ref="tagPoolTargetSource"/>
+	</bean>
+
+
+
+
+	<bean id="categoryServiceTarget" class="walla.business.CategoryService" scope="prototype">
+		<property name="categoryDataHelper" ref="categoryDataHelper" />
+		<property name="cachedData" ref="cachedData" />
+		<property name="utilityDataHelper" ref="utilityDataHelper" />
+		
+		<property name="imageService" ref="imageService" />
+		<property name="galleryService" ref="galleryService" />
+	</bean>
+
+	<bean id="categoryPoolTargetSource" class="org.springframework.aop.target.CommonsPoolTargetSource">
+	  <property name="targetBeanName" value="categoryServiceTarget"/>
+	  <property name="maxSize" value="2"/>
+	  <property name="maxIdle" value="2"/>
+	  <property name="minIdle" value="2"/>
+	</bean>
+	
+	<bean id="categoryService" class="org.springframework.aop.framework.ProxyFactoryBean">
+	  <property name="targetSource" ref="categoryPoolTargetSource"/>
+	</bean>
+
+	<bean id="galleryServiceTarget" class="walla.business.GalleryService" scope="prototype">
+		<property name="galleryDataHelper" ref="galleryDataHelper" />
+		<property name="cachedData" ref="cachedData" />
+		<property name="utilityDataHelper" ref="utilityDataHelper" />
+	</bean>
+
+	<bean id="galleryPoolTargetSource" class="org.springframework.aop.target.CommonsPoolTargetSource">
+	  <property name="targetBeanName" value="galleryServiceTarget"/>
+	  <property name="maxSize" value="2"/>
+	  <property name="maxIdle" value="2"/>
+	  <property name="minIdle" value="2"/>
+	</bean>
+	
+	<bean id="galleryService" class="org.springframework.aop.framework.ProxyFactoryBean">
+	  <property name="targetSource" ref="galleryPoolTargetSource"/>
+	</bean>
+
+	<bean id="cachedData" class="walla.db.CachedData">
+		<property name="utilityDataHelper" ref="utilityDataHelper" />
+	</bean>
+
+	<bean id="imageServiceTarget" class="walla.business.ImageService" scope="prototype">
+		<property name="galleryDataHelper" ref="galleryDataHelper" />
+		<property name="tagDataHelper" ref="tagDataHelper" />
+		<property name="categoryDataHelper" ref="categoryDataHelper" />
+		<property name="imageDataHelper" ref="imageDataHelper" />
+		<property name="cachedData" ref="cachedData" />
+		<property name="utilityDataHelper" ref="utilityDataHelper" />		
+		
+		<property name="tagService" ref="tagService" />
+		<property name="categoryService" ref="categoryService" />
+		
+	</bean>
+
+	<bean id="imagePoolTargetSource" class="org.springframework.aop.target.CommonsPoolTargetSource">
+	  <property name="targetBeanName" value="imageServiceTarget"/>
+	  <property name="maxSize" value="2"/>
+	  <property name="maxIdle" value="2"/>
+	  <property name="minIdle" value="2"/>
+	</bean>
+	
+	<bean id="imageService" class="org.springframework.aop.framework.ProxyFactoryBean">
+	  <property name="targetSource" ref="imagePoolTargetSource"/>
+	</bean>
+
+
+	<bean id="accountServiceTarget" class="walla.business.AccountService" scope="prototype">
+		<property name="accountDataHelper" ref="accountDataHelper" />
+		<property name="cachedData" ref="cachedData" />
+		<property name="utilityDataHelper" ref="utilityDataHelper" />
+		<property name="tagService" ref="tagService" />
+		<property name="categoryService" ref="categoryService" />
+		<property name="galleryService" ref="galleryService" />
+	</bean>
+
+	<bean id="accountPoolTargetSource" class="org.springframework.aop.target.CommonsPoolTargetSource">
+	  <property name="targetBeanName" value="accountServiceTarget"/>
+	  <property name="maxSize" value="2"/>
+	  <property name="maxIdle" value="2"/>
+	  <property name="minIdle" value="2"/>
+	</bean>
+	
+	<bean id="accountService" class="org.springframework.aop.framework.ProxyFactoryBean">
+	  <property name="targetSource" ref="accountPoolTargetSource"/>
+	</bean>
+
+</beans> 

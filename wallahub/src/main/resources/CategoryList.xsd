@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema xmlns="http://www.w3.org/2001/XMLSchema" targetNamespace="http://ws.fotowalla.com/CategoryList"
+	xmlns:tns="http://ws.fotowalla.com/CategoryList" elementFormDefault="qualified">
+
+	<element name="CategoryList">
+		<complexType>
+				<sequence>
+					<element name="CategoryRef" maxOccurs="unbounded" minOccurs="0">
+						<complexType>
+							<attribute name="id" type="long"></attribute>
+							<attribute name="parentId" type="long"></attribute>
+							<attribute name="name" type="string"></attribute>
+							<attribute name="desc" type="string"></attribute>
+							<attribute name="count" type="int"></attribute>
+							<attribute name="SystemOwned" type="boolean"></attribute>
+						</complexType>
+					</element>
+				</sequence>
+			<attribute type="dateTime" name="lastChanged" />
+		</complexType>
+	</element>
+
+</schema>

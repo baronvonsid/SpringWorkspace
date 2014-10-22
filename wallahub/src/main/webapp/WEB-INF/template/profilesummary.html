@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="ISO-8859-1" />
+<title>fotowalla - profile summary</title>
+</head>
+<body>
+
+	<form action="#" th:action="@{./profilesummary}" th:object="${account}" method="post">
+		<input type="hidden" name="id" th:field="*{id}" />
+		<input type="hidden" name="version" th:field="*{version}" />
+		<table>
+			<tr>
+				<td>Profile Name</td>
+				<td th:text="*{ProfileName}" />
+			</tr>
+			<tr>
+				<td>Description</td>
+				<td><input type="text" th:field="*{Desc}" /></td>
+				<td th:if="${#fields.hasErrors('Desc')}" th:errors="*{Desc}">Description error</td>
+			</tr>
+			<tr>
+				<td>Email</td>
+				<td th:text="*{Email}" />
+			</tr>
+			<tr>
+				<td>Account Type</td>
+				<td th:text="*{AccountTypeName}" />
+			</tr>
+
+			<tr>
+				<td>Account Opened</td>
+				<td th:text="*{OpenDate}" />
+			</tr>
+						
+			<tr>
+				<td>Storage Limit</td>
+				<td th:text="*{StorageGBLimit}" />
+			</tr>			
+			<tr>
+				<td>Current usage</td>
+				<td th:text="*{StorageGBCurrent}" />
+			</tr>	
+			<tr>
+				<td>Number of Images</td>
+				<td th:text="*{TotalImages}" />
+			</tr>
+			<tr>
+				<td><button type="submit">Update</button></td>
+			</tr>
+			<tr>
+				<td th:if="${message != null}" th:text="${message}">Server errors</td>
+			</tr>
+		</table>
+	</form>
+</body>
+</html>

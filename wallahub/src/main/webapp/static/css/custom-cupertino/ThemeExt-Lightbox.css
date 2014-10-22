@@ -1,0 +1,47 @@
+html {
+    color: #1c94c4;
+    background: #F5F5F5;
+    font-family: Helvetica;
+    font-size: 12px;
+}
+
+h1.HeaderStyle {
+    font-size:2em;
+    margin: 0px;
+}
+
+span.HeaderStyle  {
+    font-size:1.2em;
+}
+
+header.HeaderStyle {
+    margin: 0px;
+}
+
+a {
+  color: #1c94c4;
+}
+
+.blueimp-gallery {
+  background: #F5F5F5;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.blueimp-gallery > .prev,
+.blueimp-gallery > .next {
+	color: #1c94c4;
+  background: #F5F5F5;
+}
+
+.blueimp-gallery > .close,
+.blueimp-gallery > .title {
+  color: #1c94c4;
+}
+
+.blueimp-gallery > .prev:hover,
+.blueimp-gallery > .next:hover,
+.blueimp-gallery > .close:hover,
+.blueimp-gallery > .title:hover,
+.blueimp-gallery > .play-pause:hover {
+  color: #1c94c4;
+}

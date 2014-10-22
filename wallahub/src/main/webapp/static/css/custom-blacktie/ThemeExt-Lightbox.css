@@ -1,0 +1,47 @@
+html {
+    color: #242B37;
+    background: #EBEBEB;
+    font-family: Helvetica;
+    font-size: 12px;
+}
+
+h1.HeaderStyle {
+    font-size:2em;
+    margin: 0px;
+}
+
+span.HeaderStyle  {
+    font-size:1.2em;
+}
+
+header.HeaderStyle {
+    margin: 0px;
+}
+
+a {
+  color: 242B37;
+}
+
+.blueimp-gallery {
+  background: rgba(0, 0, 0, 0.1);
+  background: #EBEBEB;
+}
+
+.blueimp-gallery > .prev,
+.blueimp-gallery > .next {
+	color: #242B37;
+  background: #EBEBEB;
+}
+
+.blueimp-gallery > .close,
+.blueimp-gallery > .title {
+  color: #242B37;
+}
+
+.blueimp-gallery > .prev:hover,
+.blueimp-gallery > .next:hover,
+.blueimp-gallery > .close:hover,
+.blueimp-gallery > .title:hover,
+.blueimp-gallery > .play-pause:hover {
+  color: #242B37;
+}

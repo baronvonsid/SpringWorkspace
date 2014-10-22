@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema xmlns="http://www.w3.org/2001/XMLSchema" 
+targetNamespace="http://ws.fotowalla.com/ImageList"
+	xmlns:tns="http://ws.fotowalla.com/ImageList" 
+	elementFormDefault="qualified">
+
+  <element name="ImageList">
+    <complexType>
+      <sequence maxOccurs="1" minOccurs="1">
+        <element type="string" name="Name"/>
+        <element type="string" name="Desc"/>
+        <element type="dateTime" name="LastChanged"/>
+        <element name="SystemOwned" type="boolean"/>
+        <element name="Images">
+          <complexType>
+            <sequence>
+              <element name="ImageRef" maxOccurs="unbounded" minOccurs="0">
+              <complexType>
+                      <attribute type="long" name="id" />
+                      <attribute type="long" name="categoryId" />
+                      <attribute type="string" name="name" />
+                      <attribute type="string" name="desc" />
+                      <attribute type="date" name="uploadDate" />
+                      <attribute type="date" name="takenDate" />
+                      <attribute type="int" name="metaVersion" />
+                      <attribute type="string" name="shotSummary" />
+                      <attribute type="string" name="fileSummary" />
+                      </complexType>
+              </element>
+            </sequence>
+          </complexType>
+        </element>
+      </sequence>
+      <attribute type="long" name="id"/>
+      <attribute type="string" name="type"/> <!-- Category, Tag, Gallery -->
+      <attribute type="long" name="sectionId" />
+      <attribute type="int" name="version"/>
+      <attribute type="int" name="imageCursor"/>
+      <attribute type="int" name="imageCount"/>
+      <attribute type="int" name="sectionImageCount"/>
+      <attribute type="int" name="totalImageCount"/>
+    </complexType>
+  </element>
+</schema>

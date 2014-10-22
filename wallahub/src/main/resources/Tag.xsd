@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema xmlns="http://www.w3.org/2001/XMLSchema" 
+targetNamespace="http://ws.fotowalla.com/Tag"
+	xmlns:tns="http://ws.fotowalla.com/Tag" 
+	elementFormDefault="qualified">
+
+  <element name="Tag">
+    <complexType>
+      <sequence maxOccurs="1" minOccurs="0">
+        <element type="string" name="Name"/>
+        <element type="string" name="Desc"/>
+        <element type="int" name="ImageCount" />
+        <element type="dateTime" name="LastChanged"/>
+        <element type="boolean" name="SystemOwned" />
+        </sequence>
+      <attribute type="long" name="id"/>
+      <attribute type="int" name="version"/>
+    </complexType>
+  </element>
+</schema>
