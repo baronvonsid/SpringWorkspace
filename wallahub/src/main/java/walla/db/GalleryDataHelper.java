@@ -22,7 +22,7 @@ public interface GalleryDataHelper {
 	public Gallery GetGalleryMeta(long userId, String galleryName) throws WallaException;
 	public void GetGalleryImages(long userId, int imageCursor, int imageCount, ImageList galleryImageList) throws WallaException;
 	public GalleryList GetUserGalleryList(long userId) throws WallaException;
-	public long GetGalleryForLogin(String userName, String galleryName, String urlComplex, StringBuilder saltBuilder) throws WallaException;
+	public GalleryLogon GetGalleryLogonDetail(String userName, String galleryName, String urlComplex) throws WallaException;
 	//public void UpdateGalleryTimestamp(long galleryId) throws WallaException;
 	public void UpdateLoginSalt(long userId, String galleryName, String salt) throws WallaException;
 	public void RegenerateGalleryImages(long userId, long galleryId) throws WallaException;

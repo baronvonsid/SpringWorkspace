@@ -478,7 +478,7 @@ public class ImageController {
 			CustomSessionState customSession = UserTools.GetValidAdminSession(profileName, request, meLogger);
 			if (customSession == null)
 			{
-				customSession = UserTools.GetValidGallerySession(profileName, "", false, request, meLogger);
+				customSession = UserTools.GetGallerySessionAuth(profileName, "", false, request, meLogger);
 			}
 			
 			if (customSession == null)
@@ -519,7 +519,7 @@ public class ImageController {
 			CustomSessionState customSession = UserTools.GetValidAdminSession(profileName, request, meLogger);
 			if (customSession == null)
 			{
-				customSession = UserTools.GetValidGallerySession(profileName, "", false, request, meLogger);
+				customSession = UserTools.GetGallerySessionAuth(profileName, "", false, request, meLogger);
 			}
 			
 			if (customSession == null)

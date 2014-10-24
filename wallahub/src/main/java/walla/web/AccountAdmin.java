@@ -36,27 +36,65 @@ import walla.utils.*;
 public class AccountAdmin extends WebMvcConfigurerAdapter {
 
 	private static final Logger meLogger = Logger.getLogger(AccountAdmin.class);
+	private final String urlPRefix = "/v1";
+	
 	
 	@Autowired
 	private AccountService accountService;
 	
+	@Autowired
+	private GalleryService galleryService;
 	
-	//@Override
-	//public void addViewControllers(ViewControllerRegistry registry)
-	//{
-	//	registry.addViewController("/results").setViewName("results");
-	//}
+	@RequestMapping(value="/start", method=RequestMethod.GET)
+	public String StartGet(
+			HttpServletResponse response)
+	{
+		response.setStatus(HttpStatus.OK.value());
+		return "x/start";
+	}
 	
-	@RequestMapping(value="/newprofile", method=RequestMethod.GET)
-	public String NewProfileGet(
-			NewProfile newProfile,
+	@RequestMapping(value="/logout", method=RequestMethod.GET)
+	public String LogoutGet(
+			Model model,
+			HttpServletRequest request,
+			HttpServletResponse response)
+	{
+		String defaultMessage = "Logout encountered an unexpected issue.";
+		String responseJsp = "x/generalerror";
+		
+		long startMS = System.currentTimeMillis();
+		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
+		try
+		{
+			response.addHeader("Cache-Control", "no-cache");
+			
+			HttpSession tomcatSession = request.getSession(false);
+			if (tomcatSession == null)
+				meLogger.warn("Logout request made, but no Tomcat session has been established.");
+			else
+				tomcatSession.invalidate();
+
+			return "x/logout";
+		}
+		catch (Exception ex) {
+			meLogger.error(ex);
+			model.addAttribute("message", defaultMessage);
+			return responseJsp;
+		}
+		finally { UserTools.LogWebMethod("LogoutGet", meLogger, startMS, request, responseCode); response.setStatus(HttpStatus.OK.value()); }
+	}
+	
+	@RequestMapping(value="/newaccount", method=RequestMethod.GET)
+	public String NewAccountGet(
+			@RequestParam(value="accountType", required=true) int accountType,
+			NewAccount newAccount,
 			Model model,
 			HttpServletRequest request,
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
 		String defaultMessage = "Profile could be setup at this time.";
-		String responseJsp = "generalerror";
+		String responseJsp = "x/generalerror";
 		try
 		{
 			Thread.sleep(300);
@@ -79,8 +117,9 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 
 			if (customResponse.getResponseCode() == HttpStatus.OK.value())
 			{
-				newProfile.setKey(key);
-				responseJsp = "newprofile";
+				newAccount.setKey(key);
+				newAccount.setAccountType(accountType);
+				responseJsp = "x/newaccount";
 			}
 			else
 			{
@@ -94,12 +133,12 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			model.addAttribute("message", defaultMessage);
 			return responseJsp;
 		}
-		finally { UserTools.LogWebFormMethod("NewProfileGet", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+		finally { UserTools.LogWebFormMethod("NewAccountGet", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
-	@RequestMapping(value="/newprofile", method=RequestMethod.POST)
-	public String NewProfilePost(
-			@Valid NewProfile newProfile, 
+	@RequestMapping(value="/newaccount", method=RequestMethod.POST)
+	public String NewAccountPost(
+			@Valid NewAccount newAccount, 
 			BindingResult bindingResult,
 			Model model,
 			HttpServletRequest request,
@@ -107,24 +146,24 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 	{
 		//int responseCode = HttpStatus.OK.value();
 		long startMS = System.currentTimeMillis();
-		String responseJsp = "generalerror";
+		String responseJsp = "x/generalerror";
 		try
 		{
 			response.addHeader("Cache-Control", "no-cache");
 						
 			if (bindingResult.hasErrors())
 			{
-				responseJsp = "newprofile";
+				responseJsp = "x/newaccount";
 			}
 			else
 			{
 				Account account = new Account();
-				account.setProfileName(newProfile.getProfileName());
-				account.setEmail(newProfile.getEmail());
-				account.setDesc(newProfile.getDescription());
-				account.setPassword(newProfile.getPassword());
-				account.setAccountType(newProfile.getAccountType());
-				account.setKey(newProfile.getKey());
+				account.setProfileName(newAccount.getProfileName());
+				account.setEmail(newAccount.getEmail());
+				account.setDesc(newAccount.getDescription());
+				account.setPassword(newAccount.getPassword());
+				account.setAccountType(newAccount.getAccountType());
+				account.setKey(newAccount.getKey());
 				
 				CustomSessionState customSession = UserTools.CheckNewUserSession(account, request, meLogger);
 				if (customSession != null)
@@ -137,7 +176,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 						wallaSessionIdCookie.setPath("/wallahub/");
 						response.addCookie(wallaSessionIdCookie);
 						
-						responseJsp = "redirect:" + account.getProfileName() + "/profilesummary";
+						responseJsp = "redirect:" + account.getProfileName() + "/accountsummary";
 					}
 					else if (customResponse.getResponseCode() == HttpStatus.BAD_REQUEST.value())
 					{			
@@ -145,8 +184,8 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 
 						if (customResponse.getResponseCode() == HttpStatus.OK.value())
 						{
-							newProfile.setKey(key);
-							responseJsp = "newprofile";
+							newAccount.setKey(key);
+							responseJsp = "x/newaccount";
 						}
 						model.addAttribute("message", "Request failed, reason - " + customResponse.getMessage());
 					}
@@ -164,10 +203,10 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
-			model.addAttribute("message", "Unexpected error, no profile could be setup at this time.");
+			model.addAttribute("message", "Unexpected error, no account could be setup at this time.");
 			return responseJsp;
 		}
-		finally { UserTools.LogWebFormMethod("NewProfilePost", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+		finally { UserTools.LogWebFormMethod("NewAccountPost", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
 	@RequestMapping(value="/logon", method=RequestMethod.GET)
@@ -182,7 +221,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 	{
 		long startMS = System.currentTimeMillis();
 		String defaultMessage = "Logon could not be processed at this time.";
-		String responseJsp = "generalerror";
+		String responseJsp = "x/generalerror";
 		try
 		{
 			response.addHeader("Cache-Control", "no-cache");
@@ -194,8 +233,8 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 				model.addAttribute("referrer", referrer);
 			
 			//TODO add remote address to the DB, to check for other sessions, from other IPs coming in.
-			logon = new Logon();
-			responseJsp = "logon";
+			//logon = new Logon();
+			responseJsp = "x/logon";
 			
 			return responseJsp;
 		}
@@ -209,6 +248,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 	
 	@RequestMapping(value="/logon", method=RequestMethod.POST)
 	public String LogonPost(
+			@RequestParam(value="referrer", required=false) String referrer,
 			@Valid Logon logon, 
 			BindingResult bindingResult,
 			Model model,
@@ -217,14 +257,14 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 	{
 		long startMS = System.currentTimeMillis();
 		String defaultMessage = "Logon could not be processed at this time.";
-		String responseJsp = "generalerror";
+		String responseJsp = "x/generalerror";
 		try
 		{
 			response.addHeader("Cache-Control", "no-cache");
 						
 			if (bindingResult.hasErrors())
 			{
-				responseJsp = "logon";
+				responseJsp = "x/logon";
 			}
 			else
 			{
@@ -246,11 +286,8 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 					logon.setKey(key);
 					if (accountService.LogonCheck(logon, request, customSession))
 					{
-						Map modelVals = model.asMap();
-						String referrer = (String)modelVals.get("referrer");
-						
-						if (referrer == null || referrer.length() < 1)
-							responseJsp = "redirect:" + logon.getProfileName() + "/profilesummary";
+						if (referrer == null)
+							responseJsp = "redirect:" + customSession.getProfileName() + "/accountsummary";
 						else
 							responseJsp = "redirect:" + referrer;
 						
@@ -262,14 +299,14 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 					{
 						Thread.sleep(1000);
 						model.addAttribute("message", "Logon failed, please check your details and try again");
-						responseJsp = "logon";
+						responseJsp = "x/logon";
 					}
 				}
 				else if (customResponse.getResponseCode() == HttpStatus.BAD_REQUEST.value())
 				{
 					Thread.sleep(1000);
 					model.addAttribute("message", "Logon failed, please check your details and try again");
-					responseJsp = "logon";
+					responseJsp = "x/logon";
 				}
 				else
 				{
@@ -287,16 +324,17 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 		finally { UserTools.LogWebFormMethod("LogonPost", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
-	@RequestMapping(value="/{profileName}/profilesummary", method=RequestMethod.GET)
-	public String ProfileSummaryGet(
+	@RequestMapping(value="/{profileName}/accountsummary", method=RequestMethod.GET)
+	public String AccountSummaryGet(
 			@PathVariable("profileName") String profileName,
+			AccountSummary accountSummary,
 			Model model,
 			HttpServletRequest request,
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
-		String defaultMessage = "Profile summary could not be retrieved at this time.";
-		String responseJsp = "generalerror";
+		String defaultMessage = "Account summary could not be retrieved at this time.";
+		String responseJsp = "x/generalerror";
 		try
 		{
 			response.addHeader("Cache-Control", "no-cache");
@@ -307,18 +345,25 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			{
 				String message = "Account summary request not authorised.";
 				meLogger.warn(message);
-
+				String path = new UrlPathHelper().getPathWithinApplication(request);
+				
 				return "redirect:../logon?referrer=" 
-					+ UriUtils.encodePath(request.getRequestURI(),"UTF-8") 
-					+ "&message=" + EncodeString(message, request);
+					+ UriUtils.encodePath(path,"UTF-8") 
+					+ "&message=" + UserTools.EncodeString(message, request);
 			}
 			
 			Account account = accountService.GetAccount(customSession.getUserId(), customResponse);
 			
 			if (customResponse.getResponseCode() == HttpStatus.OK.value())
 			{
-				model.addAttribute(account);
-				responseJsp = "profilesummary";
+				accountSummary.setEmail(account.getEmail());
+				accountSummary.setDescription(account.getDesc());
+				accountSummary.setAccountTypeName(account.getAccountTypeName());
+				accountSummary.setProfileName(account.getProfileName());
+				accountSummary.setVersion(account.getVersion());
+				accountSummary.setId(account.getId());
+
+				responseJsp = "x/accountsummary";
 			}
 			else
 			{
@@ -332,13 +377,13 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			model.addAttribute("message", defaultMessage);
 			return responseJsp;
 		}
-		finally { UserTools.LogWebFormMethod("ShowProfileSummary", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+		finally { UserTools.LogWebFormMethod("AccountSummaryGet", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
 	
-	@RequestMapping(value="/{profileName}/profilesummary", method=RequestMethod.POST)
-	public String ProfileSummaryPost(
-			@Valid Account account, 
+	@RequestMapping(value="/{profileName}/accountsummary", method=RequestMethod.POST)
+	public String AccountSummaryPost(
+			@Valid AccountSummary accountSummary, 
 			BindingResult bindingResult,
 			Model model,
 			@PathVariable("profileName") String profileName,
@@ -346,16 +391,15 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
-		String defaultMessage = "Profile summary could not be updated at this time.";
-		String responseJsp = "generalerror";
+		String defaultMessage = "Account summary could not be updated at this time.";
+		String responseJsp = "x/generalerror";
 		try
 		{
 			response.addHeader("Cache-Control", "no-cache");
 						
-			//Account simon = (Account)model.asMap().get("account");
 			if (bindingResult.hasErrors())
 			{
-				responseJsp = "profilesummary";
+				responseJsp = "x/accountsummary";
 			}
 			else
 			{
@@ -364,32 +408,41 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 				{
 					String message = "Account update failed, your session has ended.  Please login again.";
 					meLogger.warn(message);
-					responseJsp = "redirect:../logon?message=" + EncodeString(message, request);
+					responseJsp = "redirect:../logon?message=" + UserTools.EncodeString(message, request);
 				}
 				else
 				{
-					if (!customSession.getProfileName().equalsIgnoreCase(account.getProfileName())
-							|| customSession.getUserId() != account.getId())
+					if (!customSession.getProfileName().equalsIgnoreCase(accountSummary.getProfileName())
+							|| customSession.getUserId() != accountSummary.getId())
 					{
 						String message = "Account update failed, an invalid action was requested.  Your session has been closed.";
 						meLogger.warn(message);
-						responseJsp = "redirect:../logon?message=" + EncodeString(message, request);
+						responseJsp = "redirect:../logon?message=" + UserTools.EncodeString(message, request);
 					}
 					else
 					{
 						CustomResponse customResponse = new CustomResponse();
-						if (accountService.UpdateAccount(account) == HttpStatus.OK.value())
-						{
-							account = accountService.GetAccount(customSession.getUserId(), customResponse);
+						Account account = new Account();
+						account.setId(accountSummary.getId());
+						account.setVersion(accountSummary.getVersion());
+						account.setDesc(accountSummary.getDescription());
+						
+						int updateStatus = accountService.UpdateAccount(account);
+						
+						account = accountService.GetAccount(customSession.getUserId(), customResponse);
+						accountSummary.setEmail(account.getEmail());
+						accountSummary.setDescription(account.getDesc());
+						accountSummary.setAccountTypeName(account.getAccountTypeName());
+						accountSummary.setProfileName(account.getProfileName());
+						accountSummary.setVersion(account.getVersion());
+						accountSummary.setId(account.getId());
+						
+						responseJsp = "x/accountsummary";
+						
+						if (updateStatus == HttpStatus.OK.value())
 							model.addAttribute("message", "Updated!");
-							responseJsp = "profilesummary";
-						}
 						else
-						{
-							account = accountService.GetAccount(customSession.getUserId(), customResponse);
 							model.addAttribute("message", "Update failed, there was an error on the server");
-							responseJsp = "profilesummary";
-						}
 					}
 				}
 			}
@@ -400,15 +453,167 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			model.addAttribute("message", "Unexpected error, account could not be updated at this time.");
 			return responseJsp;
 		}
-		finally { UserTools.LogWebFormMethod("ProfileSummaryPost", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+		finally { UserTools.LogWebFormMethod("AccountSummaryPost", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
-	private String EncodeString(String string, HttpServletRequest request) throws UnsupportedEncodingException
+	@RequestMapping(value="/{profileName}/gallery/{galleryName}/logon", method=RequestMethod.GET)
+	public String GalleryLogonGet(
+			@PathVariable("profileName") String profileName,
+			@PathVariable("galleryName") String galleryName,
+			@RequestParam(value="referrer", required=false) String referrer,
+			@RequestParam(value="message", required=false) String message,
+			GalleryLogon galleryLogon,
+			Model model,
+			HttpServletRequest request,
+			HttpServletResponse response)
 	{
-		String enc=request.getCharacterEncoding();
-		if (enc == null)
-		    enc=WebUtils.DEFAULT_CHARACTER_ENCODING;
+		long startMS = System.currentTimeMillis();
+		String defaultMessage = "Gallery logon could not be processed at this time.  Please try later.";
+		String responseJsp = "x/generalerror";
+		try
+		{
+			response.addHeader("Cache-Control", "no-cache");
 		
-		return UriUtils.encodeQueryParam(string, enc);
+			if (message != null)
+				model.addAttribute("message", message);
+			
+			if (referrer != null)
+				model.addAttribute("referrer", referrer);
+			
+			//TODO add remote address to the DB, to check for other sessions, from other IPs coming in.
+			
+			//Check for existing session.
+			CustomSessionState customSession = null;
+			try
+			{
+				customSession = UserTools.GetGallerySessionNoAuth(profileName, galleryName, request, meLogger);
+			}
+			catch (WallaException wallaEx)
+			{
+				//Unexpected action,  forbidden.
+				Thread.sleep(10000);
+				model.addAttribute("message", "Request failed security checks.");
+				return responseJsp;
+			}
+			
+			if (customSession == null)
+			{
+				//Existing session is not valid, so start again.
+				HttpSession tomcatSession = request.getSession(false);
+				if (tomcatSession != null)
+					tomcatSession.invalidate();
+				
+				tomcatSession = request.getSession(true);
+				customSession = new CustomSessionState();
+				tomcatSession.setAttribute("CustomSessionState", customSession);
+			}
+			
+			CustomResponse customResponse = new CustomResponse();
+			String key = galleryService.GetGalleryUserLogonToken(profileName, galleryName, request, customSession, customResponse);
+			if (customResponse.getResponseCode() == HttpStatus.OK.value())
+			{
+				galleryLogon.setProfileName(profileName);
+				galleryLogon.setGalleryName(galleryName);
+				galleryLogon.setKey(key);
+				responseJsp = "x/gallerylogon";
+				
+			}
+			else if (customResponse.getResponseCode() == HttpStatus.FORBIDDEN.value())
+			{
+				Thread.sleep(10000);
+				model.addAttribute("message", "Request failed security checks when issuing a token.");
+			}
+			else
+			{
+				Thread.sleep(2000);
+				model.addAttribute("message", defaultMessage);
+			}
+
+			return responseJsp;
+		}
+		catch (Exception ex) {
+			meLogger.error(ex);
+			model.addAttribute("message", defaultMessage);
+			return responseJsp;
+		}
+		finally { UserTools.LogWebFormMethod("GalleryLogonGet", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
+	
+	@RequestMapping(value="/{profileName}/gallery/{galleryName}/logon", method=RequestMethod.POST)
+	public String GalleryLogonPost(
+			@RequestParam(value="referrer", required=true) String referrer,
+			@Valid GalleryLogon galleryLogon, 
+			BindingResult bindingResult,
+			Model model,
+			HttpServletRequest request,
+			HttpServletResponse response)
+	{
+		long startMS = System.currentTimeMillis();
+		String defaultMessage = "Gallery logon could not be processed at this time.";
+		String responseJsp = "x/generalerror";
+		String message = "";
+		try
+		{
+			response.addHeader("Cache-Control", "no-cache");
+						
+			if (bindingResult.hasErrors())
+			{
+				responseJsp = "x/gallerylogon";
+			}
+			else
+			{
+				//Get the valid session, using the key.
+				//TOTOTOTOTO   DODODODODOD
+				
+				
+				CustomSessionState customSession = new CustomSessionState();
+				
+				
+				
+				CustomResponse customResponse = new CustomResponse();
+				
+				galleryService.LoginGalleryUser(false, 1, "", "", galleryLogon.getPassword(), galleryLogon.getProfileName(), galleryLogon.getGalleryName(), request, customSession, customResponse);
+				
+				if (customResponse.getResponseCode() == HttpStatus.OK.value())
+				{
+					meLogger.debug("View gallery authorised.  User:" + customSession.getProfileName() + " Gallery:" + customSession.getGalleryName());
+				}
+				else
+				{
+					if (customResponse.getResponseCode() == HttpStatus.UNAUTHORIZED.value())
+						message = "Logon failed.  Please check your password and try again.";
+					else
+						message = "Gallery login had an error and cannot continue.";
+					
+					meLogger.warn(message);
+					model.addAttribute("errorMessage", message);
+					return responseJsp;
+				}
+				
+				if (customResponse.getResponseCode() == HttpStatus.OK.value())
+				{
+					responseJsp = "redirect:" + referrer;
+					
+					Cookie wallaSessionIdCookie = new Cookie("X-Walla-Id", UserTools.GetLatestWallaId(customSession));
+					wallaSessionIdCookie.setPath("/wallahub/");
+					response.addCookie(wallaSessionIdCookie);
+				}
+				else
+				{
+					Thread.sleep(1000);
+					model.addAttribute("message", "Logon failed, please check your details and try again");
+					responseJsp = "x/logon";
+				}
+				
+			}
+			return responseJsp;
+		}
+		catch (Exception ex) {
+			meLogger.error(ex);
+			model.addAttribute("message", defaultMessage);
+			return responseJsp;
+		}
+		finally { UserTools.LogWebFormMethod("GalleryLogonPost", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+	}
+	
 }

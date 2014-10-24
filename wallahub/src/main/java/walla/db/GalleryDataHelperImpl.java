@@ -706,25 +706,26 @@ public class GalleryDataHelperImpl implements GalleryDataHelper {
 		}
 	}
 
-	public long GetGalleryForLogin(String userName, String galleryName, String urlComplex, StringBuilder saltBuilder) throws WallaException
+	public GalleryLogon GetGalleryLogonDetail(String profileName, String galleryName, String urlComplex) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
 		PreparedStatement ps = null;
 		ResultSet resultset = null;
+		GalleryLogon galleryLogon = null;
 		
 		try {			
 			conn = dataSource.getConnection();
 
 			//TODO check for active user still.
-			String sql = "SELECT G.[UserId], G.[TempLoginSalt] FROM [Gallery] G INNER JOIN [User] U ON G.[UserId] = U.[UserId] " +
+			String sql = "SELECT G.[UserId], G.[AccessType], G.[TempLoginSalt], G.[UrlComplex], G.[Password] FROM [Gallery] G INNER JOIN [User] U ON G.[UserId] = U.[UserId] " +
 					"WHERE U.[ProfileName] = ? AND G.[Name] = ?";
 			
 			if (urlComplex.length() > 0)
 				sql = sql + " AND G.[UrlComplex] = ?";
 			
 			ps = conn.prepareStatement(sql);
-			ps.setString(1, userName);
+			ps.setString(1, profileName);
 			ps.setString(2, galleryName);
 			
 			if (urlComplex.length() > 0)
@@ -733,24 +734,30 @@ public class GalleryDataHelperImpl implements GalleryDataHelper {
 			resultset = ps.executeQuery();
 			if (resultset.next())
 			{
-				long userId = resultset.getLong(1);
-				saltBuilder.append(resultset.getString(2));	
-				return userId;
+				galleryLogon = new GalleryLogon();
+				
+				galleryLogon.setUserId(resultset.getLong(1));
+				galleryLogon.setAccessType(resultset.getInt(2));
+				galleryLogon.setSalt(resultset.getString(3));
+				galleryLogon.setComplexUrl(resultset.getString(4));
+				galleryLogon.setPassword(resultset.getString(5));
+				
+				return galleryLogon;
 			}
 			else
 			{
-				return -1;
+				return null;
 			}
 		}
 		catch (SQLException sqlEx) {
 			meLogger.error(sqlEx);
-			return -1;
+			return null;
 		} 
 		finally {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetGalleryForLogin", meLogger, startMS, userName);
+	        UserTools.LogMethod("GetGalleryLogonDetail", meLogger, startMS, profileName);
 		}
 	}
 	
@@ -764,7 +771,7 @@ public class GalleryDataHelperImpl implements GalleryDataHelper {
 		try {			
 			conn = dataSource.getConnection();
 			
-			String selectSql = "SELECT G.[GalleryId], G.[Name], G.[Description], G.[UrlComplex], G.[TotalImageCount], "
+			String selectSql = "SELECT G.[GalleryId], G.[Name], G.[Description], CASE WHEN G.[AccessType] = 2 THEN G.[UrlComplex] ELSE '' END AS UrlComplex, G.[TotalImageCount], "
 			+ "G.[SystemOwned], COALESCE(GS.[SectionId],0) AS SectionId, GS.[ImageCount], " 
 			+ "CASE WHEN G.[GroupingType] = 1 THEN COALESCE(GS.[NameOverride],COALESCE(C.[Name],'')) WHEN G.[GroupingType] = 2 THEN COALESCE(GS.[NameOverride],COALESCE(T.[Name],'')) ELSE '' END AS SectionName, "
 			+ "CASE WHEN G.[GroupingType] = 1 THEN COALESCE(GS.[DescOverride],COALESCE(C.[Description],'')) WHEN G.[GroupingType] = 2 THEN COALESCE(GS.[NameOverride],COALESCE(T.[Description],'')) ELSE '' END AS SectionDesc, "

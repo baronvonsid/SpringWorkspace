@@ -2,11 +2,12 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
 <meta charset="ISO-8859-1" />
-<title>fotowalla - new profile</title>
+<title>fotowalla - new account</title>
 </head>
 <body>
-	<form action="#" th:action="@{./newprofile}" th:object="${newProfile}" method="post">
+	<form action="#" th:action="@{./newaccount}" th:object="${newAccount}" method="post">
 		<input type="hidden" name="key" th:field="*{key}" />
+		<input type="hidden" name="accountType" th:field="*{accountType}" />
 		<table>
 			<tr>
 				<td>Profile Name</td>

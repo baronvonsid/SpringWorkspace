@@ -35,6 +35,8 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.View;
+import org.springframework.web.util.UriUtils;
+import org.springframework.web.util.UrlPathHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Required;
 
@@ -77,57 +79,103 @@ public class GalleryViewer {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
-		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		String responseJsp = "GalleryViewerError";
+		String message = "";
 		try
 		{
 			CustomResponse customResponse = new CustomResponse();
 			CustomSessionState customSession = UserTools.GetValidAdminSession(profileName, request, meLogger);
 			if (customSession == null)
 			{
-				customSession = UserTools.GetValidGallerySession(profileName, galleryName, true, request, meLogger);
-				if (customSession == null || !customSession.getGalleryName().equals(galleryName))
+				try
 				{
-					
+					customSession = UserTools.GetGallerySessionAuth(profileName, galleryName, true, request, meLogger);
+				}
+				catch (WallaException wallaEx)
+				{
+					//Unexpected action,  forbidden.
+					Thread.sleep(10000);
+					model.addAttribute("message", "Request failed security checks.");
+					return responseJsp;
+				}
+				
+				if (customSession == null)
+				{
+					//Login still required.
 					logonToken = (logonToken == null) ? "" : logonToken;
 					urlComplex = (urlComplex == null) ? "" : urlComplex;
-					
+
 					if (urlComplex.length() == 32 || logonToken.length() == 20)
 					{
 						//No existing login, so use token to validate.  Create new sessions.
-						HttpSession tomcatSession = request.getSession(true);
+						HttpSession tomcatSession = request.getSession(false);
+						if (tomcatSession != null)
+							tomcatSession.invalidate();
 						
-						customSession = (CustomSessionState)tomcatSession.getAttribute("CustomSessionState");
-						if (customSession == null)
-						{
-							customSession = new CustomSessionState();
-							tomcatSession.setAttribute("CustomSessionState", customSession);
-						}
+						tomcatSession = request.getSession(true);
+						customSession = new CustomSessionState();
+						tomcatSession.setAttribute("CustomSessionState", customSession);
 						
 						customResponse = new CustomResponse();
-						galleryService.LoginGalleryUser(logonToken, urlComplex, profileName, galleryName, request, customSession, customResponse);
-						responseCode = customResponse.getResponseCode();
-						if (responseCode == HttpStatus.OK.value())
+						
+						if (logonToken.length() == 20)
+							galleryService.LoginGalleryUser(true, -1, logonToken, urlComplex, "", profileName, galleryName, request, customSession, customResponse);
+						else
+							galleryService.LoginGalleryUser(false, 2, logonToken, urlComplex, "", profileName, galleryName, request, customSession, customResponse);
+						
+						if (customResponse.getResponseCode() == HttpStatus.OK.value())
 						{
 							meLogger.debug("View gallery authorised.  User:" + profileName.toString() + " Gallery:" + galleryName);
 						}
-						else if (responseCode == HttpStatus.UNAUTHORIZED.value())
-						{
-							meLogger.warn("GetGalleryViewer request not authorised.  No session and no key or token supplied.  User:" + profileName.toString());
-							return "GalleryLogon";
-						}
 						else
 						{
-							String message = "Gallery login had an error and cannot continue.";
+							if (customResponse.getResponseCode() == HttpStatus.UNAUTHORIZED.value())
+								message = "GetGalleryViewer request not authorised.  No session and no key or token supplied.  User:" + profileName.toString();
+							else
+								message = "Gallery login had an error and cannot continue.";
+							
 							meLogger.warn(message);
 							model.addAttribute("errorMessage", message);
-							return null;
+							return responseJsp;
 						}
 					}
 					else
 					{
-						meLogger.warn("GetGalleryViewer request not authorised.  No session and no key or token supplied.  User:" + profileName.toString());
-						return "GalleryLogon";
+						int accessType = galleryService.GetGalleryAccessType(profileName, galleryName, customResponse);
+						if (accessType == 1)
+						{
+							String path = new UrlPathHelper().getPathWithinApplication(request);
+							message = "Gallery " + galleryName + " requires a password to view, please enter this to continue.";
+							responseJsp = "redirect:./" + galleryName + "/logon?referrer=" 
+								+ UriUtils.encodePath(path,"UTF-8") 
+								+ "&message=" + UserTools.EncodeString(message, request);
+						}
+						else
+						{
+							if (accessType == 0)
+							{					
+								String path = new UrlPathHelper().getPathWithinApplication(request);
+								//request.getPathInfo()
+								message = "Gallery: " + galleryName + " is marked as Private.  To view this please login as: " + profileName;
+								responseJsp = "redirect:/v1/web/logon?referrer=" 
+									+ UriUtils.encodePath(path,"UTF-8")
+									+ "&message=" + UserTools.EncodeString(message, request);
+							}
+							else if (accessType == 2)
+							{
+								message = "Gallery access is denied, the gallery url maybe incorrect.";
+								model.addAttribute("errorMessage", message);
+							}
+							else
+							{
+								message = "Gallery login had an error and cannot continue.";
+								model.addAttribute("errorMessage", message);
+							}
+						}
+						
+						meLogger.info(message);
+						return responseJsp;
+
 					}
 				}
 			}
@@ -136,9 +184,8 @@ public class GalleryViewer {
 			//**********  Passed security checks  **************
 			//**************************************************
 			
-			Gallery gallery = galleryService.GetGalleryMeta(customSession.getUserId(), customSession.getGalleryName(), customResponse);
-			responseCode = customResponse.getResponseCode();
-			if (responseCode == HttpStatus.OK.value())
+			Gallery gallery = galleryService.GetGalleryMeta(customSession.getUserId(), galleryName, customResponse);
+			if (customResponse.getResponseCode() == HttpStatus.OK.value())
 			{
 				String presentationJsp = CombineModelAndGallery(customSession.getUserId(), profileName, model, gallery, false);
 				if (presentationJsp != null)
@@ -157,7 +204,7 @@ public class GalleryViewer {
 			model.addAttribute("errorMessage", "Gallery could not be loaded.  Error message: " + ex.getMessage()); 
 			return responseJsp;
 		}
-		finally { UserTools.LogWebMethod("GetGalleryViewer", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { UserTools.LogWebFormMethod("GetGalleryViewer", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
 	//  GET /{profileName}/gallery/{galleryName}/{sectionId}/{imageCursor}/{size}?preview=true
@@ -184,7 +231,7 @@ public class GalleryViewer {
 			CustomSessionState customSession = UserTools.GetValidAdminSession(profileName, request, meLogger);
 			if (customSession == null)
 			{
-				customSession = UserTools.GetValidGallerySession(profileName, galleryName, true, request, meLogger);
+				customSession = UserTools.GetGallerySessionAuth(profileName, galleryName, true, request, meLogger);
 				if (customSession == null)
 				{
 					meLogger.warn("GetGalleryViewer request not authorised.  No session and no key or token supplied.  User:" + profileName.toString());

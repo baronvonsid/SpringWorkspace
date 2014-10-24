@@ -38,8 +38,10 @@
 	<bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
 		<property name="prefix" value="/WEB-INF/jsp/" />
 		<property name="suffix" value=".jsp" />
+		<property name="order" value="2" />
 	</bean>
 	
+	<!--  Spring + Thymeleaf template resolver -->
 	<bean id="templateResolver" class="org.thymeleaf.templateresolver.ServletContextTemplateResolver">
 		<property name="prefix" value="/WEB-INF/template/" />
 		<property name="suffix" value=".html" />
@@ -53,6 +55,8 @@
 	<bean class="org.thymeleaf.spring3.view.ThymeleafViewResolver">
 		<property name="templateEngine" ref="templateEngine" />
 		<property name="order" value="1" />
+		<property name="viewNames" value="x/*" />
+		
 		
 	</bean>
 	

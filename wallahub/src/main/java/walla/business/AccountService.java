@@ -661,11 +661,12 @@ public class AccountService {
 		String profileName = "";
 		String password = "";
 		String requestKey = "";
-		
+		String email = "";
 		try
 		{
 			profileName = logon.getProfileName();
 			password = logon.getPassword();
+			email = logon.getEmail();
 			
 			synchronized(customSession) {
 				requestKey = customSession.getNonceKey();
@@ -697,13 +698,13 @@ public class AccountService {
 				return false;
 			}
 			
-			if (profileName == null || password == null || requestKey == null)
+			if ((profileName == null && email == null) || password == null || requestKey == null)
 			{
 				meLogger.warn("Not all the logon fields were supplied, logon failed.");
 				return false;
 			}
 		    
-			if (profileName.length() < 5 || password.length() < 8 || requestKey.length() != 32)
+			if ((profileName.length() < 5 && email.length() < 5) || password.length() < 8 || requestKey.length() != 32)
 			{
 				meLogger.warn("The logon fields supplied did meet minimum size, logon failed.  profileName:" + profileName + " password length:" + password.length() + " key:" + requestKey);
 				return false;
@@ -716,17 +717,17 @@ public class AccountService {
 				return false;
 			}
 			
-			if (profileName.compareTo(customSession.getProfileName()) != 0)
-			{
-				meLogger.warn("Custom session user name does not match the request username.  Request name:" + profileName + " Session Name:" + customSession.getProfileName());
-				return false;
-			}
-			
-			LogonState userStateDb = accountDataHelper.GetLogonState(profileName, "");
+			LogonState userStateDb = accountDataHelper.GetLogonState(profileName, email);
 			if (userStateDb == null)
 			{
 				meLogger.warn("Logon state could not be retrieved from the database.  ProfileName: " + profileName);
 		    	return false;
+			}
+			
+			if (userStateDb.getProfileName().compareTo(customSession.getProfileName()) != 0)
+			{
+				meLogger.warn("Custom session user name does not match the request username.  Request name:" + profileName + " Session Name:" + customSession.getProfileName());
+				return false;
 			}
 
 			//Get a hash of the password attempt.

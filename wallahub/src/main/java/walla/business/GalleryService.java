@@ -446,12 +446,13 @@ public class GalleryService {
 		finally { UserTools.LogMethod("GetGalleryLogonToken", meLogger, startMS, "ProfileName: " + profileName); }
 	}
 	
-	public void LoginGalleryUser(String logonToken, String complexUrl, String profileName, String galleryName, HttpServletRequest request, 
+	public void LoginGalleryUser(boolean useTokenOnly, int accessType, String logonToken, String complexUrl, String password, String profileName, String galleryName, HttpServletRequest request, 
 			CustomSessionState customSession, CustomResponse customResponse)
 	{
 		//Only reads user data from DB, any state are held in the session object.
 		long startMS = System.currentTimeMillis();
 		boolean passedCheck = false;
+		String message = "";
 		
 		try
 		{
@@ -459,40 +460,66 @@ public class GalleryService {
 			profileName = (profileName == null) ? "" : profileName;
 			galleryName = (galleryName == null) ? "" : galleryName;
 			complexUrl = (complexUrl == null) ? "" : complexUrl;
-			//long time = new Date().getTime();
-			
-			if ((complexUrl.length() > 0 && logonToken.length() > 0) || complexUrl.length() > 32 || logonToken.length() > 20)
-			{
-				meLogger.warn("ComplexUrl and LoginToken supplied are not valid.  User:" + profileName + 
-						" Gallery:" + galleryName + " ComplexUrl:" + complexUrl + " LogonToken:" + logonToken);
-				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
-				return;
-			}
+			password = (password == null) ? "" : password;
 			
 			if (galleryName.length() > 30 || profileName.length() > 30)
 			{
-				String message = "LoginGalleryUser was passed an invalid argument. UserName: " + profileName + " GalleryName:" + galleryName;
+				meLogger.warn("LoginGalleryUser was passed an invalid argument. UserName: " + profileName + " GalleryName:" + galleryName);
 				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
 				return;
 			}
 			
-			//Get UserId, checking its valid
-			StringBuilder saltBuilder = new StringBuilder();
-			long userId = galleryDataHelper.GetGalleryForLogin(profileName, galleryName, complexUrl, saltBuilder);
-			if (userId <= 0)
+			//Request validations.
+			if (useTokenOnly && logonToken.length() != 20)
 			{
-				meLogger.warn("User/gallery are not valid.  User:" + profileName + " Gallery:" + galleryName);
+				meLogger.warn("LoginToken supplied are not valid.  User:" + profileName + " Gallery:" + galleryName + " LogonToken:" + logonToken);
+				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+				return;
+			}
+			else
+			{
+				if (accessType == 0)
+				{
+					meLogger.warn("LoginGalleryUser was passed an invalid request to login into a private gallery. UserName: " + profileName + " GalleryName:" + galleryName);
+					customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+					return;
+				}
+				else if (accessType == 1 && (password.length() < 1 || password.length() > 15))
+				{
+					meLogger.warn("LoginGalleryUser was passed an invalid password. UserName: " + profileName + " GalleryName:" + galleryName + " Password:" + password);
+					customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+					return;
+				}
+				else if (accessType == 2 && complexUrl.length() != 32)
+				{
+					meLogger.warn("ComplexUrl supplied is not valid.  User:" + profileName + " Gallery:" + galleryName + " ComplexUrl:" + complexUrl);
+					customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+					return;
+				}
+			}
+
+			GalleryLogon galleryLogon = galleryDataHelper.GetGalleryLogonDetail(profileName, galleryName, complexUrl);
+			if (galleryLogon == null)
+			{
+				meLogger.warn("Gallery could not be retrieved for logon.  User:" + profileName + " Gallery:" + galleryName + " ComplexUrl:" + complexUrl);
+				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+				return;
+			}
+
+			if (accessType != galleryLogon.getAccessType())
+			{
+				meLogger.warn("Gallery logon, access type mismatch.  User:" + profileName + " Gallery:" + galleryName + " ComplexUrl:" + complexUrl);
 				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
 				return;
 			}
 			
 			//This request requires a login token to be validated.
-			if (logonToken.length() > 0)
+			if (useTokenOnly)
 			{
 				String salt = utilityDataHelper.GetString("SELECT [TempLoginSalt] FROM [Gallery] WHERE [Name] = '" + galleryName + "' AND [UserId]=" + userId);
 				salt = (salt == null) ? "" : salt;
 				
-				if (salt.length() > 30)
+				if (galleryLogon.getSalt().length() != 30)
 				{
 					meLogger.warn("Logon salt retrieved from the DB, was not the correct length: " + salt);
 					customResponse.setResponseCode(HttpStatus.UNAUTHORIZED.value());
@@ -502,7 +529,6 @@ public class GalleryService {
 				long saltTime = Long.valueOf(salt.substring(10));
 				long diffMS = System.currentTimeMillis() - saltTime;
 				
-	
 			    if (diffMS > 10000)
 			    {
 			    	meLogger.warn("Logon request too long after token was issued.");
@@ -516,18 +542,42 @@ public class GalleryService {
 				if (SecurityTools.SlowEquals(logonTokenServer.getBytes(), logonToken.getBytes()))
 					passedCheck = true;
 				else
-					meLogger.warn("Gallery logon fsiled, tokens didn't match for User: " + profileName + " Gallery: " + galleryName);
+					meLogger.warn("Gallery logon failed, tokens didn't match for User: " + profileName + " Gallery: " + galleryName);
 			}
 			else
 			{
-				passedCheck = true;
+				if (accessType == 1)
+				{
+					//TOTOTOTOTOTOT  DDOOODDODODOD
+					//Create additional Salt column in DB.
+					//Updat e table to include larger password field and call it password hash
+					//Ensure passwords are saved in hashed form
+					//Add logic to compare passwords.
+					
+					meLogger.warn("LoginGalleryUser was passed an invalid password. UserName: " + profileName + " GalleryName:" + galleryName + " Password:" + password);
+					customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+					return;
+				}
+				else if (accessType == 2)
+				{
+					if (complexUrl.equals(galleryLogon.getComplexUrl()))
+					{
+						passedCheck = true;
+					}
+					else
+					{
+						meLogger.warn("Gallery logon failed, url did not match.  User: " + profileName + " Gallery: " + galleryName + " ComplexUrl:" + complexUrl);
+						customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+						return;
+					}
+				}
 			}
 			
 			if (passedCheck)
 			{
 				synchronized(customSession) 
 				{
-					customSession.setUserId(userId);
+					customSession.setUserId(galleryLogon.getUserId());
 					customSession.setProfileName(profileName);
 					customSession.setGalleryName(galleryName);
 					customSession.setFailedLogonCount(0);
@@ -542,9 +592,22 @@ public class GalleryService {
 			}
 			else
 			{
+				synchronized(customSession) 
+				{
+					customSession.setFailedLogonCount(customSession.getFailedLogonCount() + 1);
+					customSession.setFailedLogonLast(new Date());
+					customSession.setAuthenticated(false);
+				}
+				
 				meLogger.debug("Gallery logon unsuccessfull for User: " + profileName + " Gallery: " + galleryName);
 				customResponse.setResponseCode(HttpStatus.UNAUTHORIZED.value());
-				Thread.sleep(1000);
+
+				//Check for number of recent failures.  More than 5? then 10 seconds delay.
+				if (customSession.getFailedLogonCount() > 5)
+					Thread.sleep(10000);
+				else
+					Thread.sleep(1000);
+				
 				return;
 			}
 		}
@@ -557,6 +620,99 @@ public class GalleryService {
 	}
 	
 	
+	public String GetGalleryUserLogonToken(String profileName, String galleryName, HttpServletRequest request, CustomSessionState customSession, CustomResponse customResponse)
+	{
+		long startMS = System.currentTimeMillis();
+		try
+		{
+			//Head off unauthorised attempts if they come from the same session.
+			Date failedLogonLast = customSession.getFailedLogonLast();
+			if (failedLogonLast != null)
+			{
+			    Calendar calendar = Calendar.getInstance();
+			    calendar.setTime(failedLogonLast);
+			    
+			    //If less than five failed logons, ensure a retry is not done within 2 seconds.  Otherwise its a 30 second delay.
+			    if (customSession.getFailedLogonCount() <= 5)
+				    calendar.add(Calendar.SECOND, 2);
+			    else
+			    	calendar.add(Calendar.SECOND, 30);
+				
+			    if (calendar.getTime().after(new Date()))
+			    {
+			    	meLogger.warn("Subsequent gallery user logon token request too soon after previous failure. (session)");
+			    	customResponse.setResponseCode(HttpStatus.FORBIDDEN.value());
+			    	return "";
+			    }
+			}
+			
+			GalleryLogon galleryLogon = galleryDataHelper.GetGalleryLogonDetail(profileName, galleryName, "");
+			if (galleryLogon == null)
+			{
+				meLogger.warn("Gallery could not be retrieved for logon.  User:" + profileName + " Gallery:" + galleryName);
+				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+				return "";
+			}
+			
+			if (galleryLogon.getAccessType() != 1)
+			{
+				//This gallery is not setup for login access.
+		    	meLogger.warn("This gallery is not setup for login access.  AccessType:" + galleryLogon.getAccessType());
+		    	customResponse.setResponseCode(HttpStatus.FORBIDDEN.value());
+		    	return "";
+			}
+			
+			//Passed initial checks, so issue a key and update the custom session.
+			String newKey = UserTools.GetComplexString();
+			
+			//TEMP overide for testing!!!!
+			newKey = "12345678901234567890123456789012";
+
+			synchronized(customSession) {
+				customSession.setNonceKey(newKey);
+				customSession.setProfileName(profileName);
+				customSession.setGalleryName(galleryName);
+				customSession.setAuthenticated(false);
+				customSession.setGalleryViewer(true);
+				customSession.setRemoteAddress(request.getRemoteAddr());
+			}
+			
+			customResponse.setResponseCode(HttpStatus.OK.value());
+			
+			return newKey;
+		}
+		catch (Exception ex) {
+			meLogger.error(ex);
+			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			return "";
+		}
+		finally { UserTools.LogMethod("GetGalleryUserLogonToken", meLogger, startMS, "ProfileName: " + profileName + " GalleryName:" + galleryName); }
+	}
+	
+	public int GetGalleryAccessType(String profileName, String galleryName, CustomResponse customResponse) throws WallaException
+	{
+		long startMS = System.currentTimeMillis();
+		try
+		{
+			GalleryLogon galleryLogon = galleryDataHelper.GetGalleryLogonDetail(profileName, galleryName, "");
+			if (galleryLogon == null)
+			{
+				meLogger.warn("Gallery could not be retrieved for logon.  User:" + profileName + " Gallery:" + galleryName);
+				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+				return -1;
+			}
+			
+			
+			return galleryLogon.getAccessType();
+			
+		}
+		catch (Exception ex) {
+			meLogger.error(ex);
+			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			return -1;
+		}
+		finally { UserTools.LogMethod("GetGalleryAccessType", meLogger, startMS, "ProfileName: " + profileName + " GalleryName:" + galleryName); }
+	}
 	
 	//*************************************************************************************************************
 	//*************************************  Messaging initiated methods ******************************************

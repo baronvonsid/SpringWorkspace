@@ -5,7 +5,7 @@
 <title>fotowalla - logon</title>
 </head>
 <body>
-	<form action="#" th:action="@{./logon}" th:object="${logon}" method="post">
+	<form action="#" th:action="@{./logon(referrer=${referrer})}" th:object="${logon}" method="post">
 		<input type="hidden" name="Key" th:field="*{Key}" />
 		<table>
 			<tr>
@@ -32,8 +32,5 @@
 			</tr>
 		</table>
 	</form>
-	
-	<a href="forgotpassword">Forgot Password?</a>
-	<a href="newprofile">Sign up</a>
 </body>
 </html>

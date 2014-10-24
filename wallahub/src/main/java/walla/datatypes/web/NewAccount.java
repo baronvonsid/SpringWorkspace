@@ -2,14 +2,8 @@ package walla.datatypes.web;
 
 import javax.validation.constraints.*;
 
-public class NewProfile {
+public class NewAccount {
 
-	public NewProfile()
-	{
-		String simon = "smon";
-		
-	}
-	
 	@NotNull
 	@Size(min=5, max=30)
 	private String profileName = "";

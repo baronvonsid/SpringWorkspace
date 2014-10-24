@@ -98,14 +98,14 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			conn = dataSource.getConnection();
 			conn.setAutoCommit(false);
 			
-			String updateSql = "UPDATE [dbo].[User] SET [Description] = ?, [Email] = ?,"
+			String updateSql = "UPDATE [dbo].[User] SET [Description] = ?, "
 					+ "[RecordVersion] = [RecordVersion] + 1 WHERE [UserId] = ? AND [RecordVersion] = ?";
 			
 			ps = conn.prepareStatement(updateSql);
 			ps.setString(1, account.getDesc());
-			ps.setString(2, account.getEmail());
-			ps.setLong(4, account.getId());
-			ps.setInt(5, account.getVersion());
+			//ps.setString(2, account.getEmail());
+			ps.setLong(2, account.getId());
+			ps.setInt(3, account.getVersion());
 			
 			//Execute update and check response.
 			returnCount = ps.executeUpdate();

@@ -6,7 +6,7 @@
 </head>
 <body>
 
-	<form action="#" th:action="@{./profilesummary}" th:object="${account}" method="post">
+	<form action="#" th:action="@{./accountsummary}" th:object="${accountSummary}" method="post">
 		<input type="hidden" name="Id" th:field="*{Id}" />
 		<input type="hidden" name="Version" th:field="*{Version}" />
 		<table>
@@ -16,8 +16,8 @@
 			</tr>
 			<tr>
 				<td>Description</td>
-				<td><input type="text" th:field="*{Desc}" /></td>
-				<td th:if="${#fields.hasErrors('Desc')}" th:errors="*{Desc}">Description error</td>
+				<td><input type="text" th:field="*{Description}" /></td>
+				<td th:if="${#fields.hasErrors('Description')}" th:errors="*{Description}">Description error</td>
 			</tr>
 			<tr>
 				<td>Email</td>
@@ -28,6 +28,7 @@
 				<td th:text="*{AccountTypeName}" />
 			</tr>
 
+<!--  
 			<tr>
 				<td>Account Opened</td>
 				<td th:text="*{OpenDate}" />
@@ -44,7 +45,7 @@
 			<tr>
 				<td>Number of Images</td>
 				<td th:text="*{TotalImages}" />
-			</tr>
+			</tr>-->
 			<tr>
 				<td><button type="submit">Update</button></td>
 			</tr>
@@ -53,5 +54,6 @@
 			</tr>
 		</table>
 	</form>
+	<a href="logout" th:href="@{/v1/web/logout}">Logout</a>
 </body>
 </html>
