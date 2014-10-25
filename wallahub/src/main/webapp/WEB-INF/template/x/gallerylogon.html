@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="ISO-8859-1" />
+<title>fotowalla - gallery logon</title>
+</head>
+<body>
+	<form action="#" th:action="@{./logon(referrer=${referrer})}" th:object="${galleryLogon}" method="post">
+		<input type="hidden" name="Key" th:field="*{Key}" />
+		<table>
+			<tr>
+				<td>Profile Name</td>
+				<td th:text="*{profileName}" />
+			</tr>	
+			<tr>
+				<td>Gallery Name</td>
+				<td th:text="*{galleryName}" />
+			</tr>	
+			<tr>
+				<td>Password</td>
+				<td><input type="text" th:field="*{password}" /></td>
+				<td th:if="${#fields.hasErrors('password')}" th:errors="*{password}">Password error</td>
+			</tr>
+			<tr>
+				<td colspan="3" th:if="${message != null}" th:text="${message}">Server errors</td>
+			</tr>
+			<tr>
+				<td><button type="submit">Logon</button></td>
+			</tr>
+		</table>
+	</form>
+</body>
+</html>
