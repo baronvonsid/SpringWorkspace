@@ -486,7 +486,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			CustomSessionState customSession = null;
 			try
 			{
-				customSession = UserTools.GetGallerySessionNoAuth(profileName, galleryName, request, meLogger);
+				customSession = UserTools.GetGallerySession(profileName, galleryName, true, false, request, meLogger);
 			}
 			catch (WallaException wallaEx)
 			{
@@ -541,6 +541,8 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 	
 	@RequestMapping(value="/{profileName}/gallery/{galleryName}/logon", method=RequestMethod.POST)
 	public String GalleryLogonPost(
+			@PathVariable("profileName") String profileName,
+			@PathVariable("galleryName") String galleryName,
 			@RequestParam(value="referrer", required=true) String referrer,
 			@Valid GalleryLogon galleryLogon, 
 			BindingResult bindingResult,
@@ -552,6 +554,8 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 		String defaultMessage = "Gallery logon could not be processed at this time.";
 		String responseJsp = "x/generalerror";
 		String message = "";
+		boolean failed = false;
+		
 		try
 		{
 			response.addHeader("Cache-Control", "no-cache");
@@ -562,36 +566,49 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			}
 			else
 			{
-				//Get the valid session, using the key.
-				//TOTOTOTOTO   DODODODODOD
-				
-				
-				CustomSessionState customSession = new CustomSessionState();
-				
-				
-				
-				CustomResponse customResponse = new CustomResponse();
-				
-				galleryService.LoginGalleryUser(false, 1, "", "", galleryLogon.getPassword(), galleryLogon.getProfileName(), galleryLogon.getGalleryName(), request, customSession, customResponse);
-				
-				if (customResponse.getResponseCode() == HttpStatus.OK.value())
+				HttpSession tomcatSession = request.getSession(false);
+				if (tomcatSession == null)
 				{
-					meLogger.debug("View gallery authorised.  User:" + customSession.getProfileName() + " Gallery:" + customSession.getGalleryName());
+					meLogger.warn("Logon request made, but no Tomcat session has been established.");
+					failed = true;
 				}
-				else
+				
+				CustomSessionState customSession = (CustomSessionState)tomcatSession.getAttribute("CustomSessionState");
+				if (!failed && customSession == null)
 				{
-					if (customResponse.getResponseCode() == HttpStatus.UNAUTHORIZED.value())
-						message = "Logon failed.  Please check your password and try again.";
-					else
-						message = "Gallery login had an error and cannot continue.";
-					
-					meLogger.warn(message);
-					model.addAttribute("errorMessage", message);
+					meLogger.warn("Logon request made, but no custom session has been established.");
+					failed = true;
+				}
+				
+				if (!failed && galleryLogon == null)
+				{
+					meLogger.warn("Logon request made, but no logon object submitted");
+					failed = true;
+				}
+				
+				if (!galleryName.equals(galleryLogon.getGalleryName()))
+				{
+					meLogger.warn("Gallery name mismatch, logon failed.  Request Name: " + galleryName + " Logon object Name: " + galleryLogon.getGalleryName());
+					failed = true;
+				}
+				
+				if (!profileName.equals(galleryLogon.getProfileName()))
+				{
+					meLogger.warn("Profile name mismatch, logon failed.  Request Name: " + profileName + " Logon object Name: " + galleryLogon.getProfileName());
+					failed = true;
+				}
+				
+				if (failed)
+				{
+					model.addAttribute("message", "Logon failed, please check your details and try again");
 					return responseJsp;
 				}
 				
-				if (customResponse.getResponseCode() == HttpStatus.OK.value())
+				
+				if (galleryService.LoginGalleryUser(galleryLogon, request, customSession))
 				{
+					meLogger.debug("Gallery login authorised.  User:" + customSession.getProfileName() + " Gallery:" + customSession.getGalleryName());
+					
 					responseJsp = "redirect:" + referrer;
 					
 					Cookie wallaSessionIdCookie = new Cookie("X-Walla-Id", UserTools.GetLatestWallaId(customSession));
@@ -601,10 +618,15 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 				else
 				{
 					Thread.sleep(1000);
-					model.addAttribute("message", "Logon failed, please check your details and try again");
-					responseJsp = "x/logon";
+					//model.addAttribute("message", "Logon failed, please check your details and try again");
+					//responseJsp = "redirect:x/gallerylogon";
+
+					message = "Logon failed, please check your details and try again";
+					responseJsp = "redirect:./logon?referrer=" 
+						+ UriUtils.encodePath(referrer,"UTF-8") 
+						+ "&message=" + UserTools.EncodeString(message, request);
+					
 				}
-				
 			}
 			return responseJsp;
 		}

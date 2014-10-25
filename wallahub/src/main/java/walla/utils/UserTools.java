@@ -336,7 +336,7 @@ public final class UserTools {
 	}
 	
 
-	public static CustomSessionState GetGallerySessionAuth(String requestProfileName, String galleryName, boolean checkName, HttpServletRequest request, Logger meLogger) throws WallaException
+	public static CustomSessionState GetGallerySession(String requestProfileName, String requestGalleryName, boolean checkName, boolean checkAuth, HttpServletRequest request, Logger meLogger) throws WallaException
 	{
 		HttpSession session = request.getSession(false);
 		if (session == null)
@@ -352,7 +352,7 @@ public final class UserTools {
 			return null;
 		}
 			
-		if (!customSession.isAuthenticated())
+		if (!customSession.isAuthenticated() && checkAuth)
 		{
 			meLogger.warn("The session has not been authorised.");
 			return null;
@@ -370,7 +370,7 @@ public final class UserTools {
 			return null;
 		}
 		
-		if (!customSession.getGalleryName().equalsIgnoreCase(galleryName) && checkName)
+		if (!customSession.getGalleryName().equalsIgnoreCase(requestGalleryName) && checkName)
 		{
 			meLogger.warn("The gallery name name does not match between request and session");
 			return null;
@@ -386,49 +386,6 @@ public final class UserTools {
 		return customSession;
 	}
 	
-	public static CustomSessionState GetGallerySessionNoAuth(String requestProfileName, String requestGalleryName, HttpServletRequest request, Logger meLogger) throws WallaException
-	{
-		HttpSession session = request.getSession(false);
-		if (session == null)
-		{
-			meLogger.info("The tomcat session has not been established.");
-			return null;
-		}
-
-		CustomSessionState customSession = (CustomSessionState)session.getAttribute("CustomSessionState");
-		if (customSession == null)
-		{
-			meLogger.info("The custom session state has not been established.");
-			return null;
-		}
-
-		if (!customSession.isGalleryViewer())
-		{
-			meLogger.info("The session is not for a gallery viewer.");
-			return null;
-		}
-		
-		if (!customSession.getProfileName().equalsIgnoreCase(requestProfileName))
-		{
-			meLogger.info("The profile name does not match between request and session");
-			return null;
-		}
-		
-		if (!customSession.getGalleryName().equalsIgnoreCase(requestGalleryName))
-		{
-			meLogger.info("The gallery name name does not match between request and session");
-			return null;
-		}
-		
-		if (customSession.getRemoteAddress().compareTo(GetIpAddress(request)) != 0)
-		{
-			String error = "IP address of the session has changed since the logon was established.";
-			meLogger.error(error);
-			throw new WallaException("UserTools", "GetGallerySessionNoAuth", error, HttpStatus.FORBIDDEN.value()); 
-		}
-		
-		return customSession;
-	}
 	
 	public static String GetLatestWallaId(CustomSessionState customSession)
 	{

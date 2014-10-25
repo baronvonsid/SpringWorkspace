@@ -89,7 +89,7 @@ public class GalleryViewer {
 			{
 				try
 				{
-					customSession = UserTools.GetGallerySessionAuth(profileName, galleryName, true, request, meLogger);
+					customSession = UserTools.GetGallerySession(profileName, galleryName, true, true, request, meLogger);
 				}
 				catch (WallaException wallaEx)
 				{
@@ -105,7 +105,7 @@ public class GalleryViewer {
 					logonToken = (logonToken == null) ? "" : logonToken;
 					urlComplex = (urlComplex == null) ? "" : urlComplex;
 
-					if (urlComplex.length() == 32 || logonToken.length() == 20)
+					if (urlComplex.length() == 32 || logonToken.length() == 28)
 					{
 						//No existing login, so use token to validate.  Create new sessions.
 						HttpSession tomcatSession = request.getSession(false);
@@ -118,22 +118,19 @@ public class GalleryViewer {
 						
 						customResponse = new CustomResponse();
 						
-						if (logonToken.length() == 20)
-							galleryService.LoginGalleryUser(true, -1, logonToken, urlComplex, "", profileName, galleryName, request, customSession, customResponse);
+						boolean pass = false;
+						if (logonToken.length() == 28)
+							pass = galleryService.AutoLoginGalleryUser(true, -1, logonToken, urlComplex, "", profileName, galleryName, request, customSession, customResponse);
 						else
-							galleryService.LoginGalleryUser(false, 2, logonToken, urlComplex, "", profileName, galleryName, request, customSession, customResponse);
+							pass = galleryService.AutoLoginGalleryUser(false, 2, logonToken, urlComplex, "", profileName, galleryName, request, customSession, customResponse);
 						
-						if (customResponse.getResponseCode() == HttpStatus.OK.value())
+						if (pass)
 						{
 							meLogger.debug("View gallery authorised.  User:" + profileName.toString() + " Gallery:" + galleryName);
 						}
 						else
 						{
-							if (customResponse.getResponseCode() == HttpStatus.UNAUTHORIZED.value())
-								message = "GetGalleryViewer request not authorised.  No session and no key or token supplied.  User:" + profileName.toString();
-							else
-								message = "Gallery login had an error and cannot continue.";
-							
+							message = "GetGalleryViewer request not authorised.  Profile User:" + profileName.toString() + " Gallery:" + galleryName;
 							meLogger.warn(message);
 							model.addAttribute("errorMessage", message);
 							return responseJsp;
@@ -231,7 +228,7 @@ public class GalleryViewer {
 			CustomSessionState customSession = UserTools.GetValidAdminSession(profileName, request, meLogger);
 			if (customSession == null)
 			{
-				customSession = UserTools.GetGallerySessionAuth(profileName, galleryName, true, request, meLogger);
+				customSession = UserTools.GetGallerySession(profileName, galleryName, true, true, request, meLogger);
 				if (customSession == null)
 				{
 					meLogger.warn("GetGalleryViewer request not authorised.  No session and no key or token supplied.  User:" + profileName.toString());

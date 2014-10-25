@@ -114,7 +114,7 @@ public class AccountService {
 			//check email is unique
 			
 			String salt = SecurityTools.GenerateSalt();
-			String passwordHash = SecurityTools.GetHashedPassword(account.getPassword(), salt, 160, 10000);
+			String passwordHash = SecurityTools.GetHashedPassword(account.getPassword(), salt, 160, 1000);
 			
 			long newUserId = accountDataHelper.CreateAccount(account, passwordHash, salt);
 			if (newUserId == 0)
@@ -731,7 +731,7 @@ public class AccountService {
 			}
 
 			//Get a hash of the password attempt.
-			String passwordAttemptHash = SecurityTools.GetHashedPassword(logon.getPassword(), userStateDb.getSalt(), 160, 10000);
+			String passwordAttemptHash = SecurityTools.GetHashedPassword(logon.getPassword(), userStateDb.getSalt(), 160, 1000);
 
 			if (SecurityTools.SlowEquals(passwordAttemptHash.getBytes(), userStateDb.getPasswordHash().getBytes()))
 			{
@@ -789,7 +789,7 @@ public class AccountService {
 			
 			//Create new salt and password hash
 			String salt = SecurityTools.GenerateSalt();
-			String passwordHash = SecurityTools.GetHashedPassword(logon.getPassword(), salt, 160, 10000);
+			String passwordHash = SecurityTools.GetHashedPassword(logon.getPassword(), salt, 160, 1000);
 			
 			
 			//Create new password hash

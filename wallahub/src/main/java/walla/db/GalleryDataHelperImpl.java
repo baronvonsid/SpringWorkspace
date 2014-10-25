@@ -44,15 +44,15 @@ public class GalleryDataHelperImpl implements GalleryDataHelper {
 		this.dataSource = dataSource;
 	}
 	
-	public void CreateGallery(long userId, Gallery newGallery, long newGalleryId, String urlComplex) throws WallaException
+	public void CreateGallery(long userId, Gallery newGallery, long newGalleryId, String passwordHash, String gallerySalt, String urlComplex) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		String sql = "INSERT INTO [dbo].[Gallery] ([GalleryId],[Name],[Description],[UrlComplex],"
-				+ "[AccessType],[Password],[SelectionType],[GroupingType],[StyleId],[PresentationId],"
+				+ "[AccessType],[PasswordHash],[GallerySalt],[SelectionType],[GroupingType],[StyleId],[PresentationId],"
 				+ "[TotalImageCount],"
 				+ "[ShowGalleryName],[ShowGalleryDesc],[ShowImageName],[ShowImageDesc],[ShowImageMeta],"
-				+ "[GalleryType],[TempLoginSalt],[LastUpdated],[RecordVersion],[SystemOwned],[UserId]) "
-				+ "VALUES (?,?,?,?,?,?,?,?,?,?,-1,?,?,?,?,?,0,'',dbo.GetDateNoMS(),1,0,?)";
+				+ "[GalleryType],[TempSalt],[LastUpdated],[RecordVersion],[SystemOwned],[UserId]) "
+				+ "VALUES (?,?,?,?,?,?,?,?,?,?,?,-1,?,?,?,?,?,0,'',dbo.GetDateNoMS(),1,0,?)";
 		
 		Connection conn = null;
 		PreparedStatement ps = null;
@@ -70,18 +70,19 @@ public class GalleryDataHelperImpl implements GalleryDataHelper {
 			ps.setString(3, newGallery.getDesc());
 			ps.setString(4, urlComplex);
 			ps.setInt(5, newGallery.getAccessType());
-			ps.setString(6, newGallery.getPassword());
-			ps.setInt(7, newGallery.getSelectionType());
-			ps.setInt(8, newGallery.getGroupingType());
-			ps.setInt(9, newGallery.getStyleId());
-			ps.setInt(10, newGallery.getPresentationId());
+			ps.setString(6, passwordHash);
+			ps.setString(7, gallerySalt);
+			ps.setInt(8, newGallery.getSelectionType());
+			ps.setInt(9, newGallery.getGroupingType());
+			ps.setInt(10, newGallery.getStyleId());
+			ps.setInt(11, newGallery.getPresentationId());
 			
-			ps.setBoolean(11, newGallery.isShowGalleryName());
-			ps.setBoolean(12, newGallery.isShowGalleryDesc());
-			ps.setBoolean(13, newGallery.isShowImageName());
-			ps.setBoolean(14, newGallery.isShowImageDesc());
-			ps.setBoolean(15, newGallery.isShowImageMeta());
-			ps.setLong(16, userId);
+			ps.setBoolean(12, newGallery.isShowGalleryName());
+			ps.setBoolean(13, newGallery.isShowGalleryDesc());
+			ps.setBoolean(14, newGallery.isShowImageName());
+			ps.setBoolean(15, newGallery.isShowImageDesc());
+			ps.setBoolean(16, newGallery.isShowImageMeta());
+			ps.setLong(17, userId);
 			
 			//Execute insert statement.
 			returnCount = ps.executeUpdate();
@@ -319,7 +320,7 @@ public class GalleryDataHelperImpl implements GalleryDataHelper {
 		}
 	}
 	
-	public void UpdateGallery(long userId, Gallery existingGallery) throws WallaException
+	public void UpdateGallery(long userId, Gallery existingGallery, String passwordHash, String gallerySalt) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -330,31 +331,29 @@ public class GalleryDataHelperImpl implements GalleryDataHelper {
 			conn = dataSource.getConnection();
 			conn.setAutoCommit(false);
 			
-			//Process an update to the main record.
-			String updateVersionSql = "UPDATE [dbo].[Gallery] SET [Name] = ?, [Description] = ?, [AccessType] = ?, [Password] = ?,"
+			String updateVersionSql = "UPDATE [dbo].[Gallery] SET [Name] = ?, [Description] = ?, [AccessType] = ?, "
 					+ "[SelectionType] = ?, [GroupingType] = ?,[StyleId] = ?, [TotalImageCount] = -1,[PresentationId] = ?, [LastUpdated] = dbo.GetDateNoMS(),"
 					+ "[RecordVersion] = [RecordVersion] + 1, [ShowGalleryName] = ?,[ShowGalleryDesc] = ?,[ShowImageName] = ?,"
 					+ "[ShowImageDesc] = ?,[ShowImageMeta] = ? WHERE [UserId] = ? AND [GalleryId] = ? AND [RecordVersion] = ?";
-
+			
 			ps = conn.prepareStatement(updateVersionSql);
 			ps.setString(1, existingGallery.getName());
 			ps.setString(2, existingGallery.getDesc());
 			ps.setInt(3, existingGallery.getAccessType());
-			ps.setString(4, existingGallery.getPassword());
-			ps.setInt(5, existingGallery.getSelectionType());
-			ps.setInt(6, existingGallery.getGroupingType());
-			ps.setInt(7, existingGallery.getStyleId());
-			ps.setInt(8, existingGallery.getPresentationId());
+			ps.setInt(4, existingGallery.getSelectionType());
+			ps.setInt(5, existingGallery.getGroupingType());
+			ps.setInt(6, existingGallery.getStyleId());
+			ps.setInt(7, existingGallery.getPresentationId());
 			
-			ps.setBoolean(9, existingGallery.isShowGalleryName());
-			ps.setBoolean(10, existingGallery.isShowGalleryDesc());
-			ps.setBoolean(11, existingGallery.isShowImageName());
-			ps.setBoolean(12, existingGallery.isShowImageDesc());
-			ps.setBoolean(13, existingGallery.isShowImageMeta());
+			ps.setBoolean(8, existingGallery.isShowGalleryName());
+			ps.setBoolean(9, existingGallery.isShowGalleryDesc());
+			ps.setBoolean(10, existingGallery.isShowImageName());
+			ps.setBoolean(11, existingGallery.isShowImageDesc());
+			ps.setBoolean(12, existingGallery.isShowImageMeta());
 			
-			ps.setLong(14, userId);
-			ps.setLong(15, existingGallery.getId());
-			ps.setLong(16, existingGallery.getVersion());
+			ps.setLong(13, userId);
+			ps.setLong(14, existingGallery.getId());
+			ps.setLong(15, existingGallery.getVersion());
 			
 			//Execute update and check response.
 			returnCount = ps.executeUpdate();
@@ -367,6 +366,28 @@ public class GalleryDataHelperImpl implements GalleryDataHelper {
 				throw new WallaException("GalleryDataHelperImpl", "UpdateGallery", error, HttpStatus.CONFLICT.value()); 
 			}
 
+			
+			if (passwordHash.length() > 0)
+			{
+				updateVersionSql = "UPDATE [dbo].[Gallery] SET [PasswordHash] = ?, [GallerySalt] = ?"
+						+ " WHERE [UserId] = ? AND [GalleryId] = ?";
+				
+				ps = conn.prepareStatement(updateVersionSql);
+				ps.setString(1, passwordHash);
+				ps.setString(2, gallerySalt);
+				ps.setLong(3, userId);
+				ps.setLong(4, existingGallery.getId());
+				
+				returnCount = ps.executeUpdate();
+				ps.close();
+				if (returnCount != 1)
+				{
+					conn.rollback();
+					String error = "Update password didn't return a success count of 1.";
+					meLogger.error(error);
+					throw new WallaException("GalleryDataHelperImpl", "UpdateGallery", error, HttpStatus.CONFLICT.value()); 
+				}
+			}
 			
 			DeleteGallerySubElements(conn, existingGallery.getId());
 			
@@ -531,7 +552,7 @@ public class GalleryDataHelperImpl implements GalleryDataHelper {
 			conn = dataSource.getConnection();
 			
 			String selectSql = "SELECT [GalleryId],[Name],[Description],[UrlComplex],[AccessType],"
-				+ "[Password],[SelectionType],[GroupingType],[StyleId],[PresentationId],[TotalImageCount],"
+				+ "[SelectionType],[GroupingType],[StyleId],[PresentationId],[TotalImageCount],"
 				+ "[LastUpdated],[RecordVersion],[ShowGalleryName],[ShowGalleryDesc],[ShowImageName],"
 				+ "[ShowImageDesc],[ShowImageMeta],[SystemOwned] FROM [dbo].[Gallery]"
 				+ " WHERE [UserId] = ? AND [Name]= ?";
@@ -553,23 +574,22 @@ public class GalleryDataHelperImpl implements GalleryDataHelper {
 			gallery.setDesc(resultset.getString(3));
 			gallery.setUrlComplex(resultset.getString(4));
 			gallery.setAccessType(resultset.getInt(5));
-			gallery.setPassword(resultset.getString(6));
-			gallery.setSelectionType(resultset.getInt(7));
-			gallery.setGroupingType(resultset.getInt(8));
-			gallery.setStyleId(resultset.getInt(9));
-			gallery.setPresentationId(resultset.getInt(10));
-			gallery.setTotalImageCount(resultset.getInt(11));
+			gallery.setSelectionType(resultset.getInt(6));
+			gallery.setGroupingType(resultset.getInt(7));
+			gallery.setStyleId(resultset.getInt(8));
+			gallery.setPresentationId(resultset.getInt(9));
+			gallery.setTotalImageCount(resultset.getInt(10));
 			GregorianCalendar oldGreg = new GregorianCalendar();
-			oldGreg.setTime(resultset.getTimestamp(12));
+			oldGreg.setTime(resultset.getTimestamp(11));
 			XMLGregorianCalendar xmlOldGreg = DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg);
 			gallery.setLastChanged(xmlOldGreg);
-			gallery.setVersion(resultset.getInt(13));
-			gallery.setShowGalleryName(resultset.getBoolean(14));
-			gallery.setShowGalleryDesc(resultset.getBoolean(15));
-			gallery.setShowImageName(resultset.getBoolean(16));
-			gallery.setShowImageDesc(resultset.getBoolean(17));
-			gallery.setShowImageMeta(resultset.getBoolean(18));
-			gallery.setSystemOwned(resultset.getBoolean(19));
+			gallery.setVersion(resultset.getInt(12));
+			gallery.setShowGalleryName(resultset.getBoolean(13));
+			gallery.setShowGalleryDesc(resultset.getBoolean(14));
+			gallery.setShowImageName(resultset.getBoolean(15));
+			gallery.setShowImageDesc(resultset.getBoolean(16));
+			gallery.setShowImageMeta(resultset.getBoolean(17));
+			gallery.setSystemOwned(resultset.getBoolean(18));
 			
 			GetGallerySubElements(userId, conn, gallery);
 			
@@ -718,7 +738,8 @@ public class GalleryDataHelperImpl implements GalleryDataHelper {
 			conn = dataSource.getConnection();
 
 			//TODO check for active user still.
-			String sql = "SELECT G.[UserId], G.[AccessType], G.[TempLoginSalt], G.[UrlComplex], G.[Password] FROM [Gallery] G INNER JOIN [User] U ON G.[UserId] = U.[UserId] " +
+			String sql = "SELECT G.[UserId], G.[AccessType], G.[GallerySalt], G.[UrlComplex], G.[PasswordHash], "
+					+ "G.[TempSalt] FROM [Gallery] G INNER JOIN [User] U ON G.[UserId] = U.[UserId] " +
 					"WHERE U.[ProfileName] = ? AND G.[Name] = ?";
 			
 			if (urlComplex.length() > 0)
@@ -736,11 +757,14 @@ public class GalleryDataHelperImpl implements GalleryDataHelper {
 			{
 				galleryLogon = new GalleryLogon();
 				
+				galleryLogon.setProfileName(profileName);
+				galleryLogon.setGalleryName(galleryName);
 				galleryLogon.setUserId(resultset.getLong(1));
 				galleryLogon.setAccessType(resultset.getInt(2));
-				galleryLogon.setSalt(resultset.getString(3));
+				galleryLogon.setGallerySalt(resultset.getString(3));
 				galleryLogon.setComplexUrl(resultset.getString(4));
-				galleryLogon.setPassword(resultset.getString(5));
+				galleryLogon.setPasswordHash(resultset.getString(5));
+				galleryLogon.setTempSalt(resultset.getString(6));
 				
 				return galleryLogon;
 			}
@@ -1033,7 +1057,7 @@ public class GalleryDataHelperImpl implements GalleryDataHelper {
 		}
 	}
 	
-	public void UpdateLoginSalt(long userId, String galleryName, String salt) throws WallaException
+	public void UpdateTempSalt(long userId, String galleryName, String salt) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -1045,7 +1069,7 @@ public class GalleryDataHelperImpl implements GalleryDataHelper {
 			conn.setAutoCommit(false);
 			
 			//Process an update to the main record.
-			String updateVersionSql = "UPDATE [dbo].[Gallery] SET [TempLoginSalt] = ? "
+			String updateVersionSql = "UPDATE [dbo].[Gallery] SET [TempSalt] = ? "
 					+ "WHERE [UserId] = ? AND [Name] = ?";
 
 			ps = conn.prepareStatement(updateVersionSql);
@@ -1061,7 +1085,7 @@ public class GalleryDataHelperImpl implements GalleryDataHelper {
 				conn.rollback();
 				String error = "Update statement didn't return a success count of 1.";
 				meLogger.error(error);
-				throw new WallaException("GalleryDataHelperImpl", "UpdateLoginSalt", error, HttpStatus.CONFLICT.value()); 
+				throw new WallaException("GalleryDataHelperImpl", "UpdateTempSalt", error, HttpStatus.CONFLICT.value()); 
 			}
 			
 			conn.commit();
@@ -1078,7 +1102,7 @@ public class GalleryDataHelperImpl implements GalleryDataHelper {
 	        if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (ds != null) try { if (!ds.isClosed()) {ds.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("UpdateLoginSalt", meLogger, startMS, String.valueOf(userId));
+	        UserTools.LogMethod("UpdateTempSalt", meLogger, startMS, String.valueOf(userId));
 		}
 	}
 	

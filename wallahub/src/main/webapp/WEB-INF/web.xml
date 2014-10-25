@@ -11,7 +11,18 @@ xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns
        <context-param>  
             <param-name>contextConfigLocation</param-name>  
             <param-value>/WEB-INF/rest-services-config.xml</param-value> 
-       </context-param> 
+       </context-param>
+       
+       <session-config>
+		 <cookie-config>
+		  <http-only>true</http-only>
+		 </cookie-config>
+		 
+		 <tracking-mode>COOKIE</tracking-mode>
+		 
+		</session-config>
+       
+        
        <!--  
             Loads the Spring web application context using the config file defined above.  
        -->  
