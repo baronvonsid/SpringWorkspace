@@ -36,6 +36,11 @@ public class AccountService {
 	
 	private static final Logger meLogger = Logger.getLogger(AccountService.class);
 
+	public AccountService()
+	{
+		String simon = System.getProperty("simon.simon");
+	}
+	
 	//*************************************************************************************************************
 	//***********************************  Web server synchronous methods *****************************************
 	//*************************************************************************************************************

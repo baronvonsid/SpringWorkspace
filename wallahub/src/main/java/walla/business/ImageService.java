@@ -2,6 +2,7 @@ package walla.business;
 
 import java.sql.SQLException;
 import java.util.*;
+
 import walla.datatypes.auto.*;
 import walla.datatypes.java.*;
 import walla.db.*;
@@ -14,15 +15,18 @@ import javax.xml.datatype.*;
 
 import org.apache.log4j.Logger;
 import org.springframework.http.HttpStatus;
+
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Required;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -37,8 +41,34 @@ import org.im4java.process.*;
 @Service("ImageService")
 public class ImageService {
 
-	private final String graphicsMagickPath="C:\\Program Files\\GraphicsMagick-1.3;";
-	private final String destinationRoot = "C:\\temp\\WallaRepo\\";
+	/*
+	private String graphicsMagickPath="C:\\Program Files\\GraphicsMagick-1.3;";
+	private final String originalsFolder = "C:\\temp\\WallaRepo\\Original";
+	private final String thumbsFolder = "C:\\temp\\WallaRepo\\Thumbs";
+	private final String mainCopyFolder = "C:\\temp\\WallaRepo\\MainCopy";
+	private final String appWorkingFolder = "C:\\temp\\WallaRepo\\AppWorking";
+	 */
+	
+	/*
+	C:\temp\WallaRepo\Original\100001\556552.jpg
+	C:\temp\WallaRepo\MainCopy\100001\556552.jpg
+	C:\temp\WallaRepo\Thumb\75x75\100001\556552.jpg
+	
+	C:\temp\WallaRepo\AppWorking\Preview\Original\556552.jpg
+	C:\temp\WallaRepo\AppWorking\Preview\MainCopy\556552.jpg
+	C:\temp\WallaRepo\AppWorking\Preview\Thumb\72x72\556552.jpg
+	 */
+	
+	@Value( "${path.graphicsMagickPath}" ) private String graphicsMagickPath;
+	@Value( "${path.originalFolder}" ) private String originalFolder;
+	@Value( "${path.thumbFolder}" ) private String thumbFolder;
+	@Value( "${path.mainCopyFolder}" ) private String mainCopyFolder;
+	@Value( "${path.appWorkingFolder}" ) private String appWorkingFolder;
+	
+	@Value( "${path.previewOriginalFolder}" ) private String previewOriginalFolder;
+	@Value( "${path.previewThumbFolder}" ) private String previewThumbFolder;
+	@Value( "${path.previewMainCopyFolder}" ) private String previewMainCopyFolder;
+
 	private GalleryDataHelperImpl galleryDataHelper;	
 	private CategoryDataHelperImpl categoryDataHelper;
 	private TagDataHelperImpl tagDataHelper;
@@ -56,9 +86,9 @@ public class ImageService {
 	//*************************************************************************************************************
 	public ImageService()
 	{
-		ProcessStarter.setGlobalSearchPath(graphicsMagickPath);
+		
 	}
-	
+
 	public int CreateUpdateImageMeta(long userId, ImageMeta imageMeta, long imageId)
 	{
 		long startMS = System.currentTimeMillis();
@@ -351,7 +381,7 @@ public class ImageService {
 		long startMS = System.currentTimeMillis();
 		try
 		{
-			String path = GetFilePathIfExists(userId, "Original", imageId, false);
+			String path = GetFilePathIfExists(originalFolder, previewOriginalFolder, userId, "", imageId, false);
 			if (path.isEmpty())
 			{
 				customResponse.setMessage("Original image file could not be retreived.  ImageId:" + imageId);
@@ -435,15 +465,15 @@ public class ImageService {
 					}
 					
 					//Check for file existing
-					String imageFilePath = GetFilePathIfExists(userId, folder, imageId,isPreview);
+					String imageFilePath = GetFilePathIfExists(thumbFolder, previewThumbFolder, userId, folder, imageId, isPreview);
 					if (imageFilePath.isEmpty())
 					{
 						//File not present, so create it.
-						String masterImageFilePath = GetFilePathIfExists(userId, "MainCopy", imageId, isPreview);
+						String masterImageFilePath = GetFilePathIfExists(mainCopyFolder, previewMainCopyFolder, userId, "", imageId, isPreview);
 						if (masterImageFilePath.isEmpty())
 						{
 							//Master file not present, so create a new one.
-							String originalFilePath = GetFilePathIfExists(userId, "Original", imageId, isPreview);
+							String originalFilePath = GetFilePathIfExists(originalFolder, previewOriginalFolder, userId, "", imageId, isPreview);
 							if (originalFilePath.isEmpty())
 							{
 								meLogger.warn("GetImageFile didn't find a valid original Image object to process");
@@ -451,7 +481,7 @@ public class ImageService {
 								return null;
 							}
 							
-							destFile = GetFilePathCreateFolder(userId, "MainCopy", imageId, isPreview);
+							destFile = GetFilePath(mainCopyFolder, previewMainCopyFolder, userId, "", imageId, "jpg", isPreview);
 							ResizeAndSaveFile(userId, imageId, originalFilePath, destFile, 1920, 1080, true);
 							
 							masterImageFilePath = destFile;
@@ -460,10 +490,10 @@ public class ImageService {
 						int newWidth = Integer.valueOf(folder.substring(0, folder.indexOf("x")));
 						int newHeight = Integer.valueOf(folder.substring(folder.indexOf("x")+1));
 						
-						destFile = GetFilePathCreateFolder(userId, newWidth + "x" + newHeight, imageId, isPreview);
+						destFile = GetFilePath(thumbFolder, previewThumbFolder, userId, newWidth + "x" + newHeight, imageId, "jpg", isPreview);
 						ResizeAndSaveFile(userId, imageId, masterImageFilePath, destFile, newWidth, newHeight, false);
 						
-						imageFilePath = GetFilePathIfExists(userId, folder, imageId, isPreview);
+						imageFilePath = GetFilePathIfExists(thumbFolder, previewThumbFolder, userId, folder, imageId, isPreview);
 					}
 					
 					if (doResize)
@@ -499,18 +529,18 @@ public class ImageService {
 						return null;
 					}
 					
-					String imageFilePath = GetFilePathIfExists(userId, "MainCopy", imageId, isPreview);
+					String imageFilePath = GetFilePathIfExists(mainCopyFolder, previewMainCopyFolder, userId, "", imageId, isPreview);
 					if (imageFilePath.isEmpty())
 					{
 						//Master file not present, so create a new one.
-						String originalFilePath = GetFilePathIfExists(userId, "Original", imageId, isPreview);
+						String originalFilePath = GetFilePathIfExists(originalFolder, previewOriginalFolder, userId, "", imageId, isPreview);
 						if (originalFilePath.isEmpty())
 						{
 							String error = "GetImageFile didn't find a valid original Image object to process. UserId:" + userId + " ImageId:" + imageId;
 							throw new WallaException("ImageService", "GetImageFile", error, HttpStatus.INTERNAL_SERVER_ERROR.value());
 						}
 						
-						destFile = GetFilePathCreateFolder(userId, "MainCopy", imageId, isPreview);
+						destFile = GetFilePath(mainCopyFolder, previewMainCopyFolder, userId, "", imageId, "jpg", isPreview);
 						ResizeAndSaveFile(userId, imageId, originalFilePath, destFile, 1920, 1080, true);
 						
 						imageFilePath = destFile;
@@ -565,16 +595,16 @@ public class ImageService {
 		long startMS = System.currentTimeMillis();
 		try
 		{
-			String imageFilePath = GetFilePathIfExists(userId, "MainCopy", imageId, isPreview);
+			String imageFilePath = GetFilePathIfExists(mainCopyFolder, previewMainCopyFolder, userId, "", imageId, isPreview);
 			
 			if (imageFilePath.isEmpty())
 			{
 				//Master file not present, so create a new one.
-				String sourceFolder = GetFilePathIfExists(userId, "Original", imageId, isPreview);
-				String destFolder = GetFilePathCreateFolder(userId, "MainCopy", imageId, isPreview);
+				String sourceFolder = GetFilePathIfExists(originalFolder, previewOriginalFolder, userId, "", imageId, isPreview);
+				String destFile = GetFilePath(mainCopyFolder, previewMainCopyFolder, userId, "", imageId, "jpg", isPreview);
 				
-				ResizeAndSaveFile(userId, imageId, sourceFolder, destFolder, 1920, 1080, true);
-				imageFilePath = GetFilePathIfExists(userId, "MainCopy", imageId, isPreview);
+				ResizeAndSaveFile(userId, imageId, sourceFolder, destFile, 1920, 1080, true);
+				imageFilePath = GetFilePathIfExists(mainCopyFolder, previewMainCopyFolder, userId, "", imageId, isPreview);
 			}
 			
 			//No resize needed.
@@ -595,7 +625,7 @@ public class ImageService {
 		try
 		{
 			//Check for folder existing.  //Check for image existing.
-			Path filePath = Paths.get(destinationRoot,"Application", width + "x" + height, imageRef + ".jpg");
+			Path filePath = Paths.get(appWorkingFolder,"Application", width + "x" + height, imageRef + ".jpg");
 			File filePathTemp = filePath.toFile();
     		if (!filePathTemp.exists())
     		{
@@ -626,10 +656,12 @@ public class ImageService {
 		long startMS = System.currentTimeMillis();
 		try
 		{
+			ProcessStarter.setGlobalSearchPath(graphicsMagickPath);
+			
 			//Update image to being processed.
 			imageDataHelper.UpdateImageStatus(userId, imageId, 3, false, "");
 			
-			File uploadedFile = Paths.get(destinationRoot, "Que", String.valueOf(imageId) + "." + Long.toString(userId)).toFile();
+			File uploadedFile = Paths.get(appWorkingFolder, "Que", String.valueOf(imageId) + "." + Long.toString(userId)).toFile();
 			if (!uploadedFile.exists())
 			{
 				String error = "Uploaded file could not be found.  ImageId:" + imageId + " UserId:" + userId;
@@ -653,14 +685,14 @@ public class ImageService {
 			/****************** Enrich with Exif & Save image copies ******************/
 			/**************************************************************************/
 			
-			String userOriginalFolderPath = GetFolderPathOrCreate(userId, "Original", false);
+			String originalFile = GetFilePath(originalFolder, previewOriginalFolder, userId, "", imageId, imageMeta.getFormat(), false);
 
 			//Archive original image
-    		String originalImagePath = ImageUtilityHelper.SaveOriginal(userId, uploadedFile.getPath(), userOriginalFolderPath, imageId, imageMeta.getFormat(), meLogger);
+    		ImageUtilityHelper.SaveOriginal(userId, uploadedFile.getPath(), originalFile, meLogger);
     		
     		//Make one initial copy, to drive subsequent resizing and also to orient correctly.
-			String mainImagePath = GetFilePathCreateFolder(userId, "MainCopy", imageId, false);
-			ResizeAndSaveFile(userId, imageId, originalImagePath, mainImagePath, 1920, 1080, true);
+			String mainImagePath = GetFilePath(mainCopyFolder, previewMainCopyFolder, userId, "", imageId, ".jpg", false); 
+			ResizeAndSaveFile(userId, imageId, originalFile, mainImagePath, 1920, 1080, true);
 
 			//String mainImagePath = GetFilePathIfExists(userId, "MainCopy", imageId, false);
 			//if (mainImagePath.isEmpty())
@@ -671,7 +703,7 @@ public class ImageService {
     				
 			//Load image meta into memory and enrich properties.
 			//TODO switch to wired class.
-			String response = ImageUtilityHelper.EnrichImageMetaFromFileData(originalImagePath, imageMeta, meLogger, imageId);
+			String response = ImageUtilityHelper.EnrichImageMetaFromFileData(originalFile, imageMeta, meLogger, imageId);
 			if (!response.equals("OK"))
 				throw new WallaException("ImageService", "SetupNewImage", response, 0); 
             
@@ -686,13 +718,13 @@ public class ImageService {
 	       	 Surface2 1920x1080 - 1.77
 	       	 */
 			
-			String destFile = GetFilePathCreateFolder(userId, "75x75", imageId, false);
+			String destFile = GetFilePath(thumbFolder, previewThumbFolder, userId, "75x75", imageId, "jpg", false);
 			ResizeAndSaveFile(userId, imageId, mainImagePath, destFile, 75, 75, false);
 			
-			destFile = GetFilePathCreateFolder(userId, "300x300", imageId, false);
+			destFile = GetFilePath(thumbFolder, previewThumbFolder, userId, "300x300", imageId, "jpg", false);
 			ResizeAndSaveFile(userId, imageId, mainImagePath, destFile, 300, 300, false);
 			
-			destFile = GetFilePathCreateFolder(userId, "800x800", imageId, false);
+			destFile = GetFilePath(thumbFolder, previewThumbFolder, userId, "800x800", imageId, "jpg", false);
 			ResizeAndSaveFile(userId, imageId, mainImagePath, destFile, 800, 800, false);
 
             //TODO Delete original uploaded image.
@@ -802,15 +834,23 @@ public class ImageService {
 	//******************************************   private helper methods ***************************************************
 	//***********************************************************************************************************************
 
-	private String GetFilePathIfExists(long userId, String sizeFolder, long imageId, boolean isPreview)
+
+	
+	private String GetFilePathIfExists(String root, String previewRoot, long userId, String sizeFolder, long imageId, boolean isPreview)
 	{
 		/* Check for file exists, return path if present */
 		Path folderPath = null;
 		
 		if (isPreview)
-			folderPath = Paths.get(destinationRoot, "Preview", sizeFolder);
+			if (sizeFolder.length() > 0)
+				folderPath = Paths.get(previewRoot, sizeFolder);
+			else
+				folderPath = Paths.get(previewRoot);
 		else
-			folderPath = Paths.get(destinationRoot, "Saved", String.valueOf(userId), sizeFolder);
+			if (sizeFolder.length() > 0)
+				folderPath = Paths.get(root, String.valueOf(userId), sizeFolder);
+			else
+				folderPath = Paths.get(root, String.valueOf(userId));
 
 		File file = UserTools.FileExistsNoExt(folderPath.toString(), String.valueOf(imageId));
 		if (file != null)
@@ -820,34 +860,33 @@ public class ImageService {
 		return "";
 	}
 	
-	private String GetFolderPathOrCreate(long userId, String sizeFolder, boolean isPreview)
+	private String GetFilePath(String root, String previewRoot, long userId, String sizeFolder, long imageId, String extension, boolean isPreview)
 	{
 		Path folderPath = null;
-		if (isPreview)
-			folderPath = Paths.get(destinationRoot, "Preview", sizeFolder);
-		else
-			folderPath = Paths.get(destinationRoot, "Saved", String.valueOf(userId), sizeFolder);
+		File folder = null;
 		
-		File folder = folderPath.toFile();
+		if (isPreview)
+			folderPath = Paths.get(previewRoot);
+		else
+			folderPath = Paths.get(root, String.valueOf(userId));
+		
+		folder = folderPath.toFile();
 		if (!folder.exists())
 			folder.mkdir();
-		  
-		return folder.getPath();
-	}
-	
-	private String GetFilePathCreateFolder(long userId, String sizeFolder, long imageId, boolean isPreview)
-	{
-		Path folderPath = null;
-		if (isPreview)
-			folderPath = Paths.get(destinationRoot, "Preview", sizeFolder);
-		else
-			folderPath = Paths.get(destinationRoot, "Saved", String.valueOf(userId), sizeFolder);
 		
-		File folder = folderPath.toFile();
-		if (!folder.exists())
-			folder.mkdir();
+		if (sizeFolder.length() > 0)
+		{
+			if (isPreview)
+				folderPath = Paths.get(previewRoot, sizeFolder);
+			else
+				folderPath = Paths.get(root, String.valueOf(userId), sizeFolder);
+			
+			folder = folderPath.toFile();
+			if (!folder.exists())
+				folder.mkdir();
+		}
 		  
-		return Paths.get(folderPath.toString(), String.valueOf(imageId) + ".jpg").toString();
+		return Paths.get(folderPath.toString(), String.valueOf(imageId) + "." + extension).toString();
 	}
 	
 	private void ResizeAndSaveFile(long userId, long imageId, String sourceImagePath, String destinationImagePath, int width, int height, boolean isMain) throws IOException, InterruptedException, IM4JavaException
@@ -877,8 +916,8 @@ public class ImageService {
 
 	private void MoveImageToErrorFolder(long userId, long imageId)
 	{
-		Path sourceFile = Paths.get(destinationRoot, "Que", String.valueOf(imageId) + "." + Long.toString(userId));
-		Path destinationFile = Paths.get(destinationRoot, "Error", String.valueOf(imageId) + "." + Long.toString(userId));
+		Path sourceFile = Paths.get(appWorkingFolder, "Que", String.valueOf(imageId) + "." + Long.toString(userId));
+		Path destinationFile = Paths.get(appWorkingFolder, "Error", String.valueOf(imageId) + "." + Long.toString(userId));
 		
 		File source = sourceFile.toFile();
 		if (source.exists())

@@ -45,6 +45,8 @@ import org.springframework.beans.factory.annotation.Required;
 
 
 
+import org.springframework.beans.factory.annotation.Value;
+
 //To move/
 import java.awt.*;  
 import java.awt.image.*;  
@@ -99,8 +101,8 @@ public class ImageController {
 	}
 	*/
 	
-	private final String destinationRoot = "C:\\temp\\WallaRepo\\";
-	private final long maxImageSizeMB = 50;
+	@Value( "${path.appWorkingFolder}" ) private String appWorkingFolder;
+	@Value( "${upload.maxImageSizeMB}" ) private long maxImageSizeMB = 50;
 	private static final Logger meLogger = Logger.getLogger(ImageController.class);
 
 	//  PUT /{profileName}/image/{imageId}/meta
@@ -661,7 +663,7 @@ public class ImageController {
         try {
             if (inputStream != null) 
             {
-        		Path uploadedFilePath = Paths.get(destinationRoot, "Que", String.valueOf(imageId) + "." + Long.toString(userId));
+        		Path uploadedFilePath = Paths.get(appWorkingFolder, "Que", String.valueOf(imageId) + "." + Long.toString(userId));
             	
             	File file = uploadedFilePath.toFile();
                 FileOutputStream outputStream = new FileOutputStream(file);

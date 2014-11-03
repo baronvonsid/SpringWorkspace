@@ -471,18 +471,18 @@ public final class ImageUtilityHelper
 		finally {UserTools.LogMethod("SaveMainImage", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(imageId));}
 	}
 	
-	public static String SaveOriginal(long userId, String fromFilePath, String toFolderPath, long imageId, String extension, Logger meLogger) throws IOException, InterruptedException, IM4JavaException
+	public static void SaveOriginal(long userId, String fromFilePath, String originalFileDest, Logger meLogger) throws IOException, InterruptedException, IM4JavaException
 	{	
 		long startMS = System.currentTimeMillis();
 		try
 		{
-			Path destinationFile = Paths.get(toFolderPath, imageId + "." + extension);
+			//Path destinationFile = Paths.get(toFolderPath, imageId + "." + extension);
 	
-			UserTools.Copyfile(fromFilePath, destinationFile.toString());
+			UserTools.Copyfile(fromFilePath, originalFileDest);
 			
-			return destinationFile.toString();
+			//return destinationFile.toString();
 		}
-		finally {UserTools.LogMethod("SaveOriginal", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(imageId));}
+		finally {UserTools.LogMethod("SaveOriginal", meLogger, startMS, originalFileDest);}
 	}
 	
 	public static void SaveReducedSizeImages(long userId, long imageId, String sourceFilePath, String destinationFilePath, int targetWidth, int targetHeight, Logger meLogger) throws IOException, InterruptedException, IM4JavaException

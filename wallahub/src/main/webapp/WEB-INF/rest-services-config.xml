@@ -26,6 +26,19 @@
 	<context:component-scan base-package="walla.business" />
 	<context:component-scan base-package="walla.db" />
 	
+	<context:property-placeholder location="/WEB-INF/walla.properties" ignore-unresolvable="false" ignore-resource-not-found="false" />
+	
+	<!-- 
+	<bean class="org.springframework.context.support.PropertySourcesPlaceholderConfigurer">
+	  <property name="location">
+	  <list>
+	  	<value>classpath:wallahub/src/main/resources/walla.properties</value>
+	  </list>
+	  </property>
+	  <property name="ignoreUnresolvablePlaceholders" value="false"/>
+	</bean>
+	-->
+	
 	<bean
 		class="org.springframework.web.servlet.mvc.annotation.DefaultAnnotationHandlerMapping" />
 	<!-- Configures view for returning JSON to the client -->
@@ -87,9 +100,9 @@
 	<bean id="meSqlDataSource" class="org.apache.tomcat.jdbc.pool.DataSource"
 	    destroy-method="close">
 	    <property name="driverClassName" value="com.microsoft.sqlserver.jdbc.SQLServerDriver" />
-	    <property name="url" value="jdbc:sqlserver://CLUBWALLA\SQLSERVER2012:1433;databaseName=fotowalla" />
-	    <property name="username" value="TM_DEV" />
-	    <property name="password" value="TM_DEV" />
+	    <property name="url" value="${db.connectionString}" />
+	    <property name="username" value="${db.userName}" />
+	    <property name="password" value="${db.password}" />
 	    <property name="initialSize" value="2" />
 	    <property name="maxActive" value="20" />
 	    <property name="maxIdle" value="20" />
@@ -195,7 +208,6 @@
 		
 		<property name="tagService" ref="tagService" />
 		<property name="categoryService" ref="categoryService" />
-		
 	</bean>
 
 	<bean id="imagePoolTargetSource" class="org.springframework.aop.target.CommonsPoolTargetSource">
