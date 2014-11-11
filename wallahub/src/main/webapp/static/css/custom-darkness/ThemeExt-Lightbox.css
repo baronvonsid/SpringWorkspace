@@ -44,3 +44,14 @@ a {
 .blueimp-gallery > .play-pause:hover {
   color: #f58400;
 }
+
+.blueimp-gallery > .description {
+  position: absolute;
+  top: 30px;
+  left: 15px;
+  color: #f58400;
+  display: none;
+}
+.blueimp-gallery-controls > .description {
+  display: block;
+}

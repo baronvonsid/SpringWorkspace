@@ -37,15 +37,15 @@
 	  </property>
 	  <property name="ignoreUnresolvablePlaceholders" value="false"/>
 	</bean>
-	-->
+	
 	
 	<bean
 		class="org.springframework.web.servlet.mvc.annotation.DefaultAnnotationHandlerMapping" />
-	<!-- Configures view for returning JSON to the client -->
 	<bean
 		class="org.springframework.web.servlet.view.json.MappingJacksonJsonView">
 		<property name="contentType" value="text/plain" />
 	</bean>
+	-->
 	
 	<!-- JSP view mapping config -->
 	<bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
@@ -59,6 +59,7 @@
 		<property name="prefix" value="/WEB-INF/template/" />
 		<property name="suffix" value=".html" />
 		<property name="templateMode" value="HTML5" />
+		<property name="characterEncoding" value="UTF-8" />
 	</bean>
 	
 	<bean id="templateEngine" class="org.thymeleaf.spring3.SpringTemplateEngine">
@@ -68,14 +69,15 @@
 	<bean class="org.thymeleaf.spring3.view.ThymeleafViewResolver">
 		<property name="templateEngine" ref="templateEngine" />
 		<property name="order" value="1" />
-		<property name="viewNames" value="x/*" />
-		
+		<property name="viewNames" value="gallery/*,webapp/*" />
+		<property name="characterEncoding" value="UTF-8" />
+    	<property name="contentType" value="text/html; charset=UTF-8" />
 		
 	</bean>
 	
 	<!--  <property name="viewNames" value="*.html" />  -->
 	
-	<!-- maps handler methods based on HTTP paths -->
+	<!-- maps handler methods based on HTTP paths 
 	<bean
 		class="org.springframework.web.servlet.mvc.annotation.AnnotationMethodHandlerAdapter">
 		<property name="messageConverters">
@@ -84,10 +86,12 @@
 			</util:list>
 		</property>
 	</bean>
+	-->
 	
-	<!-- Converts JSON to POJO and vice versa -->
+	<!-- Converts JSON to POJO and vice versa 
 	<bean id="jsonMessageConverter"
 		class="org.springframework.http.converter.json.MappingJacksonHttpMessageConverter" />
+-->
 
 	<bean class="org.springframework.web.servlet.view.BeanNameViewResolver" />
 

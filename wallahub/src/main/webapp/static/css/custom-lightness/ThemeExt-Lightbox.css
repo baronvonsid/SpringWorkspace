@@ -24,7 +24,7 @@ a {
 
 .blueimp-gallery {
   background: #cccccc;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.8);
 }
 
 .blueimp-gallery > .prev,
@@ -44,4 +44,25 @@ a {
 .blueimp-gallery > .title:hover,
 .blueimp-gallery > .play-pause:hover {
   color: #1c94c4;
+}
+
+.blueimp-gallery > .description {
+  position: absolute;
+  top: 35px;
+  left: 15px;
+  color: #1c94c4;
+  display: none;
+}
+
+.blueimp-gallery >.meta {
+  position: absolute;
+  top: 50px;
+  left: 15px;
+  color: #1c94c4;
+  display: none;
+}
+
+.blueimp-gallery-controls > .description,
+.blueimp-gallery-controls > .meta {
+  display: block;
 }

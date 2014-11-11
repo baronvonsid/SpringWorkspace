@@ -286,7 +286,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 					logon.setKey(key);
 					if (accountService.LogonCheck(logon, request, customSession))
 					{
-						if (referrer == null)
+						if (referrer == null || referrer.length() < 1)
 							responseJsp = "redirect:" + customSession.getProfileName() + "/accountsummary";
 						else
 							responseJsp = "redirect:" + referrer;

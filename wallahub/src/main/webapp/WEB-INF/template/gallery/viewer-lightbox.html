@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+
+    <title th:text="${gallery.showGalleryName} ? ${gallery.name} : 'fotowalla gallery'">gallery name</title>
+	<!--  how to show else content  -->
+
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="content-script-type" content="text/javascript" />
+    <meta name='description' th:attr="content=${gallery.showGalleryDesc} ? ${gallery.desc} : 'fotowalla gallery'" content="gallery description" />
+
+    <meta name='apple-mobile-web-app-title' content='fotowalla' />
+
+    <!-- Ensure that on IE the page is rendered to the maximum IE spec. -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Used for viewing on mobile devices.  Ensuring the width is correctly infered -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Adding javascript to enable CSS style for semantic tags pre IE9 -->
+    <!--[if lt IE 9]>
+         <script src="../../static/scripts/html5-format-ie8.js"></script>
+    <![endif]-->
+
+	<!-- Standard gallery stylesheets -->
+    <link rel="stylesheet" th:href="@{/static/css/blueimp/blueimp-gallery-indicator.css}" href="http://localhost:8082/wallahub/static/css/blueimp/blueimp-gallery-indicator.css" />
+    <link rel="stylesheet" th:href="@{/static/css/blueimp/blueimp-gallery.css}" href="http://localhost:8082/wallahub/static/css/blueimp/blueimp-gallery.css" />
+    
+    <!--  User preference stylesheet -->
+    <link rel="stylesheet" th:href="@{'/static/css/'+${style.CssFolder}+'/ThemeExt-Lightbox.css'}" href="http://localhost:8082/wallahub/static/css/custom-lightness/ThemeExt-Lightbox.css" />
+    
+    <!-- walla custom extension -->
+    <link rel="stylesheet" th:href="@{/static/css/TemplateExt-Lightbox.css}" href="http://localhost:8082/wallahub/static/css/TemplateExt-Lightbox.css"  />
+
+    <!-- Browser bar icon (16x16) -->
+    <link rel="shortcut icon" type="image/vnd.microsoft.icon" th:href="@{/static/images/fotowallabrowser.png}" href="http://localhost:8082/wallahub/static/images/fotowallabrowser.png" />
+
+</head>
+
+<body id="galleryBody" data-images-fetchsize="500" th:attr="data-groupings-type=${gallery.groupingType},data-total-image-count=${gallery.totalImageCount}" data-groupings-type="0" data-total-image-count="100">
+
+        
+	<nav id="pageNavigations">
+        <header id="pageHeader" class="HeaderStyle" th:remove="${!gallery.showGalleryName and !gallery.showGalleryDesc} ? all : none">
+        	<h1 th:text="${gallery.name}" th:remove="${gallery.showGalleryName} ? none : all">Gallery name</h1>
+        	<span class="HeaderStyle" th:text="${gallery.desc}" th:remove="${(!gallery.showGalleryDesc and #strings.isEmpty(gallery.galleryDesc))} ? all : none">Gallery description</span>
+        </header>
+        	
+	    <!--  Used to ensure seperation between headers and image thumbs. -->
+	    <div style="clear: both;"></div>
+    </nav>
+        
+    <div id="blueimp-gallery" class="blueimp-gallery">
+        <div class="slides"></div>
+        <h3 class="title"></h3>
+        <p class="description"></p>
+        <p class="meta"></p>
+        <a class="prev">‹</a>
+        <a class="next">›</a>
+        <a class="close">×</a>
+        <a class="play-pause"></a>
+        <ol class="indicator"></ol>
+    </div>
+
+	<div id="links" class="links">
+
+		<a 
+			th:each="i : ${imageList.Images.ImageRef}" 
+			th:href="@{'/v1/ws/'+${customSessionState.profileName}+'/image/'+${i.id}+'/1920/1080/'}"
+			href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg"
+			th:attr="title=(${gallery.showImageName} ? ${i.name} : ''),data-description=(${gallery.showImageDesc} ? ${i.desc} : ''),data-meta=(${gallery.showImageMeta} ? ${i.shotSummary} : '')"
+			title="Image title"
+			data-description="Image description"
+			data-meta="Image meta data">
+			<img 
+				th:attr="src=@{'/v1/ws/'+${customSessionState.profileName}+'/image/'+${i.id}+'/'+${presentation.thumbHeight}+'/'+${presentation.thumbWidth}+'/'},title=${gallery.showImageName} ? ${i.name} : ''"
+				title="image name"
+				src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" />
+		</a>
+
+		        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="" data-description="Image description">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+        <a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="">
+            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" title="" />
+        </a>
+	
+    </div>
+
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>
+    <!--  <script th:attr="src=@{/static/scripts/jquery.min.js}" src="http://localhost:8082/wallahub/static/scripts/jquery.min.js" ></script>
+	-->
+	
+    <script th:attr="src=@{/static/scripts/blueimp/blueimp-gallery.min.js}" src="http://localhost:8082/wallahub/static/scripts/blueimp/blueimp-gallery.min.js"></script>
+    -->
+    <!-- 
+    <script src="../../../../static/scripts/blueimp/blueimp-gallery-fullscreen.js"></script>
+    <script src="../../../../static/scripts/blueimp/blueimp-gallery-indicator.js"></script>
+    -->
+
+    <script>
+
+
+        	document.getElementById('links').onclick = function (event) {
+        	    event = event || window.event;
+        	    var target = event.target || event.srcElement,
+        	        link = target.src ? target.parentNode : target,
+        	        options = {index: link, event: event, onslide: function (index, slide) {
+        	            var textDesc = this.list[index].getAttribute('data-description'),
+        	                nodeDesc = this.container.find('.description');
+        	            
+        	            nodeDesc.empty();
+        	            if (textDesc) {
+        	            	nodeDesc[0].appendChild(document.createTextNode(textDesc));
+        	            }
+        	            
+        	            var textMeta = this.list[index].getAttribute('data-meta'),
+    	                nodeMeta = this.container.find('.meta');
+        	            
+        	            nodeMeta.empty();
+        	            if (textMeta) {
+        	            	nodeMeta[0].appendChild(document.createTextNode(textMeta));
+        	            }        	            
+        	            
+        	        } },
+        	        links = this.getElementsByTagName('a');
+        	    blueimp.Gallery(links, options);
+        	};
+        
+        
+        
+    </script>
+
+</body>
+   
+<!-- 
+        blueimp.Gallery(
+        	    document.getElementById('links'), {
+        	        onslide: function (index, slide) {
+        	            var text = this.list[index].getAttribute('data-description'),
+        	                node = this.container.find('.description');
+        	            node.empty();
+        	            if (text) {
+        	                node[0].appendChild(document.createTextNode(text));
+        	            }
+        	        }
+        	});
+
+
+    $('#blueimp-gallery').on('slide', function (event, index, slide) {
+    	$(this).children('.description')
+    	    .text($('#links a').eq(index).data('description'));
+    	});
+    
+        document.getElementById("links").onclick = function (event) {
+            event = event || window.event;
+            var target = event.target || event.srcElement,
+                link = target.src ? target.parentNode : target,
+                options = { index: link, event: event },
+                links = this.getElementsByTagName('a');
+            blueimp.Gallery(links, options);
+        };
+        
+         -->
+</html>
+
+

@@ -83,6 +83,8 @@ public class GalleryViewer {
 		String message = "";
 		try
 		{
+			response.addHeader("Cache-Control", "no-cache");
+			
 			CustomResponse customResponse = new CustomResponse();
 			CustomSessionState customSession = UserTools.GetValidAdminSession(profileName, request, meLogger);
 			if (customSession == null)
@@ -184,7 +186,7 @@ public class GalleryViewer {
 			Gallery gallery = galleryService.GetGalleryMeta(customSession.getUserId(), galleryName, customResponse);
 			if (customResponse.getResponseCode() == HttpStatus.OK.value())
 			{
-				String presentationJsp = CombineModelAndGallery(customSession.getUserId(), profileName, model, gallery, false);
+				String presentationJsp = CombineModelAndGallery(customSession, model, gallery, false);
 				if (presentationJsp != null)
 					responseJsp = presentationJsp;
 			}
@@ -306,7 +308,10 @@ public class GalleryViewer {
 			}
 			else
 			{
-				String presentationJsp = CombineModelAndGallery(0, profileName, model, galleryPreview.getGallery(), true);
+				CustomSessionState customSession = new CustomSessionState();
+				customSession.setProfileName(profileName);
+
+				String presentationJsp = CombineModelAndGallery(customSession, model, galleryPreview.getGallery(), true);
 				if (presentationJsp != null)
 				{
 					HttpSession tomcatSession = request.getSession(true);
@@ -378,36 +383,39 @@ public class GalleryViewer {
 	}
 
 	
-	private String CombineModelAndGallery(long userId, String profileName, Model model, Gallery gallery, boolean isPreview) throws WallaException
+	private String CombineModelAndGallery(CustomSessionState customSession, Model model, Gallery gallery, boolean isPreview) throws WallaException
 	{
-		model.addAttribute("userId", userId); 
-		model.addAttribute("profileName", profileName); 
+		model.addAttribute(gallery);
+		model.addAttribute(customSession); 
 		model.addAttribute("isPreview", isPreview); 
 		
+		
 		Style style = galleryService.GetStyle(gallery.getStyleId());
-		model.addAttribute("css", style.getCssFolder()); 
-		
+		model.addAttribute(style);
+
 		Presentation presentation = galleryService.GetPresentation(gallery.getPresentationId());
-		model.addAttribute("jsp", presentation.getJspName());
-		model.addAttribute("imageSize", presentation.getThumbWidth());
+		//model.addAttribute("jsp", presentation.getJspName());
+		//model.addAttribute("imageSize", presentation.getThumbWidth());
 		
-		model.addAttribute("groupingType", gallery.getGroupingType()); /* 0-None, 1-category, 2-tag */
+		model.addAttribute(presentation);
 		
-		if (gallery.getGroupingType().intValue() > 0)
-			model.addAttribute("sectionList", gallery.getSections().getSectionRef());
+		//model.addAttribute("groupingType", gallery.getGroupingType()); /* 0-None, 1-category, 2-tag */
 		
-		model.addAttribute("totalImageCount", gallery.getTotalImageCount()); 
+		//if (gallery.getGroupingType().intValue() > 0)
+		//	model.addAttribute("sectionList", gallery.getSections().getSectionRef());
+		
+		//model.addAttribute("totalImageCount", gallery.getTotalImageCount()); 
 
 		//Get gallery name and description
-		model.addAttribute("name", gallery.getName()); 
-		model.addAttribute("desc", gallery.getDesc());
+		//model.addAttribute("name", gallery.getName()); 
+		//model.addAttribute("desc", gallery.getDesc());
 		
-		model.addAttribute("showGalleryName", gallery.isShowGalleryName());
-		model.addAttribute("showGalleryDesc", gallery.isShowGalleryDesc());
-		model.addAttribute("showImageName", gallery.isShowImageName());
-		model.addAttribute("showImageDesc", gallery.isShowImageDesc());
-		model.addAttribute("showImageMeta", gallery.isShowImageMeta());
-		
+		//model.addAttribute("showGalleryName", gallery.isShowGalleryName());
+		//model.addAttribute("showGalleryDesc", gallery.isShowGalleryDesc());
+		//model.addAttribute("showImageName", gallery.isShowImageName());
+		//model.addAttribute("showImageDesc", gallery.isShowImageDesc());
+		//model.addAttribute("showImageMeta", gallery.isShowImageMeta());
+
 		if (presentation.getMaxSections() == 0)
 		{
 			//Get image list embedded into initial jsp response.
@@ -415,17 +423,17 @@ public class GalleryViewer {
 			if (isPreview)
 			{
 				imageList = imageService.GetPreviewImageList(1, presentation.getMaxImagesInSection());
-				model.addAttribute("imageList", imageList);
+				model.addAttribute(imageList);
 			}
 			else
 			{
 				CustomResponse customResponse = new CustomResponse();
-				imageList = imageService.GetImageList(userId, "gallery", 
+				imageList = imageService.GetImageList(customSession.getUserId(), "gallery", 
 						gallery.getName(), -1, 0, presentation.getMaxImagesInSection(), null, customResponse);
 				
 				if (customResponse.getResponseCode() == HttpStatus.OK.value())
 				{
-					model.addAttribute("imageList", imageList);
+					model.addAttribute(imageList);
 				}
 				else
 				{

@@ -625,7 +625,7 @@ public class ImageService {
 		try
 		{
 			//Check for folder existing.  //Check for image existing.
-			Path filePath = Paths.get(appWorkingFolder,"Application", width + "x" + height, imageRef + ".jpg");
+			Path filePath = Paths.get(appWorkingFolder,"AppImages", width + "x" + height, imageRef + ".jpg");
 			File filePathTemp = filePath.toFile();
     		if (!filePathTemp.exists())
     		{
