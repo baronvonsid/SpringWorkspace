@@ -1,0 +1,41 @@
+<section 
+	id="imagesPane"
+	class="ImagesPaneStyle"
+	th:attr="data-section-id=${imageList.sectionId},data-section-image-count=${imageList.sectionImageCount},data-images-first=${imageList.imageCursor},data-images-last=${imageList.imageCount + imageList.imageCursor}"
+    data-section-id="11" 
+    data-section-image-count="22"
+    data-images-first="0"
+    data-images-last="22">
+    
+    <!-- (${gallery.showImageName} ? 20 : 0) +  -->
+    <article 
+    	th:each="i : ${imageList.Images.ImageRef}" 
+    	th:attr="style=('width:' + ${presentation.thumbWidth} + 'px;height:' + ${presentation.thumbWidth} + 'px;'), id=${i.id}, data-image-id=${i.id}, class=(${gallery.showImageName} ? 'ImagesArticleStyle' : 'ImagesArticleNoNameStyle')"
+    	style="width:75px;height:75px;" id="1111" data-image-id="11112" class="ImagesArticleStyle" >
+    	<a 
+    		class="image-popup-no-margins" 
+    		title="Image title"
+    		data-shot-meta="Shot meta"
+    		data-file-meta="File meta"
+    		data-desc="Description"
+    		th:attr="title=${gallery.showImageName} ? ${i.name} : '',data-desc=((${gallery.showImageDesc}) ? ${i.desc} : ''),data-file-meta=(${gallery.showImageMeta} ? ${i.fileSummary} : ''),data-shot-meta=(${gallery.showImageMeta} ? ${i.shotSummary} : '')"
+    		th:href="@{'/v1/ws/'+${customSessionState.profileName}+ '/' + (${isPreview} ? 'imagepreview' : 'image') + '/'+${i.id}+'/1920/1080/'}"
+    		href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg">
+			<img 
+				class="thumbStyle" 
+				th:attr="src=@{'/v1/ws/'+${customSessionState.profileName}+ '/' + (${isPreview} ? 'imagepreview' : 'image') + '/'+${i.id}+'/'+${presentation.thumbHeight}+'/'+${presentation.thumbWidth}+'/'},title=${gallery.showImageName} ? ${i.name} : ''"
+				src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg"/>
+    	</a>
+    	<!-- 
+    		    	<div 
+	    		th:attr="style=('width:' + ${presentation.thumbWidth} + 'px;height:20px;')"
+	 			th:remove="${gallery.showImageName} ? none : all"
+	    		class="ImagesArticleStyle" style="width:75px;height:20px;">
+	    		<span th:text="${i.name}">image name</span>
+	    		-->
+	    	
+    </article>
+
+</section>
+
+

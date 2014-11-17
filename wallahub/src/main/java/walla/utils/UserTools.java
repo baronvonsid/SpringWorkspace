@@ -53,7 +53,7 @@ public final class UserTools {
 	public static File FileExistsNoExt(String folderPath, final String fileName) 
 	{
 		File folder = new File(folderPath);
-		FilenameFilter select = new FileListFilter(fileName);
+		FilenameFilter select = new FileListFilter(fileName + ".");
 		File[] matchingFiles = folder.listFiles(select);
 		
 		/*
@@ -335,7 +335,6 @@ public final class UserTools {
 		return customSession;
 	}
 	
-
 	public static CustomSessionState GetGallerySession(String requestProfileName, String requestGalleryName, boolean checkName, boolean checkAuth, HttpServletRequest request, Logger meLogger) throws WallaException
 	{
 		HttpSession session = request.getSession(false);
@@ -381,6 +380,38 @@ public final class UserTools {
 			String error = "IP address of the session has changed since the logon was established.";
 			meLogger.error(error);
 			throw new WallaException("UserTools", "GetGallerySessionAuth", error, HttpStatus.FORBIDDEN.value()); 
+		}
+		
+		return customSession;
+	}
+
+	public static CustomSessionState GetGalleryPreviewSession(String requestProfileName, HttpServletRequest request, Logger meLogger) throws WallaException
+	{
+		HttpSession session = request.getSession(false);
+		if (session == null)
+		{
+			meLogger.warn("The tomcat session has not been established.");
+			return null;
+		}
+
+		CustomSessionState customSession = (CustomSessionState)session.getAttribute("CustomSessionState");
+		if (customSession == null)
+		{
+			meLogger.warn("The custom session state has not been established.");
+			return null;
+		}
+
+		if (!customSession.getProfileName().equalsIgnoreCase(requestProfileName))
+		{
+			meLogger.warn("The profile name does not match between request and session");
+			return null;
+		}
+		
+		if (customSession.getRemoteAddress().compareTo(GetIpAddress(request)) != 0)
+		{
+			String error = "IP address of the session has changed since the logon was established.";
+			meLogger.error(error);
+			throw new WallaException("UserTools", "GetGalleryPreviewSession", error, HttpStatus.FORBIDDEN.value()); 
 		}
 		
 		return customSession;

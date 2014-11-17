@@ -9,7 +9,12 @@ import walla.db.*;
 import walla.utils.*;
 import walla.ws.*;
 
+import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.metadata.IIOMetadata;
+import javax.imageio.stream.ImageOutputStream;
 import javax.sql.DataSource;
 import javax.xml.datatype.*;
 
@@ -30,8 +35,12 @@ import org.springframework.beans.factory.annotation.Value;
 
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferByte;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileFilter;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.*;
 
@@ -399,9 +408,10 @@ public class ImageService {
 		finally {UserTools.LogMethod("GetOriginalImageFile", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(imageId));}
 	}
 	
-	public BufferedImage GetScaledImageFile(long userId, long imageId, int width, int height, boolean isPreview, CustomResponse customResponse)
+	public byte[] GetScaledImageFile(long userId, long imageId, int width, int height, boolean isPreview, CustomResponse customResponse)
 	{
 		long startMS = System.currentTimeMillis();
+		byte[] bytes = null;
 		try
 		{
 			String sourceFile;
@@ -419,7 +429,7 @@ public class ImageService {
 					{
 						String message = "Image size requested is not supported.  Size is too large for the aspect Ratio:" 
 								+ String.valueOf(requestAspectRatio) + " Width:" + width;
-						meLogger.warn("GetImageFile didn't find a valid original Image object to process.");
+						meLogger.warn(message);
 						customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
 						return null;
 					}
@@ -509,12 +519,12 @@ public class ImageService {
 				    	g.dispose();
 				    	
 				    	customResponse.setResponseCode(HttpStatus.OK.value());
-				    	return resizedImage;
+				    	return ConvertImageToBytes(resizedImage);
 					}
 					else
 					{
 						customResponse.setResponseCode(HttpStatus.OK.value());
-						return ImageIO.read(new File(imageFilePath));
+						return ConvertFileToBytes(imageFilePath);
 					}
 				}
 				else
@@ -561,13 +571,13 @@ public class ImageService {
 				    	g.dispose();
 				    	
 				    	customResponse.setResponseCode(HttpStatus.OK.value());
-				    	return resizedImage;
+				    	return ConvertImageToBytes(resizedImage);
 					}
 					else
 					{
 						//No resize needed.
 						customResponse.setResponseCode(HttpStatus.OK.value());
-						return ImageIO.read(new File(imageFilePath));
+						return ConvertFileToBytes(imageFilePath);
 					}
 				}
 			}
@@ -590,7 +600,7 @@ public class ImageService {
 		finally {UserTools.LogMethod("GetScaledImageFile", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(imageId));}
 	}
 	
-	public BufferedImage GetMainCopyImageFile(long userId, long imageId, boolean isPreview, CustomResponse customResponse)
+	public byte[] GetMainCopyImageFile(long userId, long imageId, boolean isPreview, CustomResponse customResponse)
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -609,7 +619,7 @@ public class ImageService {
 			
 			//No resize needed.
 			customResponse.setResponseCode(HttpStatus.OK.value());
-			return ImageIO.read(new File(imageFilePath));
+			return ConvertFileToBytes(imageFilePath);
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
@@ -619,7 +629,7 @@ public class ImageService {
 		finally {UserTools.LogMethod("GetMainCopyImageFile", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(imageId));}
 	}
 	
-	public BufferedImage GetAppImageFile(String imageRef, int width, int height, CustomResponse customResponse)
+	public byte[] GetAppImageFile(String imageRef, int width, int height, CustomResponse customResponse)
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -637,7 +647,7 @@ public class ImageService {
 
 			//Return image.
 			customResponse.setResponseCode(HttpStatus.OK.value());
-			return ImageIO.read(new File(filePath.toString()));
+			return ConvertFileToBytes(filePath.toString());
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
@@ -924,6 +934,75 @@ public class ImageService {
 		{
 			UserTools.MoveFile(sourceFile.toString(), destinationFile.toString(), meLogger);
 		}
+	}
+	
+	private byte[] ConvertFileToBytes(String filePath) throws IOException
+	{
+		File file = new File(filePath);
+		byte[] bytes = new byte[(int) file.length()];
+		
+	    FileInputStream fileInputStream = new FileInputStream(file);
+	    fileInputStream.read(bytes);
+	    fileInputStream.close();
+
+	    return bytes;
+	}
+	
+	private byte[] ConvertImageToBytes(BufferedImage image) throws IOException
+	{
+		byte[] imageBytes=null;
+		Iterator<ImageWriter> writers=ImageIO.getImageWritersByFormatName("jpg");
+		
+		ImageWriter writer=writers.next();
+		if (writer == null)
+		    throw new RuntimeException("JPG not supported");
+		  
+	    ImageWriteParam iwp = writer.getDefaultWriteParam();
+	    iwp.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+	    iwp.setCompressionQuality(0.9f);
+	    
+
+		/*
+		Working but without sufficient quality.
+		
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		ImageIO.write( image, "jpg", baos );
+		baos.flush();
+		imageBytes = baos.toByteArray();
+		baos.close();
+		*/	
+		
+	    //iw.write((IIOMetadata)null,new IIOImage(img,null,null),iwp);
+
+		
+	    final ByteArrayOutputStream byteOut=new ByteArrayOutputStream();	
+		ImageOutputStream imageOut=ImageIO.createImageOutputStream(byteOut);
+		
+		writer.setOutput(imageOut);
+		//writer.write(image);
+		writer.write((IIOMetadata)null,new IIOImage(image,null,null),iwp);
+		imageOut.flush();
+		imageOut.close();
+		imageBytes=byteOut.toByteArray();
+		byteOut.close();
+		
+		return imageBytes;
+		
+		/*
+		ImageOutputStream  outputStream =  ImageIO.createImageOutputStream(image);
+	    Iterator<ImageWriter> iter = ImageIO.getImageWritersByFormatName("jpeg");
+	    ImageWriter writer = iter.next();
+	    ImageWriteParam iwp = writer.getDefaultWriteParam();
+	    iwp.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+	    iwp.setCompressionQuality(0.9f);
+	    writer.setOutput(outputStream);
+	    writer.write(null, new IIOImage(newImage,null,null), iwp);
+	    writer.dispose();
+
+		byte[] byteArray = ((DataBufferByte) newImage.getData().getDataBuffer()).getData();
+		return byteArray;
+		*/
+
 	}
 	
 	public void setImageDataHelper(ImageDataHelperImpl imageDataHelper)

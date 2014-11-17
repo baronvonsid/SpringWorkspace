@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+
+    <title th:text="${gallery.name}">gallery name</title>
+
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="content-script-type" content="text/javascript" />
+    <meta name='description' th:attr="content=${gallery.showGalleryDesc} ? ${gallery.desc} : 'fotowalla gallery'" content="gallery description" />
+
+    <meta name='apple-mobile-web-app-title' content='fotowalla' />
+
+    <!-- Ensure that on IE the page is rendered to the maximum IE spec. -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Used for viewing on mobile devices.  Ensuring the width is correctly infered -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Adding javascript to enable CSS style for semantic tags pre IE9 -->
+    <!--[if lt IE 9]>
+         <script src="../../static/scripts/html5-format-ie8.js"></script>
+    <![endif]-->
+
+	<!-- Standard gallery stylesheets -->
+    <link rel="stylesheet" th:href="@{/static/css/magnific-popup/magnific-popup.css}" href="http://localhost:8082/wallahub/static/css/magnific-popup/magnific-popup.css" />
+    
+    <!--  User preference stylesheet -->
+    <link rel="stylesheet" th:href="@{'/static/css/'+${style.CssFolder}+'/jquery-ui.min.css'}" href="http://localhost:8082/wallahub/static/css/custom-lightness/jquery-ui.min.css" />
+    <link rel="stylesheet" th:href="@{'/static/css/'+${style.CssFolder}+'/ThemeExt-Standard.css'}" href="http://localhost:8082/wallahub/static/css/custom-lightness/ThemeExt-Standard.css" />
+    
+    <!-- walla custom extension -->
+    <link rel="stylesheet" th:href="@{/static/css/TemplateExt-Standard.css}" href="http://localhost:8082/wallahub/static/css/TemplateExt-Standard.css"  />
+
+    <!-- Browser bar icon (16x16) -->
+    <link rel="shortcut icon" type="image/vnd.microsoft.icon" th:href="@{/static/images/fotowallabrowser.png}" href="http://localhost:8082/wallahub/static/images/fotowallabrowser.png" />
+
+</head>
+
+<body id="galleryBody" data-images-fetchsize="200" 
+	th:attr="data-groupings-type=${gallery.groupingType},data-total-image-count=${gallery.totalImageCount},data-is-preview=${isPreview},data-thumbwidth=${presentation.thumbWidth}" 
+	data-groupings-type="0" data-total-image-count="100" data-is-preview="true" data-thumbwidth="75">
+        
+
+		<nav id="pageNavigations">
+	        <header id="pageHeader" class="HeaderStyle" th:remove="${!gallery.showGalleryName and !gallery.showGalleryDesc} ? all : none">
+	        	<h1 th:text="${gallery.name}" th:remove="${gallery.showGalleryName} ? none : all">Gallery name</h1>
+	        	<span class="HeaderStyle" th:text="${gallery.desc}" th:remove="${(!gallery.showGalleryDesc or #strings.isEmpty(gallery.desc))} ? all : none">Gallery description</span>
+	        </header>
+	        
+	        <div style="clear: both;" th:remove="${(!gallery.showGalleryName and !gallery.showGalleryDesc) or gallery.groupingType == 0} ? all : none"></div>
+
+			<!-- No groupings so now menu options needed -->
+		    <nav id="imageNav" width="200px" th:remove="${gallery.groupingType == 0} ? none : all">
+	            <span id="imageNavTextTotal"></span>
+	            <button id="imageNavFirst">first</button>
+	            <button id="imageNavPrevious">previous</button>
+	            <span id="imageNavTextCursor">0 to 0</span>
+	            <button id="imageNavNext">next</button>
+	            <button id="imageNavLast">last</button>
+	        </nav>
+
+			<!-- Groupings show menu and navigation, same line -->
+			<nav id="sectNavHor" th:remove="${gallery.groupingType == 0} ? all : none">
+        		<input 
+        			type="radio" 
+        			name="sectNavHor"
+        			th:each="s : ${gallery.Sections.SectionRef}" 
+        			th:attr="id=${'section' + s.id}, data-section-id=${s.id}"
+        			id="111" data-section-id="222" />
+        		<label 
+        			th:each="s : ${gallery.Sections.SectionRef}" 
+        			th:attr="for=${'section' + s.id}"
+        			th:text="${s.name}">Section name</label>
+        	</nav>
+        	
+        	<nav id="imageNav" width="200px" th:remove="${gallery.groupingType > 0} ? none : all">
+	            <span id="imageNavTextTotal"></span>
+	            <button id="imageNavFirst">first</button>
+	            <button id="imageNavPrevious">previous</button>
+	            <span id="imageNavTextCursor">0 to 0</span>
+	            <button id="imageNavNext">next</button>
+	            <button id="imageNavLast">last</button>
+	        </nav>
+        	
+        </nav>
+       	
+       	<div style="clear: both;"></div>
+
+		<div class="ImagesPaneStyle" id="imagesPaneContainer">
+			<section id="imagesPane" class="ImagesPaneStyle" data-section-id="0" data-section-image-count="-1" data-images-first="0" data-images-last="0"></section>
+		</div>
+   
+		<div style="clear: both;"></div>
+
+
+    <!--  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>-->
+    <script th:attr="src=@{/static/scripts/jquery.min.js}" src="http://localhost:8082/wallahub/static/scripts/jquery.min.js" ></script>
+
+    <script th:attr="src=@{/static/scripts/jquery-ui-1.10.3.custom.js}" src="http://localhost:8082/wallahub/static/scripts/jquery-ui-1.10.3.custom.js"></script>
+
+    <script th:attr="src=@{/static/scripts/magnific-popup/jquery.magnific-popup.js}" src="http://localhost:8082/wallahub/static/scripts/magnific-popup/jquery.magnific-popup.js"></script>
+
+    <script th:attr="src=@{/static/scripts/gallery-standard.js}" src="http://localhost:8082/wallahub/static/scripts/gallery-standard.js"></script>
+
+</body>
+
+</html>
+
+

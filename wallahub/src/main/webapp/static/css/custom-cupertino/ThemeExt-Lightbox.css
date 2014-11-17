@@ -24,7 +24,7 @@ a {
 
 .blueimp-gallery {
   background: #F5F5F5;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.7);
 }
 
 .blueimp-gallery > .prev,
@@ -48,15 +48,15 @@ a {
 
 .blueimp-gallery > .description {
   position: absolute;
-  top: 30px;
+  top: 35px;
   left: 15px;
   color: #1c94c4;
   display: none;
 }
 
-.blueimp-gallery > .meta {
+.blueimp-gallery >.meta {
   position: absolute;
-  top: 45px;
+  top: 50px;
   left: 15px;
   color: #1c94c4;
   display: none;

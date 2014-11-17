@@ -2,7 +2,6 @@
 {
     float: right;
     margin-top:15px;
-    margin-right:20px;
 }
 
 #sectNavHor {
@@ -15,7 +14,7 @@
 }
 
 #pageNavigations{
-	width: 1200px;
+	
     margin-bottom: 0px;
     margin-top:0px;
     margin-left:auto;
@@ -23,12 +22,11 @@
 }
 
 section.ImagesPaneStyle {
-    margin-bottom: 0px;
+    margin-bottom: 50px;
     margin-top:0px;
     margin-left:auto;
     margin-right:auto;
-    padding: 10px;
-    width: 1200px;
+    padding-top: 10px;
 }
 
 article.ImagesArticleStyle  {

@@ -1,6 +1,6 @@
-/*! Magnific Popup - v0.9.9 - 2013-11-15
+/*! Magnific Popup - v0.9.9 - 2014-09-06
 * http://dimsemenov.com/plugins/magnific-popup/
-* Copyright (c) 2013 Dmitry Semenov; */
+* Copyright (c) 2014 Dmitry Semenov; */
 ;(function($) {
 
 /*>>core*/
@@ -134,7 +134,6 @@ MagnificPopup.prototype = {
 		// We disable fixed positioned lightbox on devices that don't handle it nicely.
 		// If you know a better way of detecting this - let me know.
 		mfp.probablyMobile = (mfp.isAndroid || mfp.isIOS || /(Opera Mini)|Kindle|webOS|BlackBerry|(Opera Mobi)|(Windows Phone)|IEMobile/i.test(navigator.userAgent) );
-		_body = $(document.body);
 		_document = $(document);
 
 		mfp.popupsCache = {};
@@ -145,6 +144,10 @@ MagnificPopup.prototype = {
 	 * @param  data [description]
 	 */
 	open: function(data) {
+
+		if(!_body) {
+			_body = $(document.body);
+		}
 
 		var i;
 
@@ -340,14 +343,11 @@ MagnificPopup.prototype = {
 
 		_mfpTrigger('BuildControls');
 
-
 		// remove scrollbar, add margin e.t.c
 		$('html').css(windowStyles);
 		
 		// add everything to DOM
-		mfp.bgOverlay.add(mfp.wrap).prependTo( document.body );
-
-
+		mfp.bgOverlay.add(mfp.wrap).prependTo( mfp.st.prependTo || _body );
 
 		// Save last focused element
 		mfp._lastFocusedEl = document.activeElement;
@@ -565,11 +565,12 @@ MagnificPopup.prototype = {
 	 */
 	parseEl: function(index) {
 		var item = mfp.items[index],
-			type = item.type;
+			type;
 
 		if(item.tagName) {
 			item = { el: $(item) };
 		} else {
+			type = item.type;
 			item = { data: item, src: item.src };
 		}
 
@@ -805,7 +806,6 @@ MagnificPopup.prototype = {
 		// thx David
 		if(mfp.scrollbarSize === undefined) {
 			var scrollDiv = document.createElement("div");
-			scrollDiv.id = "mfp-sbm";
 			scrollDiv.style.cssText = 'width: 99px; height: 99px; overflow: scroll; position: absolute; top: -9999px;';
 			document.body.appendChild(scrollDiv);
 			mfp.scrollbarSize = scrollDiv.offsetWidth - scrollDiv.clientWidth;
@@ -886,6 +886,8 @@ $.magnificPopup = {
 		alignTop: false,
 	
 		removalDelay: 0,
+
+		prependTo: null,
 		
 		fixedContentPos: 'auto', 
 	
@@ -1331,8 +1333,12 @@ $.magnificPopup.registerModule('image', {
 				if(el.is('img')) {
 					item.img = item.img.clone();
 				}
-				if(item.img[0].naturalWidth > 0) {
+
+				img = item.img[0];
+				if(img.naturalWidth > 0) {
 					item.hasSize = true;
+				} else if(!img.width) {										
+					item.hasSize = false;
 				}
 			}
 

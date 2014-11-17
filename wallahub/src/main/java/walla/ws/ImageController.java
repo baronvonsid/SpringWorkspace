@@ -47,11 +47,15 @@ import org.springframework.beans.factory.annotation.Required;
 
 import org.springframework.beans.factory.annotation.Value;
 
+
+
+
 //To move/
 import java.awt.*;  
 import java.awt.image.*;  
 
 import javax.imageio.*;  
+import javax.imageio.stream.FileImageOutputStream;
 
 import walla.datatypes.java.*;
 import walla.business.*;
@@ -490,11 +494,16 @@ public class ImageController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			BufferedImage responseImage = imageService.GetMainCopyImageFile(customSession.getUserId(), imageId, false, customResponse);
+			byte[] imageArray = imageService.GetMainCopyImageFile(customSession.getUserId(), imageId, false, customResponse);
 			responseCode = customResponse.getResponseCode();
 			
-			if (responseImage != null)
-				ImageIO.write(responseImage, "jpg", response.getOutputStream());
+			if (imageArray != null && imageArray.length > 0)
+			{
+				response.setContentType("image/jpeg");
+				OutputStream outputStream = response.getOutputStream();
+				outputStream.write(imageArray);
+			}
+			
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
@@ -504,7 +513,9 @@ public class ImageController {
 	
 	//GET /{profileName}/image/{imageId}/{width}/{height}
 	//Server side caching.  Client side caching.
-	@RequestMapping(value = { "/{profileName}/image/{imageId}/{width}/{height}" }, method = { RequestMethod.GET }, produces=MediaType.IMAGE_JPEG_VALUE )
+	@RequestMapping(value = { "/{profileName}/image/{imageId}/{width}/{height}" }, 
+			method = { RequestMethod.GET }, 
+			produces=MediaType.IMAGE_JPEG_VALUE )
 	public @ResponseBody void GetImage(
 			@PathVariable("profileName") String profileName,
 			@PathVariable("imageId") long imageId,
@@ -531,11 +542,37 @@ public class ImageController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			BufferedImage responseImage = imageService.GetScaledImageFile(customSession.getUserId(), imageId, width, height, false, customResponse);
+			byte[] imageArray = imageService.GetScaledImageFile(customSession.getUserId(), imageId, width, height, false, customResponse);
 			responseCode = customResponse.getResponseCode();
 			
-			if (responseImage != null)
-				ImageIO.write(responseImage, "jpg", response.getOutputStream());
+			if (imageArray != null && imageArray.length > 0)
+			{
+				response.setContentType("image/jpeg");
+				OutputStream outputStream = response.getOutputStream();
+				outputStream.write(imageArray);
+			}
+			
+			/*
+	        File file = new File("C:\\temp\\WallaRepo\\Thumb\\100001\\75x75\\1000021.jpg");
+
+	         byte[] b = new byte[(int) file.length()];
+
+           FileInputStream fileInputStream = new FileInputStream(file);
+           fileInputStream.read(b);
+           fileInputStream.close();
+           
+*/
+			
+			//File file = new File("C:\\temp\\WallaRepo\\Thumb\\100001\\75x75\\1000021.jpg");
+			
+			//FileImageOutputStream output = new FileImageOutputStream(file);
+			//output.readFully(arg0)
+			
+			
+			
+			
+			//if (responseImage != null)
+			//	ImageIO.write(responseImage, "jpg", response.getOutputStream());
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
@@ -567,11 +604,15 @@ public class ImageController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			BufferedImage responseImage = imageService.GetAppImageFile(imageRef, width, height, customResponse);
+			byte[] imageArray = imageService.GetAppImageFile(imageRef, width, height, customResponse);
 			responseCode = customResponse.getResponseCode();
 			
-			if (responseImage != null)
-				ImageIO.write(responseImage, "jpg", response.getOutputStream());
+			if (imageArray != null && imageArray.length > 0)
+			{
+				response.setContentType("image/jpeg");
+				OutputStream outputStream = response.getOutputStream();
+				outputStream.write(imageArray);
+			}
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
@@ -590,24 +631,35 @@ public class ImageController {
 	{
 		long startMS = System.currentTimeMillis();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
+		String message = "";
 		try
 		{
 			response.addHeader("Cache-Control", "private, max-age=31557600");
-			HttpSession tomcatSession = request.getSession(false);
-			String sessionProfileName = (String)tomcatSession.getAttribute("ProfileName");
 
-			if (!profileName.equalsIgnoreCase(sessionProfileName))
+			CustomSessionState customSession = UserTools.GetValidAdminSession(profileName, request, meLogger);
+			if (customSession == null)
 			{
-				responseCode = HttpStatus.UNAUTHORIZED.value();
-				return;
+				customSession = UserTools.GetGalleryPreviewSession(profileName, request, meLogger);
+				if (customSession == null)
+				{
+					Thread.sleep(3000);
+					message = "GetPreviewMainCopyImage request not authorised.  Profile User:" + profileName.toString();
+					meLogger.warn(message);
+					responseCode = HttpStatus.UNAUTHORIZED.value();
+					return;
+				}
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			BufferedImage responseImage = imageService.GetMainCopyImageFile(0, imageId, true, customResponse);
+			byte[] imageArray = imageService.GetMainCopyImageFile(0, imageId, true, customResponse);
 			responseCode = customResponse.getResponseCode();
 			
-			if (responseImage != null)
-				ImageIO.write(responseImage, "jpg", response.getOutputStream());
+			if (imageArray != null && imageArray.length > 0)
+			{
+				response.setContentType("image/jpeg");
+				OutputStream outputStream = response.getOutputStream();
+				outputStream.write(imageArray);
+			}
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
@@ -628,26 +680,41 @@ public class ImageController {
 	{
 		long startMS = System.currentTimeMillis();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
+		String message = "";
+		
 		try
 		{
 			response.addHeader("Cache-Control", "private, max-age=31557600");
 			
-			HttpSession tomcatSession = request.getSession(false);
-			String sessionProfileName = (String)tomcatSession.getAttribute("ProfileName");
-
-			if (!profileName.equalsIgnoreCase(sessionProfileName))
+			CustomSessionState customSession = UserTools.GetValidAdminSession(profileName, request, meLogger);
+			if (customSession == null)
 			{
-				responseCode = HttpStatus.UNAUTHORIZED.value();
-				return;
+				customSession = UserTools.GetGalleryPreviewSession(profileName, request, meLogger);
+				if (customSession == null)
+				{
+					Thread.sleep(3000);
+					message = "GetGalleryPreviewImageList request not authorised.  Profile User:" + profileName.toString();
+					meLogger.warn(message);
+					responseCode = HttpStatus.UNAUTHORIZED.value();
+					return;
+				}
+			}
+			
+			if (imageId == 1)
+			{
+				String simon = "simon";
+				
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			BufferedImage responseImage = imageService.GetScaledImageFile(0, imageId, width, height, true, customResponse);
+			byte[] imageArray = imageService.GetScaledImageFile(0, imageId, width, height, true, customResponse);
 			responseCode = customResponse.getResponseCode();
 			
-			if (responseImage != null)
-				ImageIO.write(responseImage, "jpg", response.getOutputStream());
-
+			if (imageArray != null && imageArray.length > 0)
+			{
+				OutputStream outputStream = response.getOutputStream();
+				outputStream.write(imageArray);
+			}
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);

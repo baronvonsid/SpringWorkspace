@@ -23,7 +23,7 @@ a {
 }
 
 .blueimp-gallery {
-  background: rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.7);
 }
 
 .blueimp-gallery > .prev,
@@ -47,11 +47,21 @@ a {
 
 .blueimp-gallery > .description {
   position: absolute;
-  top: 30px;
+  top: 35px;
   left: 15px;
   color: #f58400;
   display: none;
 }
-.blueimp-gallery-controls > .description {
+
+.blueimp-gallery >.meta {
+  position: absolute;
+  top: 50px;
+  left: 15px;
+  color: #f58400;
+  display: none;
+}
+
+.blueimp-gallery-controls > .description,
+.blueimp-gallery-controls > .meta {
   display: block;
 }

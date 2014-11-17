@@ -79,7 +79,7 @@ public class GalleryViewer {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
-		String responseJsp = "GalleryViewerError";
+		String responseView = "GalleryViewerError";
 		String message = "";
 		try
 		{
@@ -98,7 +98,7 @@ public class GalleryViewer {
 					//Unexpected action,  forbidden.
 					Thread.sleep(10000);
 					model.addAttribute("message", "Request failed security checks.");
-					return responseJsp;
+					return responseView;
 				}
 				
 				if (customSession == null)
@@ -135,7 +135,7 @@ public class GalleryViewer {
 							message = "GetGalleryViewer request not authorised.  Profile User:" + profileName.toString() + " Gallery:" + galleryName;
 							meLogger.warn(message);
 							model.addAttribute("errorMessage", message);
-							return responseJsp;
+							return responseView;
 						}
 					}
 					else
@@ -145,7 +145,7 @@ public class GalleryViewer {
 						{
 							String path = new UrlPathHelper().getPathWithinApplication(request);
 							message = "Gallery " + galleryName + " requires a password to view, please enter this to continue.";
-							responseJsp = "redirect:./" + galleryName + "/logon?referrer=" 
+							responseView = "redirect:./" + galleryName + "/logon?referrer=" 
 								+ UriUtils.encodePath(path,"UTF-8") 
 								+ "&message=" + UserTools.EncodeString(message, request);
 						}
@@ -156,7 +156,7 @@ public class GalleryViewer {
 								String path = new UrlPathHelper().getPathWithinApplication(request);
 								//request.getPathInfo()
 								message = "Gallery: " + galleryName + " is marked as Private.  To view this please login as: " + profileName;
-								responseJsp = "redirect:/v1/web/logon?referrer=" 
+								responseView = "redirect:/v1/web/logon?referrer=" 
 									+ UriUtils.encodePath(path,"UTF-8")
 									+ "&message=" + UserTools.EncodeString(message, request);
 							}
@@ -173,7 +173,7 @@ public class GalleryViewer {
 						}
 						
 						meLogger.info(message);
-						return responseJsp;
+						return responseView;
 
 					}
 				}
@@ -188,7 +188,7 @@ public class GalleryViewer {
 			{
 				String presentationJsp = CombineModelAndGallery(customSession, model, gallery, false);
 				if (presentationJsp != null)
-					responseJsp = presentationJsp;
+					responseView = presentationJsp;
 			}
 			else
 			{
@@ -196,31 +196,34 @@ public class GalleryViewer {
 				model.addAttribute("errorMessage", error);
 			}
 			
-			return responseJsp;
+			return responseView;
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
 			model.addAttribute("errorMessage", "Gallery could not be loaded.  Error message: " + ex.getMessage()); 
-			return responseJsp;
+			return responseView;
 		}
-		finally { UserTools.LogWebFormMethod("GetGalleryViewer", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+		finally { UserTools.LogWebFormMethod("GetGalleryViewer", meLogger, startMS, request, responseView); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
 	//  GET /{profileName}/gallery/{galleryName}/{sectionId}/{imageCursor}/{size}?preview=true
 	@RequestMapping(value="/{profileName}/gallery/{galleryName}/{sectionId}/{imageCursor}/{size}", method=RequestMethod.GET, 
 			produces=MediaType.TEXT_HTML_VALUE )
-	public void GetGalleryImageList(
+	public String GetGalleryImageList(
 			@PathVariable("galleryName") String galleryName,
 			@PathVariable("sectionId") long sectionId,
 			@PathVariable("profileName") String profileName,
 			@PathVariable("imageCursor") int imageCursor,
 			@PathVariable("size") int size,
+			Model model,
 			HttpServletRequest request,
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
-		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
+		String responseView = "";
+		String message = "";
 		Date clientVersionTimestamp = null;
+		int responseCode = HttpStatus.OK.value();
 		
 		try
 		{
@@ -233,8 +236,10 @@ public class GalleryViewer {
 				customSession = UserTools.GetGallerySession(profileName, galleryName, true, true, request, meLogger);
 				if (customSession == null)
 				{
-					meLogger.warn("GetGalleryViewer request not authorised.  No session and no key or token supplied.  User:" + profileName.toString());
-					return;
+					message = "GetGalleryImageList request not authorised.  Profile User:" + profileName.toString() + " Gallery:" + galleryName;
+					meLogger.warn(message);
+					responseCode = HttpStatus.UNAUTHORIZED.value();
+					return null;
 				}
 			}
 					
@@ -253,19 +258,33 @@ public class GalleryViewer {
 				responseCode = customResponse.getResponseCode();
 				if (responseCode == HttpStatus.OK.value())
 				{
-				    PrintWriter out = response.getWriter();
-				    WriteOutImageList(profileName, out, gallery, imageList,false);
+					model.addAttribute(gallery);
+					model.addAttribute(customSession); 
+					model.addAttribute("isPreview", false); 
+					model.addAttribute(imageList);
+					
+					Style style = galleryService.GetStyle(gallery.getStyleId());
+					model.addAttribute(style);
+
+					Presentation presentation = galleryService.GetPresentation(gallery.getPresentationId());
+					model.addAttribute(presentation);
+
+					responseView = "gallery/viewer-standard-imagelist";
 				}
 			}
+			
+			return responseView;
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
+			responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
+			return null;
 		}
-		finally { UserTools.LogWebMethod("GetGalleryImageList", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { UserTools.LogWebFormMethod("GetGalleryImageList", meLogger, startMS, request, responseView + " " + responseCode); response.setStatus(responseCode); }
 	}
 	
-	//  GET /{profileName}/gallerypreview/sample?key=1234567890
-	@RequestMapping(value = { "/{profileName}/gallerypreview/sample" }, method = { RequestMethod.GET }, produces=MediaType.APPLICATION_XHTML_XML_VALUE )
+	//  GET /{profileName}/gallery/stylepreview?key=1234567890
+	@RequestMapping(value = { "/{profileName}/gallery/stylepreview" }, method = { RequestMethod.GET }, produces=MediaType.APPLICATION_XHTML_XML_VALUE )
 	public String GetGalleryPreview(
 			@RequestParam(value="key", required=false) String galleryTempId,
 			@PathVariable("profileName") String profileName,
@@ -274,8 +293,8 @@ public class GalleryViewer {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
-		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
-		String responseJsp = "GalleryPreviewError";
+		String responseView = "GalleryViewerError";
+		String message = "";
 		
 		try
 		{
@@ -284,6 +303,16 @@ public class GalleryViewer {
 			//Get application wide gallery preview list.
 			ServletContext context = request.getSession().getServletContext();
 			List<GalleryPreview> previewList = (List<GalleryPreview>)context.getAttribute("GalleryPreviewList");
+			
+			if (previewList == null)
+			{
+				Thread.sleep(3000);
+				message = "Gallery preview request not allowed, not pending previews found.";
+				meLogger.warn(message);
+				model.addAttribute("errorMessage", message);
+				return responseView;
+			}
+			
 			GalleryPreview galleryPreview = null;
 			
 			//Find gallery object
@@ -302,91 +331,104 @@ public class GalleryViewer {
 			if (galleryPreview == null)
 			{
 				Thread.sleep(3000);
-				String message = "Gallery Preview request not associated with a valid Gallery.";
+				message = "Gallery Preview request not associated with a valid Gallery.";
 				meLogger.warn(message);
 				model.addAttribute("errorMessage", message);
 			}
 			else
 			{
-				CustomSessionState customSession = new CustomSessionState();
-				customSession.setProfileName(profileName);
-
-				String presentationJsp = CombineModelAndGallery(customSession, model, galleryPreview.getGallery(), true);
-				if (presentationJsp != null)
+				HttpSession tomcatSession = request.getSession(true);
+				
+				CustomSessionState customSession = (CustomSessionState)tomcatSession.getAttribute("CustomSessionState");
+				if (customSession == null)
 				{
-					HttpSession tomcatSession = request.getSession(true);
-					tomcatSession.setAttribute("Gallery", galleryPreview.getGallery());
-					tomcatSession.setAttribute("ProfileName", profileName);
-					
-					responseJsp = presentationJsp;
-					responseCode = HttpStatus.OK.value();
+					customSession = new CustomSessionState();
+					tomcatSession.setAttribute("CustomSessionState", customSession);
 				}
+				
+				synchronized(customSession) {
+					customSession.setProfileName(profileName);
+					customSession.setGalleryPreview(galleryPreview.getGallery());
+					customSession.setRemoteAddress(request.getRemoteAddr());
+				}
+				
+				responseView = CombineModelAndGallery(customSession, model, galleryPreview.getGallery(), true);
 			}
 
-			return responseJsp;
+			return responseView;
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
-			model.addAttribute("errorMessage", "Gallery preview could not be loaded.  Error message: " + ex.getMessage()); 
-			return responseJsp;
+			model.addAttribute("errorMessage", "Gallery preview could not be loaded."); 
+			return responseView;
 		}
-		finally { UserTools.LogWebMethod("GetGalleryPreview", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { UserTools.LogWebFormMethod("GetGalleryPreview", meLogger, startMS, request, responseView); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
-	//  GET /{profileName}/gallerypreview/sample/{sectionId}/{imageCursor}/{size}?preview=true
-	@RequestMapping(value="/{profileName}/gallerypreview/sample/{sectionId}/{imageCursor}/{size}", method=RequestMethod.GET, 
+	//  GET /{profileName}/gallery/stylepreview/{sectionId}/{imageCursor}/{size}?preview=true
+	@RequestMapping(value="/{profileName}/gallery/stylepreview/{sectionId}/{imageCursor}/{size}", method=RequestMethod.GET, 
 			produces=MediaType.TEXT_HTML_VALUE )
-	public void GetGalleryPreviewImageList(
+	public String GetGalleryPreviewImageList(
 			@PathVariable("sectionId") long sectionId,
 			@PathVariable("profileName") String profileName,
 			@PathVariable("imageCursor") int imageCursor,
 			@PathVariable("size") int size,
+			Model model,
 			HttpServletRequest request,
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
-		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
+		String responseView = "";
+		String message = "";
+		int responseCode = HttpStatus.OK.value();
+		
 		try
 		{
 			response.addHeader("Cache-Control", "no-cache");
 
-			HttpSession tomcatSession = request.getSession(false);
-			String sessionProfileName = (String)tomcatSession.getAttribute("ProfileName");
-			Gallery gallery = (Gallery)tomcatSession.getAttribute("Gallery");
-			
-			if (!profileName.equalsIgnoreCase(sessionProfileName))
+			CustomSessionState customSession = UserTools.GetValidAdminSession(profileName, request, meLogger);
+			if (customSession == null)
 			{
-				Thread.sleep(3000);
-				responseCode = HttpStatus.UNAUTHORIZED.value();
-				String message = "Gallery Preview ImageList request not authorised";
-				meLogger.warn(message);
-				return;
+				customSession = UserTools.GetGalleryPreviewSession(profileName, request, meLogger);
+				if (customSession == null)
+				{
+					Thread.sleep(3000);
+					message = "GetGalleryPreviewImageList request not authorised.  Profile User:" + profileName.toString();
+					meLogger.warn(message);
+					responseCode = HttpStatus.UNAUTHORIZED.value();
+					return null;
+				}
 			}
-			
-			
-			
-			
+
 			ImageList imageList = imageService.GetPreviewImageList(sectionId, size);
-			//Gallery gallery = this.sessionState.getGalleryPreview();
-		    PrintWriter out = response.getWriter();
+
+			model.addAttribute(customSession.getGalleryPreview());
+			model.addAttribute(customSession); 
+			model.addAttribute("isPreview", true); 
+			model.addAttribute(imageList);
 			
-			WriteOutImageList(profileName, out, gallery, imageList, true);
-			
-			response.setStatus(HttpStatus.OK.value());
-			
-			if (meLogger.isDebugEnabled()) {meLogger.debug("GetGalleryPreviewImageList completed, User:" + profileName + " Section Id:" + sectionId);}
+			Style style = galleryService.GetStyle(customSession.getGalleryPreview().getStyleId());
+			model.addAttribute(style);
+
+			Presentation presentation = galleryService.GetPresentation(customSession.getGalleryPreview().getPresentationId());
+			model.addAttribute(presentation);
+
+			responseView = "gallery/viewer-standard-imagelist";
+
+			return responseView;
 		}
 		catch (Exception ex) {
-			meLogger.error("Received Exception in GetGalleryPreviewImageList", ex);
-			response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			meLogger.error(ex);
+			responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
+			return null;
 		}
+		finally { UserTools.LogWebFormMethod("GetGalleryImageList", meLogger, startMS, request, responseView + " " + responseCode); response.setStatus(responseCode); }
 	}
-
 	
 	private String CombineModelAndGallery(CustomSessionState customSession, Model model, Gallery gallery, boolean isPreview) throws WallaException
 	{
 		model.addAttribute(gallery);
-		model.addAttribute(customSession); 
+		model.addAttribute(customSession);
 		model.addAttribute("isPreview", isPreview); 
 		
 		
@@ -447,6 +489,7 @@ public class GalleryViewer {
 		return presentation.getJspName();
 	}
 	
+	/*
 	private void WriteOutImageList(String profileName, PrintWriter out, Gallery gallery, ImageList imageList, boolean isPreview) throws WallaException
 	{
 	    int lastImage = imageList.getImageCount() + imageList.getImageCursor();
@@ -544,7 +587,7 @@ public class GalleryViewer {
 		out.println("</section>");
 		out.close();
 	}
-	
+	*/
 	
 	
 	
