@@ -50,7 +50,15 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			HttpServletResponse response)
 	{
 		response.setStatus(HttpStatus.OK.value());
-		return "x/start";
+		return "webapp/start";
+	}
+	
+	@RequestMapping(value="/forgotpassword", method=RequestMethod.GET)
+	public String ForgotPasswordGet(
+			HttpServletResponse response)
+	{
+		response.setStatus(HttpStatus.OK.value());
+		return "webapp/forgotpassword";
 	}
 	
 	@RequestMapping(value="/logout", method=RequestMethod.GET)
@@ -60,7 +68,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			HttpServletResponse response)
 	{
 		String defaultMessage = "Logout encountered an unexpected issue.";
-		String responseJsp = "x/generalerror";
+		String responseJsp = "webapp/generalerror";
 		
 		long startMS = System.currentTimeMillis();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
@@ -74,7 +82,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			else
 				tomcatSession.invalidate();
 
-			return "x/logout";
+			return "webapp/logout";
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
@@ -94,7 +102,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 	{
 		long startMS = System.currentTimeMillis();
 		String defaultMessage = "Profile could be setup at this time.";
-		String responseJsp = "x/generalerror";
+		String responseJsp = "webapp/generalerror";
 		try
 		{
 			Thread.sleep(300);
@@ -119,7 +127,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			{
 				newAccount.setKey(key);
 				newAccount.setAccountType(accountType);
-				responseJsp = "x/newaccount";
+				responseJsp = "webapp/newaccount";
 			}
 			else
 			{
@@ -146,14 +154,14 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 	{
 		//int responseCode = HttpStatus.OK.value();
 		long startMS = System.currentTimeMillis();
-		String responseJsp = "x/generalerror";
+		String responseJsp = "webapp/generalerror";
 		try
 		{
 			response.addHeader("Cache-Control", "no-cache");
 						
 			if (bindingResult.hasErrors())
 			{
-				responseJsp = "x/newaccount";
+				responseJsp = "webapp/newaccount";
 			}
 			else
 			{
@@ -185,7 +193,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 						if (customResponse.getResponseCode() == HttpStatus.OK.value())
 						{
 							newAccount.setKey(key);
-							responseJsp = "x/newaccount";
+							responseJsp = "webapp/newaccount";
 						}
 						model.addAttribute("message", "Request failed, reason - " + customResponse.getMessage());
 					}
@@ -221,7 +229,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 	{
 		long startMS = System.currentTimeMillis();
 		String defaultMessage = "Logon could not be processed at this time.";
-		String responseJsp = "x/generalerror";
+		String responseJsp = "webapp/generalerror";
 		try
 		{
 			response.addHeader("Cache-Control", "no-cache");
@@ -234,7 +242,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			
 			//TODO add remote address to the DB, to check for other sessions, from other IPs coming in.
 			//logon = new Logon();
-			responseJsp = "x/logon";
+			responseJsp = "webapp/logon";
 			
 			return responseJsp;
 		}
@@ -257,14 +265,14 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 	{
 		long startMS = System.currentTimeMillis();
 		String defaultMessage = "Logon could not be processed at this time.";
-		String responseJsp = "x/generalerror";
+		String responseJsp = "webapp/generalerror";
 		try
 		{
 			response.addHeader("Cache-Control", "no-cache");
 						
 			if (bindingResult.hasErrors())
 			{
-				responseJsp = "x/logon";
+				responseJsp = "webapp/logon";
 			}
 			else
 			{
@@ -299,14 +307,14 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 					{
 						Thread.sleep(1000);
 						model.addAttribute("message", "Logon failed, please check your details and try again");
-						responseJsp = "x/logon";
+						responseJsp = "webapp/logon";
 					}
 				}
 				else if (customResponse.getResponseCode() == HttpStatus.BAD_REQUEST.value())
 				{
 					Thread.sleep(1000);
 					model.addAttribute("message", "Logon failed, please check your details and try again");
-					responseJsp = "x/logon";
+					responseJsp = "webapp/logon";
 				}
 				else
 				{
@@ -334,7 +342,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 	{
 		long startMS = System.currentTimeMillis();
 		String defaultMessage = "Account summary could not be retrieved at this time.";
-		String responseJsp = "x/generalerror";
+		String responseJsp = "webapp/generalerror";
 		try
 		{
 			response.addHeader("Cache-Control", "no-cache");
@@ -363,7 +371,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 				accountSummary.setVersion(account.getVersion());
 				accountSummary.setId(account.getId());
 
-				responseJsp = "x/accountsummary";
+				responseJsp = "webapp/accountsummary";
 			}
 			else
 			{
@@ -392,14 +400,14 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 	{
 		long startMS = System.currentTimeMillis();
 		String defaultMessage = "Account summary could not be updated at this time.";
-		String responseJsp = "x/generalerror";
+		String responseJsp = "webapp/generalerror";
 		try
 		{
 			response.addHeader("Cache-Control", "no-cache");
 						
 			if (bindingResult.hasErrors())
 			{
-				responseJsp = "x/accountsummary";
+				responseJsp = "webapp/accountsummary";
 			}
 			else
 			{
@@ -437,7 +445,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 						accountSummary.setVersion(account.getVersion());
 						accountSummary.setId(account.getId());
 						
-						responseJsp = "x/accountsummary";
+						responseJsp = "webapp/accountsummary";
 						
 						if (updateStatus == HttpStatus.OK.value())
 							model.addAttribute("message", "Updated!");
@@ -469,7 +477,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 	{
 		long startMS = System.currentTimeMillis();
 		String defaultMessage = "Gallery logon could not be processed at this time.  Please try later.";
-		String responseJsp = "x/generalerror";
+		String responseJsp = "webapp/generalerror";
 		try
 		{
 			response.addHeader("Cache-Control", "no-cache");
@@ -515,7 +523,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 				galleryLogon.setProfileName(profileName);
 				galleryLogon.setGalleryName(galleryName);
 				galleryLogon.setKey(key);
-				responseJsp = "x/gallerylogon";
+				responseJsp = "webapp/gallerylogon";
 				
 			}
 			else if (customResponse.getResponseCode() == HttpStatus.FORBIDDEN.value())
@@ -552,7 +560,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 	{
 		long startMS = System.currentTimeMillis();
 		String defaultMessage = "Gallery logon could not be processed at this time.";
-		String responseJsp = "x/generalerror";
+		String responseJsp = "webapp/generalerror";
 		String message = "";
 		boolean failed = false;
 		
@@ -562,7 +570,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 						
 			if (bindingResult.hasErrors())
 			{
-				responseJsp = "x/gallerylogon";
+				responseJsp = "webapp/gallerylogon";
 			}
 			else
 			{

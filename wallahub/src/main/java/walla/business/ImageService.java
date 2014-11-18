@@ -701,7 +701,7 @@ public class ImageService {
     		ImageUtilityHelper.SaveOriginal(userId, uploadedFile.getPath(), originalFile, meLogger);
     		
     		//Make one initial copy, to drive subsequent resizing and also to orient correctly.
-			String mainImagePath = GetFilePath(mainCopyFolder, previewMainCopyFolder, userId, "", imageId, ".jpg", false); 
+			String mainImagePath = GetFilePath(mainCopyFolder, previewMainCopyFolder, userId, "", imageId, "jpg", false); 
 			ResizeAndSaveFile(userId, imageId, originalFile, mainImagePath, 1920, 1080, true);
 
 			//String mainImagePath = GetFilePathIfExists(userId, "MainCopy", imageId, false);

@@ -344,7 +344,16 @@ public final class ImageUtilityHelper
 						imageMeta.setWidth(exifSubDirectory.getInt(ExifSubIFDDirectory.TAG_EXIF_IMAGE_WIDTH));
 						break;
 					case ExifSubIFDDirectory.TAG_SHUTTER_SPEED:
-						imageMeta.setShutterSpeed(descriptor.getShutterSpeedDescription());
+						String shutterSpeed = (descriptor.getShutterSpeedDescription());
+						if (shutterSpeed != null)
+						{
+							//if (shutterSpeed.length() > 10)
+							//{
+							//	String formated = shutterSpeed.substring(shutterSpeed.indexOf("/"), shutterSpeed.indexOf(" sec") - shutterSpeed.indexOf("/"));
+							//	shutterSpeed = shutterSpeed.substring(0,shutterSpeed.indexOf("/")) + Long.parseLong(formated) + " sec";
+							//}
+							imageMeta.setShutterSpeed(shutterSpeed);
+						}
 						break;
 					case ExifSubIFDDirectory.TAG_APERTURE:
 						imageMeta.setAperture(descriptor.getApertureValueDescription());

@@ -42,14 +42,13 @@
 	data-groupings-type="0" 
 	data-total-image-count="100"
 	data-thumbwidth="75">
-
-        
+ 
 	<nav id="pageNavigations">
         <header id="pageHeader" class="HeaderStyle" th:remove="${!gallery.showGalleryName and !gallery.showGalleryDesc} ? all : none">
         	<h1 th:text="${gallery.name}" th:remove="${gallery.showGalleryName} ? none : all">Gallery name</h1>
         	<span class="HeaderStyle" th:text="${gallery.desc}" th:remove="${(!gallery.showGalleryDesc or #strings.isEmpty(gallery.desc))} ? all : none">Gallery description</span>
         </header>
-        	
+
 	    <!--  Used to ensure seperation between headers and image thumbs. -->
 	    <div style="clear: both;"></div>
     </nav>
@@ -66,8 +65,9 @@
         <ol class="indicator"></ol>
     </div>
 
-	<div id="links" class="links">
 
+	<div id="links" class="links">
+	
 		<a 
 			th:each="i : ${imageList.Images.ImageRef}" 
 			th:href="@{'/v1/ws/'+${customSessionState.profileName}+'/' + (${isPreview} ? 'imagepreview' : 'image') + '/' +${i.id}+'/1920/1080/'}"
@@ -76,27 +76,9 @@
 			title="Image title"
 			data-description="Image description"
 			data-shot-meta="Shot meta"
-    		data-file-meta="File meta">
-			<img 
-				th:attr="src=@{'/v1/ws/'+${customSessionState.profileName}+'/' + (${isPreview} ? 'imagepreview' : 'image') + '/' +${i.id}+'/'+${presentation.thumbHeight}+'/'+${presentation.thumbWidth}+'/'},title=${gallery.showImageName} ? ${i.name} : ''"
-				src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" />
-		</a>
+    		data-file-meta="File meta"><img th:attr="src=@{'/v1/ws/'+${customSessionState.profileName}+'/' + (${isPreview} ? 'imagepreview' : 'image') + '/' +${i.id}+'/'+${presentation.thumbHeight}+'/'+${presentation.thumbWidth}+'/'},title=${gallery.showImageName} ? ${i.name} : ''"  src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg"></img></a>
 
-		<a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="Soome name">
-            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" />
-        </a>
-		<a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="Soome name">
-            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" />
-        </a>
-		<a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="Soome name">
-            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" />
-        </a>
-		<a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="Soome name">
-            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" />
-        </a>
-		<a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="Soome name">
-            <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" />
-        </a>
+		
 		<a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="Soome name">
             <img src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg" />
         </a>
@@ -177,7 +159,8 @@
 
 
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>
-    <!--  <script th:attr="src=@{/static/scripts/jquery.min.js}" src="http://localhost:8082/wallahub/static/scripts/jquery.min.js" ></script>
+    <!--
+      <script th:attr="src=@{/static/scripts/jquery.min.js}" src="http://localhost:8082/wallahub/static/scripts/jquery.min.js" ></script>
 	-->
 	
     <script th:attr="src=@{/static/scripts/blueimp/blueimp-gallery.min.js}" src="http://localhost:8082/wallahub/static/scripts/blueimp/blueimp-gallery.min.js"></script>

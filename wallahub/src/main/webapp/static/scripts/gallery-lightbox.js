@@ -4,9 +4,9 @@ $(document).ready
 (
     function () {
 
-        ResizeDiv(true);
+        //ResizeDiv(true);
 
-        $(window).resize(function () { ResizeDiv(false); });
+        //$(window).resize(function () { ResizeDiv(false); });
     }
 );
 
