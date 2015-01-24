@@ -195,7 +195,7 @@ public class AccountController {
 	//  GET - /{profileName}
 	@RequestMapping(value="/{profileName}", method=RequestMethod.GET, 
 			produces=MediaType.APPLICATION_XML_VALUE, headers={"Accept-Charset=utf-8"} )
-	public @ResponseBody Account GetAccount(
+	public @ResponseBody Account GetAccountMeta(
 			@PathVariable("profileName") String profileName,
 			HttpServletRequest request,
 			HttpServletResponse response)
@@ -214,7 +214,7 @@ public class AccountController {
 			}
 
 			CustomResponse customResponse = new CustomResponse();
-			Account account = accountService.GetAccount(customSession.getUserId(), customResponse);
+			Account account = accountService.GetAccountMeta(customSession.getUserId(), customResponse);
 
 			responseCode = customResponse.getResponseCode();
 			return account;
@@ -226,6 +226,7 @@ public class AccountController {
 		finally { UserTools.LogWebMethod("GetAccount", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
 	}
 	
+	/*
 	//  GET - /{profileName}/email?valid={validationString}
 	@RequestMapping(value="/{profileName}/{validationString}", method=RequestMethod.GET, 
 			produces=MediaType.APPLICATION_XML_VALUE, headers={"Accept-Charset=utf-8"} )
@@ -250,7 +251,8 @@ public class AccountController {
 		}
 		finally { UserTools.LogWebMethod("Logon", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
 	}
-
+*/
+	
 	//  PUT /{profileName}/userapp
 	@RequestMapping(value = { "/{profileName}/userapp" }, method = { RequestMethod.PUT }, produces=MediaType.APPLICATION_XML_VALUE,
 			consumes = MediaType.APPLICATION_XML_VALUE, headers={"Accept-Charset=utf-8"} )

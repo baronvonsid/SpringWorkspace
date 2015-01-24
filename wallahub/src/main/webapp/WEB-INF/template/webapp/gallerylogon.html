@@ -1,33 +1,66 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html>
 <head>
-<meta charset="ISO-8859-1" />
-<title>fotowalla - gallery logon</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <!-- Use latest version of the IE render engine -->
+    <meta http-equiv="Content-Language" content="en">
+
+
+
+    <link href="static/css/wallawebapp.css" rel="stylesheet" />
+    <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+
+    <link rel="shortcut icon" type="image/x-icon" th:href="@{/static/images/fotowallabrowser.png}" href="http://85.13.193.30:8082/wallahub/static/images/fotowallabrowser.png" />
+
+    <title>fotowalla - gallery logon - gallery name</title>
+    <meta name="description" content="fotowalla - online gallery {gallery name}">
+    
 </head>
+
 <body>
-	<form action="#" th:action="@{./logon(referrer=${referrer})}" th:object="${galleryLogon}" method="post">
-		<input type="hidden" name="Key" th:field="*{Key}" />
-		<table>
-			<tr>
-				<td>Profile Name</td>
-				<td th:text="*{profileName}" />
-			</tr>	
-			<tr>
-				<td>Gallery Name</td>
-				<td th:text="*{galleryName}" />
-			</tr>	
-			<tr>
-				<td>Password</td>
-				<td><input type="text" th:field="*{password}" /></td>
-				<td th:if="${#fields.hasErrors('password')}" th:errors="*{password}">Password error</td>
-			</tr>
-			<tr>
-				<td colspan="3" th:if="${message != null}" th:text="${message}">Server errors</td>
-			</tr>
-			<tr>
-				<td><button type="submit">Logon</button></td>
-			</tr>
-		</table>
-	</form>
+
+    <div class="wrapper"><div class="accessibility-aid" id="start-of-content"></div></div>
+
+    <div class="container" style="width:300px;margin-top:100px;">
+
+        <!-- Change Password -->
+        <div class="boxed-group">
+            <h3>Gallery logon</h3>
+            <div class="boxed-group-inner">
+
+                <form action="#" th:action="@{./logon(referrer=${referrer})}" th:object="${galleryLogon}" method="post">
+                    <input type="hidden" name="Key" th:field="*{Key}" />
+
+                    <dl class="form">
+                        <dt>
+                            <label th:text="'Profile: ' '+ *{profileName}">Profile: {profileName}</label>
+                        </dt>
+                    </dl>
+                    <dl class="form">
+                        <dt>
+                            <label th:text="'Gallery: ' '+ *{galleryName}">Gallery: {galleryName}</label>
+                        </dt>
+                    </dl>
+                    <dl class="form">
+                        <dt>
+                            <label for="password">Password</label>
+                        </dt>
+                        <dd>
+                            <input tabindex="2"
+                                    id="password" required="required" type="password" th:field="*{password}">
+                        </dd>
+                    </dl>
+                    <p>
+                        <button tabindex="2" class="button">Logon</button>
+                    </p>
+                    <p class="errortext" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"><i class="fa fa-exclamation"></i>  Validation error</p>
+                </form>
+
+
+            </div>
+        </div>
+
+    </div>
 </body>
 </html>

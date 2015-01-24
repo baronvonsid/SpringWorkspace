@@ -61,11 +61,13 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			createSproc = conn.prepareCall(sprocSql);
 			createSproc.setString(1, newAccount.getProfileName());
 			createSproc.setString(2, newAccount.getDesc());
-			createSproc.setString(3, newAccount.getEmail());
-			createSproc.setString(4, passwordHash);
-			createSproc.setString(5, salt);
-			createSproc.setInt(6, newAccount.getAccountType());
-			createSproc.registerOutParameter(7, Types.INTEGER);
+			createSproc.setString(3, passwordHash);
+			createSproc.setString(4, salt);
+			createSproc.setInt(5, newAccount.getAccountType());
+			createSproc.setString(6, newAccount.getCountry());
+			createSproc.setString(7, newAccount.getTimezone());
+			createSproc.setBoolean(8, newAccount.isNewsletter());
+			createSproc.registerOutParameter(9, Types.INTEGER);
 			createSproc.execute();
 			    
 			return createSproc.getLong(7);
@@ -98,14 +100,17 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			conn = dataSource.getConnection();
 			conn.setAutoCommit(false);
 			
-			String updateSql = "UPDATE [dbo].[User] SET [Description] = ?, "
+			String updateSql = "UPDATE [dbo].[User] SET [Description] = ?, [Country] = ?,"
+					+ "[Timezone] = ?,[Newsletter] = ?,"
 					+ "[RecordVersion] = [RecordVersion] + 1 WHERE [UserId] = ? AND [RecordVersion] = ?";
 			
 			ps = conn.prepareStatement(updateSql);
 			ps.setString(1, account.getDesc());
-			//ps.setString(2, account.getEmail());
-			ps.setLong(2, account.getId());
-			ps.setInt(3, account.getVersion());
+			ps.setString(2, account.getCountry());
+			ps.setString(3, account.getTimezone());
+			ps.setBoolean(4, account.isNewsletter());
+			ps.setLong(5, account.getId());
+			ps.setInt(6, account.getVersion());
 			
 			//Execute update and check response.
 			returnCount = ps.executeUpdate();
@@ -136,17 +141,12 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		}
 	}
 	
-	public void UpdateMainStatus(long userId, int status) throws WallaException
+	public void UpdateAccountStatus(long userId, AccountStatus status) throws WallaException
 	{
-		/*
-		1 - initial details setup
-		2 - live (email and banking done)
-		3 - shutdown pending
-		4 - closed
-		 */
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
 		PreparedStatement ps = null;
+		String updateSql = null;
 		
 		try {
 			int returnCount = 0;		
@@ -154,19 +154,27 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			conn = dataSource.getConnection();
 			conn.setAutoCommit(false);
 
-			String updateSql = "UPDATE [User] SET [RecordVersion] = [RecordVersion] + 1, [Status] = ? "
-					+ "WHERE UserId = ? AND [Status] = ?";
 			
-			if (status == 3)
+			switch (status)
 			{
-				updateSql = "UPDATE [User] SET [RecordVersion] = [RecordVersion] + 1, [Status] = ?, [CloseDate] = GetDate() "
-						+ "WHERE UserId = ? AND [Status] = ?";
+				case Live:
+					updateSql = "UPDATE [User] SET [RecordVersion] = [RecordVersion] + 1, [Status] = 2 "
+							+ "WHERE UserId = ? AND [Status] IN (1,3)";
+					break;
+				case Frozen:
+					updateSql = "UPDATE [User] SET [RecordVersion] = [RecordVersion] + 1, [Status] = 3 "
+						+ "WHERE UserId = ? AND [Status] IN 2";
+					break;
+				case Closing:
+					updateSql = "UPDATE [User] SET [RecordVersion] = [RecordVersion] + 1, [Status] = 4, [CloseDate] = GetDate() "
+							+ "WHERE UserId = ? AND [Status] IN (1,2,3)";
+				case Closed:
+					updateSql = "UPDATE [User] SET [RecordVersion] = [RecordVersion] + 1, [Status] = 5 "
+							+ "WHERE UserId = ? AND [Status] = 4";
 			}
-			
+			 
 			ps = conn.prepareStatement(updateSql);
-			ps.setInt(1, status);
-			ps.setLong(2, userId);
-			ps.setInt(3, status-1);
+			ps.setLong(1, userId);
 			
 			returnCount = ps.executeUpdate();
 			ps.close();
@@ -192,21 +200,100 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		finally {
 	        if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("UpdateMainStatus", meLogger, startMS, String.valueOf(userId));
+	        UserTools.LogMethod("UpdateAccountStatus", meLogger, startMS, String.valueOf(userId));
 		}
 	}
 
-	public void UpdateEmailStatus(long userId, int status, String validationString) throws WallaException
+	//TODO
+	public boolean ShouldAccountBeLive(long userId)
 	{
-		/*
-		0 - email not sent
-		1 - email sent 
-		2 - email not confirmed in timely manner
-		3 - email confirmed
-		 */
+		//Checks to see if bank details and email are OK, and account can accept images.
+		return false;
+	}
+	
+	public boolean ValidateEmailConfirm(long userId, String requestValidationString, CustomResponse customResponse)
+	{
+		//Return email address if correctly validated.
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
 		PreparedStatement ps = null;
+		ResultSet resultset = null;
+
+		try {
+			conn = dataSource.getConnection();
+			conn.setAutoCommit(false);
+
+			String sql = "SELECT E.[Address] FROM [Email] E"
+			+ " WHERE E.[ValidationSent] < GetDate() - 1 AND E.[Verified] = 0 AND E.[ValidationString] = ?"
+			+ " AND E.[UserId] = ?";
+			
+			ps = conn.prepareStatement(sql);
+			ps.setString(1, requestValidationString);
+			ps.setLong(2, userId);
+			resultset = ps.executeQuery();
+
+			if (!resultset.next())
+			{
+				if (!resultset.isClosed()) {resultset.close();}
+				if (!ps.isClosed()) {ps.close();}
+				
+				// Try again but check for older values.
+				sql = "SELECT E.[Address] FROM [Email] E"
+						+ " WHERE E.[ValidationSent] > GetDate() - 1 AND E.[Verified] = 0 AND E.[ValidationString] = ?"
+						+ " AND E.[UserId] = ?";
+				
+				ps = conn.prepareStatement(sql);
+				ps.setString(1, requestValidationString);
+				ps.setLong(2, userId);
+				resultset = ps.executeQuery();
+				
+				if (resultset.next())
+				{
+					customResponse.setMessage("Email address could not be validated, this link has expired.");
+				}
+				else
+				{
+					customResponse.setMessage("Email address could not be validated, the details don't match.");
+				}
+				return false;
+			}
+			
+			customResponse.setMessage(resultset.getString(1));
+			return true;
+		}
+		catch (SQLException sqlEx) {
+			meLogger.error(sqlEx);
+			customResponse.setMessage("Email address could not be validated, to an unexpected system error.");
+			return false;
+		} 
+		catch (Exception ex) {
+			meLogger.error(ex);
+			customResponse.setMessage("Email address could not be validated, to an unexpected system error.");
+			return false;
+		}
+		finally {
+			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
+			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
+	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
+	        UserTools.LogMethod("ValidateEmailConfirm", meLogger, startMS, String.valueOf(userId));
+		}
+	}
+
+	//TODO
+	public void AddEmail(long userId, String email, boolean principle, boolean secondary) throws WallaException
+	{
+		String sql = "INSERT INTO [Email] ([UserId],[Address],[Active],[Principle],[Secondary],[Verified])"
+				+ " VALUES (?,?,1,0,0,0)";
+			
+	}
+	
+	public void UpdateEmail(long userId, String email, EmailAction action, String validationString) throws WallaException
+	{
+
+		long startMS = System.currentTimeMillis();
+		Connection conn = null;
+		PreparedStatement ps = null;
+		PreparedStatement psTwo = null;
 		
 		try {
 			int returnCount = 0;		
@@ -214,42 +301,90 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			conn = dataSource.getConnection();
 			conn.setAutoCommit(false);
 
-			String updateSql = "";
+			String sql = "";
+			String secondSql = "";
 			
-			if (status == 1)
+			
+			if (action == EmailAction.Delete || action == EmailAction.SetupValidation || action == EmailAction.Verified)
 			{
-				updateSql = "UPDATE [User] SET [RecordVersion] = [RecordVersion] + 1, [EmailStatus] = ?, [ValidationString] = ? "
-						+ "WHERE UserId = ?";
+				switch (action)
+				{
+					case Delete:
+						sql = "UPDATE [Email] SET [Active] = 0 WHERE [UserId] = ? AND [Address] = ? AND [Principle] = 0 AND [Active] = 1";
+						break;
+					case SetupValidation:
+						sql = "UPDATE [Email] SET [ValidationString] = ?, [ValidationSent] = GetDate() WHERE [UserId] = ? AND [Address] = ? AND [Verified] = 0 AND [Active] = 1";
+						break;
+					case Verified:
+						sql = "UPDATE [Email] SET [ValidationString] = '', [Verified] = 1 WHERE [UserId] = ? AND [Address] = ? AND [Verified] = 0 AND [Active] = 1";
+						break;
+				}
+
+				ps = conn.prepareStatement(sql);
+				if (action == EmailAction.SetupValidation)
+				{
+					ps.setString(1, validationString);
+					ps.setLong(2, userId);
+					ps.setString(3, email);
+				}
+				else
+				{
+					ps.setLong(1, userId);
+					ps.setString(2, email);
+				}
+			
+				returnCount = ps.executeUpdate();
+				ps.close();
+				
+				if (returnCount != 1)
+				{
+					conn.rollback();
+					String error = "Update email status didn't return a success count of 1.";
+					throw new WallaException("AccountDataHelperImpl", "UpdateEmail", error, HttpStatus.CONFLICT.value()); 
+				}
+				
+				conn.commit();
+			}
+			else if (action == EmailAction.Principle || action == EmailAction.Secondary)
+			{
+				if (action == EmailAction.Principle)
+				{
+					sql = "UPDATE [Email] SET [Principle] = 0 WHERE [UserId] = ? AND [Address] <> ? AND [Principle] = 1 AND [Active] = 1";
+					secondSql = "UPDATE [Email] SET [Principle] = 1 WHERE [UserId] = ? AND [Address] = ? AND [Active] = 1";
+				}
+				else
+				{
+					sql = "UPDATE [Email] SET [Secondary] = 0 WHERE [UserId] = ? AND [Address] <> ? AND [Secondary] = 1 AND [Active] = 1";
+					secondSql = "UPDATE [Email] SET [Secondary] = 1 WHERE [UserId] = ? AND [Address] = ? AND [Active] = 1";
+				}
+			
+				ps = conn.prepareStatement(sql);
+				ps.setLong(1, userId);
+				ps.setString(2, email);
+				returnCount = ps.executeUpdate();
+				ps.close();
+				
+				psTwo = conn.prepareStatement(secondSql);
+				psTwo.setLong(1, userId);
+				psTwo.setString(2, email);
+			
+				returnCount = returnCount + psTwo.executeUpdate();
+				psTwo.close();
+				
+				if (returnCount != 2)
+				{
+					conn.rollback();
+					String error = "Update email status didn't return a success count of 2.";
+					throw new WallaException("AccountDataHelperImpl", "UpdateEmail", error, HttpStatus.CONFLICT.value()); 
+				}
+				
+				conn.commit();
 			}
 			else
 			{
-				updateSql = "UPDATE [User] SET [RecordVersion] = [RecordVersion] + 1, [EmailStatus] = ? "
-						+ "WHERE UserId = ? AND [Status] = 1";
+				String error = "Incorrect email status update was used";
+				throw new WallaException("AccountDataHelperImpl", "UpdateEmail", error, HttpStatus.BAD_REQUEST.value()); 
 			}
-			
-			ps = conn.prepareStatement(updateSql);
-			ps.setInt(1, status);
-			if (status == 1)
-			{
-				ps.setString(2, validationString);
-				ps.setLong(3, userId);
-			}
-			else
-			{
-				ps.setLong(2, userId);
-			}
-			
-			returnCount = ps.executeUpdate();
-			ps.close();
-			
-			if (returnCount != 1)
-			{
-				conn.rollback();
-				String error = "Update status didn't return a success count of 1.";
-				throw new WallaException("ImageDataHelperImpl", "UpdateEmailStatus", error, HttpStatus.CONFLICT.value()); 
-			}
-			
-			conn.commit();
 		}
 		catch (SQLException sqlEx) {
 			if (conn != null) { try { conn.rollback(); } catch (SQLException ignoreEx) {} }
@@ -262,11 +397,55 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		}
 		finally {
 	        if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
+	        if (psTwo != null) try { if (!psTwo.isClosed()) {psTwo.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
 		}
 		UserTools.LogMethod("UpdateEmailStatus", meLogger, startMS, String.valueOf(userId));
 	}
 	
+	public boolean EmailIsUnique(long userId, String email) throws WallaException
+	{
+		long startMS = System.currentTimeMillis();
+		Connection conn = null;
+		PreparedStatement ps = null;
+		ResultSet resultset = null;
+		
+		try {			
+			conn = dataSource.getConnection();
+			
+			String selectSql = "SELECT COUNT(1) FROM [Email] WHERE [UserId] = ? AND UPPER([Address]) = UPPER(?) AND [Active] = 1";
+			ps = conn.prepareStatement(selectSql);
+			ps.setLong(1, userId);
+			ps.setString(2, email);
+			
+			resultset = ps.executeQuery();
+
+			if (!resultset.next())
+			{
+				String error = "No record returned from count sql: " + selectSql;
+				meLogger.error(error);
+				throw new WallaException("AccountDataHelperImpl", "EmailIsUnique", error, HttpStatus.INTERNAL_SERVER_ERROR.value()); 
+			}
+
+			if (resultset.getInt(1) == 0)
+				return true;
+			else
+				return false;
+			
+		}
+		catch (SQLException sqlEx) {
+			meLogger.error(sqlEx);
+			throw new WallaException(sqlEx);
+		}
+		finally {
+			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
+	        if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
+	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
+	        UserTools.LogMethod("EmailIsUnique", meLogger, startMS, String.valueOf(userId) + " " + email);
+		}
+	}
+	
+	/*
 	public boolean ProfileNameIsUnique(String profileName) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
@@ -300,8 +479,10 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 	        UserTools.LogMethod("ProfileNameIsUnique", meLogger, startMS, profileName);
 		}
 	}
+	*/
 	
-	public Account GetAccount(long userId)
+	//TODO remove any storage, add email bits.
+	public Account GetAccountMeta(long userId)
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -330,7 +511,7 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			account.setId(userId);
 			account.setProfileName(resultset.getString(1));
 			account.setDesc(resultset.getString(2));
-			account.setEmail(resultset.getString(3));
+			//account.setEmail(resultset.getString(3));
 			account.setStatus(resultset.getInt(4));
 			account.setAccountTypeName(resultset.getString(5));
 			account.setVersion(resultset.getInt(6));
@@ -352,8 +533,8 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			}
 			
 			account.setStorageGBLimit(resultset.getDouble(9));
-			account.setStorageGBCurrent(resultset.getDouble(10));
-			account.setTotalImages(resultset.getInt(11));
+			//account.setStorageGBCurrent(resultset.getDouble(10));
+			//account.setTotalImages(resultset.getInt(11));
 			account.setMonthlyUploadCap(resultset.getInt(12));
 			account.setUploadCount30Days(resultset.getInt(13));
 
@@ -375,6 +556,14 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		}
 	}
 
+	//TODO implement, along with view
+	public Account GetAccountStorageSummary(long userId)
+	{
+		
+		return null;
+		
+	}
+	
 	public void CreateUserApp(long userId, UserApp userApp) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
@@ -598,6 +787,9 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			userApp.setAutoUpload(resultset.getBoolean(15));
 			userApp.setAutoUploadFolder(resultset.getString(16));
 
+			//Update Timestamp.
+			
+			
 			return userApp;
 		}
 		catch (SQLException | DatatypeConfigurationException ex) {
@@ -624,7 +816,7 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			conn = dataSource.getConnection();
 
 			String selectSql = "SELECT [UserId], [ProfileName], [PasswordHash], [Salt], [FailedLoginCount], [FailedLoginLast] "
-								+ "FROM [dbo].[User] WHERE [ProfileName] = ? OR [email] = ?";
+								+ "FROM [dbo].[User] WHERE ([ProfileName] = ? OR [email] = ?) AND [Status] < 4";
 							
 			ps = conn.prepareStatement(selectSql);
 			ps.setString(1, userName);

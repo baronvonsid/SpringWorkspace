@@ -14,11 +14,15 @@ public interface AccountDataHelper {
 
 	public long CreateAccount(Account newAccount, String passwordHash, String salt) throws WallaException;
 	public void UpdateAccount(Account acount) throws WallaException;
-	public Account GetAccount(long userId) throws WallaException;
-	public void UpdateMainStatus(long userId, int status) throws WallaException;
-	public void UpdateEmailStatus(long userId, int status, String validationString) throws WallaException;
+	public Account GetAccountMeta(long userId);
+	public Account GetAccountStorageSummary(long userId);
+	public void UpdateAccountStatus(long userId, AccountStatus status) throws WallaException;
+	public boolean ValidateEmailConfirm(long userId, String requestValidationString, CustomResponse customResponse);
+	public void AddEmail(long userId, String email, boolean principle, boolean secondary) throws WallaException;
+	public void UpdateEmail(long userId, String email, EmailAction action, String validationString) throws WallaException;
+	public boolean ShouldAccountBeLive(long userId);
 	
-	public boolean ProfileNameIsUnique(String profileName) throws WallaException;
+	public boolean EmailIsUnique(long userId, String email) throws WallaException;
 	public UserApp GetUserApp(long userId, long userAppId) throws WallaException;
 	public long FindExistingUserApp(long userId, int appId, int platformId, String machineName) throws WallaException;
 	public void CreateUserApp(long userId, UserApp userApp) throws WallaException;

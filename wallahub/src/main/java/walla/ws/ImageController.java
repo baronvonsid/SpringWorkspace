@@ -12,6 +12,7 @@ import org.w3c.dom.*;
 import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.SQLException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -47,6 +48,8 @@ import org.springframework.beans.factory.annotation.Required;
 
 import org.springframework.beans.factory.annotation.Value;
 
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 
 
@@ -306,7 +309,12 @@ public class ImageController {
 			long newImageId = imageService.GetImageId(customSession.getUserId());
 			if (newImageId > 0)
 			{
-				SaveFileToTemp(customSession.getUserId(), newImageId, request.getInputStream());
+				if (!SaveFileToQue(customSession.getUserId(), newImageId, request.getInputStream()))
+				{
+					responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
+					meLogger.warn("UploadImage request failed,  no image could be saved.");
+					return null;
+				}
 			}
 			else
 			{
@@ -457,6 +465,8 @@ public class ImageController {
 	        		
 	        		if (file != null)
 	        			UserTools.PopulateServletStream(file, response.getOutputStream());
+	        		
+	        		UserTools.DeleteFile(file.getPath().toString(), meLogger);
 	        	}
         	}
 		}
@@ -725,15 +735,18 @@ public class ImageController {
 	
 	//***************************************
 	//***************************************
-	private boolean SaveFileToTemp(long userId, long imageId, InputStream inputStream)
+	
+	
+	private boolean SaveFileToQue(long userId, long imageId, InputStream inputStream)
 	{
+		long startMS = System.currentTimeMillis();
+		FileOutputStream outputStream = null;
         try {
             if (inputStream != null) 
             {
-        		Path uploadedFilePath = Paths.get(appWorkingFolder, "Que", String.valueOf(imageId) + "." + Long.toString(userId));
-            	
+        		Path uploadedFilePath = Paths.get(appWorkingFolder, "Que", String.valueOf(imageId) + "-" + Long.toString(userId) + ".zip");
             	File file = uploadedFilePath.toFile();
-                FileOutputStream outputStream = new FileOutputStream(file);
+                outputStream = new FileOutputStream(file);
  
                 byte[] buffer = new byte[1024];
                 int bytesRead;
@@ -743,7 +756,51 @@ public class ImageController {
                 }
  
                 outputStream.flush();
-                outputStream.close();
+                return true;
+            }
+            else
+            {
+            	return false;
+            }
+ 
+        } catch (FileNotFoundException ex) {
+			meLogger.error(ex);
+			return false;
+        } catch (IOException ex) {
+        	meLogger.error(ex);
+        	return false;
+        }
+		finally { 
+			if (outputStream != null) try { outputStream.close(); } catch (Exception logOrIgnore) {}
+			if (inputStream != null) try { inputStream.close(); } catch (Exception logOrIgnore) {}
+			UserTools.LogMethod("SaveFileToTemp", meLogger, startMS, "" + imageId); 
+		}
+	}
+
+	private boolean SaveFileToTemptodelete(long userId, long imageId, InputStream inputStream)
+	{
+		long startMS = System.currentTimeMillis();
+		ZipInputStream zipIs = null;
+		FileOutputStream outputStream = null;
+        try {
+        	
+            if (inputStream != null)
+            {
+            	zipIs = new ZipInputStream(new BufferedInputStream(inputStream));
+            	ZipEntry zEntry = zipIs.getNextEntry();
+
+        		Path uploadedFilePath = Paths.get(appWorkingFolder, "Que", String.valueOf(imageId) + "." + Long.toString(userId));
+            	File file = uploadedFilePath.toFile();
+                outputStream = new FileOutputStream(file);
+ 
+                byte[] buffer = new byte[1024];
+                int bytesRead;
+ 
+                while ((bytesRead = zipIs.read(buffer)) > 0) {
+                    outputStream.write(buffer, 0, bytesRead);
+                }
+
+                outputStream.flush();
                 return true;
             }
             return false;
@@ -755,9 +812,12 @@ public class ImageController {
         	meLogger.error(ex);
         	return false;
         }
+		finally { 
+			if (outputStream != null) try { outputStream.close(); } catch (Exception logOrIgnore) {}
+			if (zipIs != null) try { zipIs.close(); } catch (Exception logOrIgnore) {}
+			UserTools.LogMethod("SaveFileToTemp", meLogger, startMS, "" + imageId); 
+		}
 	}
-
-
 
 }
 

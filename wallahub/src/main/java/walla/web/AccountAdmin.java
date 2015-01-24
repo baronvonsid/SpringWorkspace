@@ -167,7 +167,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			{
 				Account account = new Account();
 				account.setProfileName(newAccount.getProfileName());
-				account.setEmail(newAccount.getEmail());
+				//account.setEmail(newAccount.getEmail());
 				account.setDesc(newAccount.getDescription());
 				account.setPassword(newAccount.getPassword());
 				account.setAccountType(newAccount.getAccountType());
@@ -360,11 +360,11 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 					+ "&message=" + UserTools.EncodeString(message, request);
 			}
 			
-			Account account = accountService.GetAccount(customSession.getUserId(), customResponse);
+			Account account = accountService.GetAccountMeta(customSession.getUserId(), customResponse);
 			
 			if (customResponse.getResponseCode() == HttpStatus.OK.value())
 			{
-				accountSummary.setEmail(account.getEmail());
+				//accountSummary.setEmail(account.getEmail());
 				accountSummary.setDescription(account.getDesc());
 				accountSummary.setAccountTypeName(account.getAccountTypeName());
 				accountSummary.setProfileName(account.getProfileName());
@@ -437,8 +437,8 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 						
 						int updateStatus = accountService.UpdateAccount(account);
 						
-						account = accountService.GetAccount(customSession.getUserId(), customResponse);
-						accountSummary.setEmail(account.getEmail());
+						account = accountService.GetAccountMeta(customSession.getUserId(), customResponse);
+						//accountSummary.setEmail(account.getEmail());
 						accountSummary.setDescription(account.getDesc());
 						accountSummary.setAccountTypeName(account.getAccountTypeName());
 						accountSummary.setProfileName(account.getProfileName());

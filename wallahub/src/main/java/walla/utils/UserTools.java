@@ -1,8 +1,11 @@
 package walla.utils;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -10,10 +13,15 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Random;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 import walla.datatypes.*;
 import walla.datatypes.auto.Account;
@@ -32,22 +40,33 @@ import org.springframework.web.util.WebUtils;
 
 public final class UserTools {
 
-	public static void Copyfile(String sourceFile, String destinationFile) throws IOException
+	public static void Copyfile(String sourceFile, String destinationFile, Logger meLogger) throws IOException
 	{
-		  File f1 = new File(sourceFile);
-		  File f2 = new File(destinationFile);
-		  
-		  InputStream in = new FileInputStream(f1);
-		  OutputStream out = new FileOutputStream(f2);
+		long startMS = System.currentTimeMillis();
+		InputStream in = null;
+		OutputStream out = null;
 		
-		  byte[] buf = new byte[1024];
-		  int len;
-		  while ((len = in.read(buf)) > 0)
-		  {
-			  out.write(buf, 0, len);
-		  }
-		  in.close();
-		  out.close();
+		try
+		{
+			  File f1 = new File(sourceFile);
+			  File f2 = new File(destinationFile);
+			  
+			  in = new FileInputStream(f1);
+			  out = new FileOutputStream(f2);
+			
+			  byte[] buf = new byte[1024];
+			  int len;
+			  while ((len = in.read(buf)) > 0)
+			  {
+				  out.write(buf, 0, len);
+			  }
+			  out.flush();
+		}
+		finally { 
+			if (in != null) try { in.close(); } catch (Exception logOrIgnore) {}
+			if (out != null) try { out.close(); } catch (Exception logOrIgnore) {}
+			UserTools.LogMethod("Copyfile", meLogger, startMS, "" + sourceFile); 
+		}
 	}
 	
 	public static File FileExistsNoExt(String folderPath, final String fileName) 
@@ -90,7 +109,6 @@ public final class UserTools {
 		    }
 		  }
 	
-	
 	public static void PopulateServletStream(File fileIn, ServletOutputStream outStream) throws IOException
 	{
 		FileInputStream inStream = new FileInputStream(fileIn);                	
@@ -109,19 +127,122 @@ public final class UserTools {
 	
 	public static void MoveFile(String sourceFile, String destinationFile, Logger meLogger)
 	{
+		long startMS = System.currentTimeMillis();
 		try
 		{
 			  File source = new File(sourceFile);
 			  source.renameTo(new File(destinationFile));
 		}
-		catch (Exception ex)
-		{
-			//Capture error and suppress subsequent error bubbling.
-			meLogger.error("File failed to be moved.  Source:" + sourceFile + "  Destination:" + destinationFile + " Error received:" + ex.getMessage());
-			throw ex;
+		finally { 
+			UserTools.LogMethod("MoveFile", meLogger, startMS, "" + sourceFile); 
 		}
 	}
+	
+	public static void DeleteFile(String filePath, Logger meLogger)
+	{
+		long startMS = System.currentTimeMillis();
+		try
+		{
+			File deleteFile = new File(filePath);
+			deleteFile.delete();
+		}
+		finally {UserTools.LogMethod("DeleteFile", meLogger, startMS, filePath);}
+	}
 
+	public static void CompressToZip(String sourceFile, String destinationFile, Logger meLogger) throws WallaException, IOException
+	{
+        FileInputStream fileInputStream = null;
+        ZipOutputStream zipOutputStream = null;
+        FileOutputStream fileOutputStream = null;
+        ZipEntry zipEntry = null;
+        long startMS = System.currentTimeMillis();
+        
+        try {
+
+        	fileOutputStream = new FileOutputStream(destinationFile);
+        	zipOutputStream = new ZipOutputStream(new BufferedOutputStream(fileOutputStream));
+
+            File input = new File(sourceFile);
+            fileInputStream = new FileInputStream(input);
+            
+            zipEntry = new ZipEntry(input.getName());
+            zipOutputStream.putNextEntry(zipEntry);
+
+        	byte[] buffer = new byte[1024];
+        	fileOutputStream = new FileOutputStream(destinationFile);
+
+            int size = 0;
+            while((size = fileInputStream.read(buffer)) != -1){
+            	zipOutputStream.write(buffer, 0 , size);
+            }
+
+            zipOutputStream.flush();
+
+        } catch (FileNotFoundException ex) {
+        	throw ex;
+        } catch (IOException ex) {
+        	throw ex;
+        }
+		finally { 
+			if (fileInputStream != null) try { fileInputStream.close(); } catch (Exception logOrIgnore) {}
+			if (zipOutputStream != null) try { zipOutputStream.close(); } catch (Exception logOrIgnore) {}
+			if (fileOutputStream != null) try { fileOutputStream.close(); } catch (Exception logOrIgnore) {}
+			UserTools.LogMethod("CompressToZip", meLogger, startMS, "" + sourceFile); 
+		}
+	}
+	
+	public static void DecompressFromZip(String sourceFile, String destinationFile, Logger meLogger) throws WallaException, IOException
+	{
+        FileInputStream fileInputStream = null;
+        ZipInputStream zipInputStream = null;
+        ZipEntry zipEntry = null;
+        FileOutputStream fileOutputStream = null;
+        long startMS = System.currentTimeMillis();
+        
+        try {
+
+        	fileInputStream = new FileInputStream(sourceFile);
+        	zipInputStream = new ZipInputStream(new BufferedInputStream(fileInputStream));
+
+        	zipEntry = zipInputStream.getNextEntry();
+        	if (zipEntry == null)
+        	{
+        		String error = "No zip file was found in the zip archive: " + sourceFile;
+				meLogger.error(error);
+				throw new WallaException("UserTools", "DecompressFromZip", error, HttpStatus.BAD_REQUEST.value()); 
+        	}
+            
+        	byte[] buffer = new byte[1024];
+
+        	fileOutputStream = new FileOutputStream(destinationFile);
+
+            int size = 0;
+            while((size = zipInputStream.read(buffer)) != -1){
+            	fileOutputStream.write(buffer, 0 , size);
+            }
+
+            fileOutputStream.flush();
+
+        	zipEntry = zipInputStream.getNextEntry();
+        	if (zipEntry != null)
+        	{
+        		String error = "The zip archive contained more than one file: " + sourceFile;
+				meLogger.error(error);
+				throw new WallaException("UserTools", "DecompressFromZip", error, HttpStatus.BAD_REQUEST.value()); 
+        	}
+
+        } catch (FileNotFoundException ex) {
+        	throw ex;
+        } catch (IOException ex) {
+        	throw ex;
+        }
+		finally { 
+			if (fileInputStream != null) try { fileInputStream.close(); } catch (Exception logOrIgnore) {}
+			if (zipInputStream != null) try { zipInputStream.close(); } catch (Exception logOrIgnore) {}
+			if (fileOutputStream != null) try { fileOutputStream.close(); } catch (Exception logOrIgnore) {}
+			UserTools.LogMethod("DecompressFromZip", meLogger, startMS, "" + sourceFile); 
+		}
+	}
 	
 	public static double DoRound(double unrounded, int precision)
 	{
@@ -416,7 +537,6 @@ public final class UserTools {
 		
 		return customSession;
 	}
-	
 	
 	public static String GetLatestWallaId(CustomSessionState customSession)
 	{

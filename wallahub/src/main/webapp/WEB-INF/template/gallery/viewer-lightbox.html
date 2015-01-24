@@ -74,6 +74,7 @@
 			href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg"
 			th:attr="title=(${gallery.showImageName} ? ${i.name} : ''),data-description=(${gallery.showImageDesc} ? ${i.desc} : ''),data-file-meta=(${gallery.showImageMeta} ? ${i.fileSummary} : ''),data-shot-meta=(${gallery.showImageMeta} ? ${i.shotSummary} : '')"
 			title="Image title"
+			style="margin-right: -4px;"
 			data-description="Image description"
 			data-shot-meta="Shot meta"
     		data-file-meta="File meta"><img th:attr="src=@{'/v1/ws/'+${customSessionState.profileName}+'/' + (${isPreview} ? 'imagepreview' : 'image') + '/' +${i.id}+'/'+${presentation.thumbHeight}+'/'+${presentation.thumbWidth}+'/'},title=${gallery.showImageName} ? ${i.name} : ''"  src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg"></img></a>

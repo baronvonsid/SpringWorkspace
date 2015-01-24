@@ -390,7 +390,7 @@ public class ImageService {
 		long startMS = System.currentTimeMillis();
 		try
 		{
-			String path = GetFilePathIfExists(originalFolder, previewOriginalFolder, userId, "", imageId, false);
+			String path = GetOriginalUncompressed(userId, imageId, false);
 			if (path.isEmpty())
 			{
 				customResponse.setMessage("Original image file could not be retreived.  ImageId:" + imageId);
@@ -406,6 +406,23 @@ public class ImageService {
 			return null;
 		}
 		finally {UserTools.LogMethod("GetOriginalImageFile", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(imageId));}
+	}
+	
+	private String GetOriginalUncompressed(long userId, long imageId, boolean isPreview) throws WallaException, IOException
+	{
+		long startMS = System.currentTimeMillis();
+		try
+		{
+			String path = GetFilePathIfExists(originalFolder, previewOriginalFolder, userId, "", imageId, isPreview);
+			if (path.isEmpty())
+				return "";
+			
+			Path originalUncompressedPath = Paths.get(appWorkingFolder,"ZipTemp", userId + "" + imageId);
+			UserTools.DecompressFromZip(path, originalUncompressedPath.toString(), meLogger);
+
+			return originalUncompressedPath.toString();
+		}
+		finally {UserTools.LogMethod("GetOriginalUncompressed", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(imageId));}
 	}
 	
 	public byte[] GetScaledImageFile(long userId, long imageId, int width, int height, boolean isPreview, CustomResponse customResponse)
@@ -443,6 +460,9 @@ public class ImageService {
 						case 75:
 							folder = "75x75";
 							break;
+						case 150:
+							folder = "150x150";
+							break;
 						case 300:
 							folder = "300x300";
 							break;
@@ -464,6 +484,10 @@ public class ImageService {
 						{
 							folder = "75x75";	
 						}
+						else if (width<150)
+						{
+							folder = "150x150";	
+						}
 						else if (width<300)
 						{
 							folder = "300x300";	
@@ -483,7 +507,8 @@ public class ImageService {
 						if (masterImageFilePath.isEmpty())
 						{
 							//Master file not present, so create a new one.
-							String originalFilePath = GetFilePathIfExists(originalFolder, previewOriginalFolder, userId, "", imageId, isPreview);
+							//String originalFilePath = GetFilePathIfExists(originalFolder, previewOriginalFolder, userId, "", imageId, isPreview);
+							String originalFilePath = GetOriginalUncompressed(userId, imageId, isPreview);
 							if (originalFilePath.isEmpty())
 							{
 								meLogger.warn("GetImageFile didn't find a valid original Image object to process");
@@ -492,8 +517,9 @@ public class ImageService {
 							}
 							
 							destFile = GetFilePath(mainCopyFolder, previewMainCopyFolder, userId, "", imageId, "jpg", isPreview);
-							ResizeAndSaveFile(userId, imageId, originalFilePath, destFile, 1920, 1080, true);
+							ResizeAndSaveFile(userId, imageId, originalFilePath, destFile, 1920, 1920, true);
 							
+							UserTools.DeleteFile(originalFilePath, meLogger);
 							masterImageFilePath = destFile;
 						}
 
@@ -543,7 +569,8 @@ public class ImageService {
 					if (imageFilePath.isEmpty())
 					{
 						//Master file not present, so create a new one.
-						String originalFilePath = GetFilePathIfExists(originalFolder, previewOriginalFolder, userId, "", imageId, isPreview);
+						//String originalFilePath = GetFilePathIfExists(originalFolder, previewOriginalFolder, userId, "", imageId, isPreview);
+						String originalFilePath = GetOriginalUncompressed(userId, imageId, isPreview);
 						if (originalFilePath.isEmpty())
 						{
 							String error = "GetImageFile didn't find a valid original Image object to process. UserId:" + userId + " ImageId:" + imageId;
@@ -551,7 +578,8 @@ public class ImageService {
 						}
 						
 						destFile = GetFilePath(mainCopyFolder, previewMainCopyFolder, userId, "", imageId, "jpg", isPreview);
-						ResizeAndSaveFile(userId, imageId, originalFilePath, destFile, 1920, 1080, true);
+						ResizeAndSaveFile(userId, imageId, originalFilePath, destFile, 1920, 1920, true);
+						UserTools.DeleteFile(originalFilePath, meLogger);
 						
 						imageFilePath = destFile;
 					}
@@ -610,10 +638,20 @@ public class ImageService {
 			if (imageFilePath.isEmpty())
 			{
 				//Master file not present, so create a new one.
-				String sourceFolder = GetFilePathIfExists(originalFolder, previewOriginalFolder, userId, "", imageId, isPreview);
+				//String sourceFolder = GetFilePathIfExists(originalFolder, previewOriginalFolder, userId, "", imageId, isPreview);
+				String originalFilePath = GetOriginalUncompressed(userId, imageId, isPreview);
+				if (originalFilePath.isEmpty())
+				{
+					meLogger.warn("GetImageFile didn't find a valid original Image object to process");
+					customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+					return null;
+				}
+				
 				String destFile = GetFilePath(mainCopyFolder, previewMainCopyFolder, userId, "", imageId, "jpg", isPreview);
 				
-				ResizeAndSaveFile(userId, imageId, sourceFolder, destFile, 1920, 1080, true);
+				ResizeAndSaveFile(userId, imageId, originalFilePath, destFile, 1920, 1920, true);
+				
+				UserTools.DeleteFile(originalFilePath, meLogger);
 				imageFilePath = GetFilePathIfExists(mainCopyFolder, previewMainCopyFolder, userId, "", imageId, isPreview);
 			}
 			
@@ -667,11 +705,11 @@ public class ImageService {
 		try
 		{
 			ProcessStarter.setGlobalSearchPath(graphicsMagickPath);
-			
+
 			//Update image to being processed.
 			imageDataHelper.UpdateImageStatus(userId, imageId, 3, false, "");
 			
-			File uploadedFile = Paths.get(appWorkingFolder, "Que", String.valueOf(imageId) + "." + Long.toString(userId)).toFile();
+			File uploadedFile = Paths.get(appWorkingFolder, "Que", String.valueOf(imageId) + "-" + Long.toString(userId) + ".zip").toFile();
 			if (!uploadedFile.exists())
 			{
 				String error = "Uploaded file could not be found.  ImageId:" + imageId + " UserId:" + userId;
@@ -694,15 +732,22 @@ public class ImageService {
 			/**************************************************************************/
 			/****************** Enrich with Exif & Save image copies ******************/
 			/**************************************************************************/
+			//imageMeta.getFormat()
 			
-			String originalFile = GetFilePath(originalFolder, previewOriginalFolder, userId, "", imageId, imageMeta.getFormat(), false);
-
+			
+			//UserTools.Copyfile(uploadedFile.getPath().toString(), originalZipFile, meLogger);
+			
+			String originalUncompressedPath = GetFilePath(thumbFolder, previewThumbFolder, userId, "ziptemp", imageId, imageMeta.getFormat(), false);
+			UserTools.DecompressFromZip(uploadedFile.getPath().toString(), originalUncompressedPath, meLogger);
+			
+			
 			//Archive original image
-    		ImageUtilityHelper.SaveOriginal(userId, uploadedFile.getPath(), originalFile, meLogger);
+			String originalZipFile = GetFilePath(originalFolder, previewOriginalFolder, userId, "", imageId, "zip", false);
+    		ImageUtilityHelper.SaveOriginal(userId, originalUncompressedPath, originalZipFile, meLogger);
     		
     		//Make one initial copy, to drive subsequent resizing and also to orient correctly.
 			String mainImagePath = GetFilePath(mainCopyFolder, previewMainCopyFolder, userId, "", imageId, "jpg", false); 
-			ResizeAndSaveFile(userId, imageId, originalFile, mainImagePath, 1920, 1080, true);
+			ResizeAndSaveFile(userId, imageId, originalUncompressedPath, mainImagePath, 1920, 1920, true);
 
 			//String mainImagePath = GetFilePathIfExists(userId, "MainCopy", imageId, false);
 			//if (mainImagePath.isEmpty())
@@ -713,7 +758,7 @@ public class ImageService {
     				
 			//Load image meta into memory and enrich properties.
 			//TODO switch to wired class.
-			String response = ImageUtilityHelper.EnrichImageMetaFromFileData(originalFile, imageMeta, meLogger, imageId);
+			String response = ImageUtilityHelper.EnrichImageMetaFromFileData(originalUncompressedPath, imageMeta, meLogger, imageId);
 			if (!response.equals("OK"))
 				throw new WallaException("ImageService", "SetupNewImage", response, 0); 
             
@@ -730,6 +775,9 @@ public class ImageService {
 			
 			String destFile = GetFilePath(thumbFolder, previewThumbFolder, userId, "75x75", imageId, "jpg", false);
 			ResizeAndSaveFile(userId, imageId, mainImagePath, destFile, 75, 75, false);
+
+			destFile = GetFilePath(thumbFolder, previewThumbFolder, userId, "150x150", imageId, "jpg", false);
+			ResizeAndSaveFile(userId, imageId, mainImagePath, destFile, 150, 150, false);
 			
 			destFile = GetFilePath(thumbFolder, previewThumbFolder, userId, "300x300", imageId, "jpg", false);
 			ResizeAndSaveFile(userId, imageId, mainImagePath, destFile, 300, 300, false);
@@ -738,7 +786,9 @@ public class ImageService {
 			ResizeAndSaveFile(userId, imageId, mainImagePath, destFile, 800, 800, false);
 
             //TODO Delete original uploaded image.
-			ImageUtilityHelper.DeleteImage(uploadedFile.getPath(), meLogger);
+			UserTools.DeleteFile(uploadedFile.getPath(), meLogger);
+			UserTools.DeleteFile(originalUncompressedPath.toString(), meLogger);
+			
 			
 			imageDataHelper.UpdateImageStatus(userId, imageId, 4, false, "");
 			
@@ -906,15 +956,17 @@ public class ImageService {
 		{
 			if (isMain)
 			{
-				ImageUtilityHelper.SaveMainImage(userId, imageId, sourceImagePath, destinationImagePath, width, height, meLogger);
+				String tempFile = GetFilePath(thumbFolder, previewThumbFolder, userId, "ziptemp", imageId, "jpg", false);
+				
+				ImageUtilityHelper.SaveMainImage(userId, imageId, sourceImagePath, destinationImagePath, tempFile, width, height, meLogger);
 				//Check if switch is needed.
 	
-				if (ImageUtilityHelper.CheckForPortrait(destinationImagePath, meLogger))
-				{
+				//if (ImageUtilityHelper.CheckForPortrait(destinationImagePath, meLogger))
+				//{
 					//Resize with portrait dimensions.
-					ImageUtilityHelper.DeleteImage(destinationImagePath, meLogger);
-					ImageUtilityHelper.SaveMainImage(userId, imageId, sourceImagePath, destinationImagePath, height, width, meLogger);
-				}
+				//	UserTools.DeleteFile(destinationImagePath, meLogger);
+				//	ImageUtilityHelper.SaveMainImage(userId, imageId, sourceImagePath, destinationImagePath, height, width, meLogger);
+				//}
 			}
 			else
 			{
@@ -926,8 +978,8 @@ public class ImageService {
 
 	private void MoveImageToErrorFolder(long userId, long imageId)
 	{
-		Path sourceFile = Paths.get(appWorkingFolder, "Que", String.valueOf(imageId) + "." + Long.toString(userId));
-		Path destinationFile = Paths.get(appWorkingFolder, "Error", String.valueOf(imageId) + "." + Long.toString(userId));
+		Path sourceFile = Paths.get(appWorkingFolder, "Que", String.valueOf(imageId) + "-" + Long.toString(userId) + ".zip");
+		Path destinationFile = Paths.get(appWorkingFolder, "Error", String.valueOf(imageId) + "-" + Long.toString(userId) + ".zip");
 		
 		File source = sourceFile.toFile();
 		if (source.exists())

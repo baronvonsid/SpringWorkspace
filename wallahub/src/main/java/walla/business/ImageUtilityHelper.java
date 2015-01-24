@@ -10,18 +10,25 @@ import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.Iterator;
 import java.awt.image.BufferedImage;
 import java.io.*;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.FileImageInputStream;
+import javax.imageio.stream.ImageInputStream;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;
 
 import org.apache.log4j.Logger;
+import org.im4java.core.ConvertCmd;
 import org.im4java.core.GraphicsMagickCmd;
 import org.im4java.core.IM4JavaException;
 import org.im4java.core.IMOperation;
+import org.im4java.core.Info;
+import org.im4java.core.InfoException;
 import org.springframework.http.HttpStatus;
 
 import walla.datatypes.auto.*;
@@ -47,13 +54,16 @@ public final class ImageUtilityHelper
 				return response;
 			
 			Metadata fileMetaData = null;
-			try 
+			try
 			{
 				fileMetaData = ImageMetadataReader.readMetadata(imageFile);
-			} 
+			}
 			catch (ImageProcessingException | IOException e) 
 			{
-				response = LoadFileIntoMemoryReadAttributes(imageFile, imageMeta, meLogger, imageId);
+				imageMeta.setTakenDate(imageMeta.getTakenDateFile());
+				return "OK";
+				/*
+				response = LoadFileIntoMemoryReadAttributes(imageFilePath, imageMeta, meLogger, imageId);
 				if (!response.equals("OK"))
 				{
 					return "Meta data not supported, image could not be loaded." + response;
@@ -63,6 +73,7 @@ public final class ImageUtilityHelper
 					imageMeta.setTakenDate(imageMeta.getTakenDateFile());
 					return "OK";
 				}
+				*/
 			}
 			
 			if (imageMeta.getFormat().equals("JPG"))
@@ -164,9 +175,18 @@ public final class ImageUtilityHelper
 			•Need to investigate CRW/NEF/ORF/RW2 and other RAW types.
 			 */
 	        
-			String extension = imageMeta.getOriginalFileName().substring(imageMeta.getOriginalFileName().lastIndexOf(".")+1);
+	        //Ensure integers are set OK when not supplied.
+			imageMeta.setISO(0);
+			imageMeta.setOrientation(0);
+	        
+			CustomInfo imageInfo = new CustomInfo(path.toString());
+			//img = ImageIO.read(currentFile);
+			imageMeta.setHeight(imageInfo.getImageHeight());
+			imageMeta.setWidth(imageInfo.getImageWidth());
 			
-			switch (extension.toUpperCase())
+			//String extension = imageMeta.getOriginalFileName().substring(imageMeta.getOriginalFileName().lastIndexOf(".")+1);
+			
+			switch (imageInfo.getImageFormat().toUpperCase())
 			{
 				case "JPG":
 				case "JPEG":
@@ -183,10 +203,10 @@ public final class ImageUtilityHelper
 				case "CR2":
 				case "ARW":
 				case "NEF":
-					imageMeta.setFormat(extension.toUpperCase());
+					imageMeta.setFormat(imageInfo.getImageFormat().toUpperCase());
 					break;
 				default:
-					String message = "ImageId:" + imageMeta.getId() + " Format not supported:" + extension.toUpperCase();
+					String message = "ImageId:" + imageMeta.getId() + " Format not supported:" + imageInfo.getImageFormat().toUpperCase();
 					meLogger.warn(message);
 					return message;
 			}
@@ -199,17 +219,18 @@ public final class ImageUtilityHelper
 		finally {UserTools.LogMethod("EnrichMetaFromFile", meLogger, startMS, String.valueOf(imageId));}
 	}
 	
-	private static String LoadFileIntoMemoryReadAttributes(File currentFile, ImageMeta imageMeta, Logger meLogger, long imageId)
+	/*
+	private static String LoadFileIntoMemoryReadAttributes(String currentFilePath, ImageMeta imageMeta, Logger meLogger, long imageId)
 	{
 		long startMS = System.currentTimeMillis();
-		BufferedImage img = null;
+		//BufferedImage img = null;
 		
 		try
 		{
-			img = ImageIO.read(currentFile);
-			imageMeta.setHeight(img.getHeight());
-			imageMeta.setWidth(img.getWidth());
-			
+			CustomInfo imageInfo = new CustomInfo(currentFilePath);
+			//img = ImageIO.read(currentFile);
+			imageMeta.setHeight(imageInfo.getImageHeight());
+			imageMeta.setWidth(imageInfo.getImageWidth());
 			return "OK";
 		}
 		catch (Exception ex) {
@@ -218,6 +239,7 @@ public final class ImageUtilityHelper
 		}
 		finally {UserTools.LogMethod("LoadFileIntoMemoryReadAttributes", meLogger, startMS, String.valueOf(imageId));}
 	}
+	*/
 	
 	private static String EnrichMetaFromJPEG(JpegDirectory jpegDirectory, ImageMeta imageMeta, Logger meLogger, long imageId)
 	{
@@ -390,27 +412,48 @@ public final class ImageUtilityHelper
 	/********************************************************************************/
 	/**************************  Image file manipulations  **************************/
 	/********************************************************************************/
-	/********************************************************************************/
+	/**
+	 * @throws InfoException ******************************************************************************/
 	
-	public static void DeleteImage(String filePath, Logger meLogger)
+	public static boolean CheckForPortrait(String mainImagePath, Logger meLogger) throws IOException, InfoException
 	{
 		long startMS = System.currentTimeMillis();
 		try
 		{
-			File deleteFile = new File(filePath);
-			deleteFile.delete();
+			CustomInfo imageInfo = new CustomInfo(mainImagePath);
+			if (imageInfo.getImageHeight() > imageInfo.getImageWidth())
+				return true;
+			else
+				return false;
 		}
-		finally {UserTools.LogMethod("DeleteImage", meLogger, startMS, filePath);}
+		finally {UserTools.LogMethod("CheckForPortrait", meLogger, startMS, mainImagePath);}
 	}
 	
-	public static boolean CheckForPortrait(String mainImagePath, Logger meLogger) throws IOException
+	/*
+	public static boolean CheckForPortrait-old(String mainImagePath, Logger meLogger) throws IOException
 	{
 		long startMS = System.currentTimeMillis();
 		try
 		{
 			boolean portrait = false;
 			
-			BufferedImage img = ImageIO.read(new File(mainImagePath));
+			BufferedImage img = null; //ImageIO.read(new File(mainImagePath));
+			
+			
+			//Image img = null;
+			ImageInputStream iis = new FileImageInputStream(new File(mainImagePath));
+
+			for (Iterator<ImageReader> i = ImageIO.getImageReaders(iis); img == null && i.hasNext(); ) 
+			{
+				ImageReader r = i.next();
+				try 
+				{
+				    r.setInput(iis);
+				    img = r.read(0);
+				} catch (IOException e) {}
+			}
+			iis.close();
+			
 			int height = img.getHeight();
 			int width = img.getWidth();
 			
@@ -423,71 +466,101 @@ public final class ImageUtilityHelper
 		}
 		finally {UserTools.LogMethod("CheckForPortrait", meLogger, startMS, mainImagePath);}
 	}
+	*/
 	
-	public static boolean SwitchHeightWidth(String mainImagePath, ImageMeta imageMeta, Logger meLogger) throws IOException
+	
+	public static void SwitchHeightWidth(String mainImagePath, ImageMeta imageMeta, Logger meLogger) throws IOException, InfoException
 	{
 		long startMS = System.currentTimeMillis();
 		try
 		{
-			int imageMetaWidth = imageMeta.getWidth().intValue();
-			int imageMetaHeight = imageMeta.getHeight().intValue();
 			
-			BufferedImage img = ImageIO.read(new File(mainImagePath));
-			int updatedHeight = img.getHeight();
-			int updatedWidth = img.getWidth();
+			//int imageMetaWidth = imageMeta.getWidth().intValue();
+			//int imageMetaHeight = imageMeta.getHeight().intValue();
+			
+			CustomInfo imageInfo = new CustomInfo(mainImagePath);
+			//if (imageInfo.getImageHeight() > imageInfo.getImageWidth())
+				
+			
+			//BufferedImage img = ImageIO.read(new File(mainImagePath));
+			//int updatedHeight = img.getHeight();
+			//int updatedWidth = img.getWidth();
 	
 			//Calculate aspect ratio or target image.
-			double updatedAspectRatio = (double)updatedWidth / (double)updatedHeight;
+			double updatedAspectRatio = (double)imageInfo.getImageWidth() / (double)imageInfo.getImageHeight();
 			updatedAspectRatio = UserTools.DoRound(updatedAspectRatio,2);
 			
 			//Calculate aspect ratio of current image.
-			double originalAspectRatio = (double)imageMetaWidth / (double)imageMetaHeight;
+			double originalAspectRatio = (double)imageMeta.getWidth() / (double)imageMeta.getHeight();
 			originalAspectRatio = UserTools.DoRound(originalAspectRatio,2);
 			
 			if (updatedAspectRatio != originalAspectRatio)
 			{
 				//Switch them.
-				imageMeta.setHeight(imageMetaWidth);
-				imageMeta.setWidth(imageMetaHeight);
-				return true;
+				imageMeta.setHeight(imageMeta.getWidth());
+				imageMeta.setWidth(imageMeta.getHeight());
 			}
-			else
-			{
-				return false;
-			}
+			
+			
 		}
 		finally {UserTools.LogMethod("SwitchHeightWidth", meLogger, startMS, mainImagePath);}
 	}
 	
-	public static void SaveMainImage(long userId, long imageId, String sourceFilePath, String destinationFilePath, int targetWidth, int targetHeight, Logger meLogger) throws IOException, InterruptedException, IM4JavaException
+	public static void SaveMainImage(long userId, long imageId, String sourceFilePath, String destinationFilePath, String tempFilePath, int targetWidth, int targetHeight, Logger meLogger) throws IOException, InterruptedException, IM4JavaException
 	{
 		//Using the original image, save a JPEG version, correctly orientated with no EXIF
 		long startMS = System.currentTimeMillis();
 		try
 		{
-			//Build up GraphicMagick command.
-			GraphicsMagickCmd cmd = new GraphicsMagickCmd("convert");
-			IMOperation op = new IMOperation();
-			op.addImage(sourceFilePath);
-			op.autoOrient();
-			op.strip();
-			op.resize(targetWidth,targetHeight);
-			op.addImage(destinationFilePath);
-			cmd.run(op);
+
 			
-			//TODO add logic to ensure portrait orientated images get the max resolution.
+			CustomInfo imageInfo = new CustomInfo(sourceFilePath);
+			String format = imageInfo.getImageFormat();
+			if (format.compareToIgnoreCase("BMP") == 0)
+			{
+				//Special case, as resizing seems to mash it up.  So resize the jpeg.
+				GraphicsMagickCmd cmd = new GraphicsMagickCmd("convert");
+				IMOperation op = new IMOperation();
+				op.addImage(sourceFilePath);
+				op.autoOrient();
+				op.strip();
+				op.quality(90.0);
+				op.addImage(tempFilePath);
+				cmd.run(op);
+				
+				op = new IMOperation();
+				op.addImage(tempFilePath);
+				op.autoOrient();
+				op.strip();
+				op.quality(90.0);
+				op.resize(targetWidth,targetHeight);
+				op.addImage(destinationFilePath);
+				cmd.run(op);				
+			}
+			else
+			{
+				GraphicsMagickCmd cmd = new GraphicsMagickCmd("convert");
+				IMOperation op = new IMOperation();
+				op.addImage(sourceFilePath);
+				op.autoOrient();
+				op.strip();
+				op.quality(90.0);
+				op.resize(targetWidth,targetHeight);
+				op.addImage(destinationFilePath);
+				cmd.run(op);
+			}
 		}
 		finally {UserTools.LogMethod("SaveMainImage", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(imageId));}
 	}
 	
-	public static void SaveOriginal(long userId, String fromFilePath, String originalFileDest, Logger meLogger) throws IOException, InterruptedException, IM4JavaException
+	public static void SaveOriginal(long userId, String fromFilePath, String originalFileDest, Logger meLogger) throws IOException, InterruptedException, IM4JavaException, WallaException
 	{	
 		long startMS = System.currentTimeMillis();
 		try
 		{
 			//Path destinationFile = Paths.get(toFolderPath, imageId + "." + extension);
-	
-			UserTools.Copyfile(fromFilePath, originalFileDest);
+			UserTools.CompressToZip(fromFilePath, originalFileDest, meLogger);
+			//UserTools.Copyfile(fromFilePath, originalFileDest, meLogger);
 			
 			//return destinationFile.toString();
 		}
@@ -504,9 +577,10 @@ public final class ImageUtilityHelper
 		
 		try
 		{
-			img = ImageIO.read(new File(sourceFilePath));
-			int imageMetaHeight = img.getHeight();
-			int imageMetaWidth = img.getWidth();
+			CustomInfo imageInfo = new CustomInfo(sourceFilePath);
+			//img = ImageIO.read(new File(sourceFilePath));
+			int imageMetaHeight = imageInfo.getImageHeight();
+			int imageMetaWidth = imageInfo.getImageWidth();
 			
 			//int imageMetaWidth = imageMeta.getWidth().intValue();
 			//int imageMetaHeight = imageMeta.getHeight().intValue();

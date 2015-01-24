@@ -252,7 +252,7 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 
 			String selectSql = "SELECT I.[ImageId],[CategoryId],[Name],[Description],[OriginalFileName], "
 					+ "[Format],[RecordVersion],"
-					+ "[Width],[Height],[Size],[CameraMaker],[CameraModel],[Aperture],[ShutterSpeed],"
+					+ "[Width],[Height],[Size],[CompressedSize],[CameraMaker],[CameraModel],[Aperture],[ShutterSpeed],"
 					+ "[ISO],[Orientation],[TakenDate],[TakenDateFile],[TakenDateMeta],[UploadDate],"
 					+ "[UdfChar1],[UdfChar2],[UdfChar3], "
 					+ "[UdfText1],[UdfNum1],[UdfNum2],[UdfNum3],[UdfDate1],[UdfDate2],[UdfDate3],[Status] "      
@@ -283,60 +283,65 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 			image.setWidth(rsMeta.getInt(8));
 			image.setHeight(rsMeta.getInt(9));
 			image.setSize(rsMeta.getLong(10));
-			image.setCameraMaker(rsMeta.getString(11));
-			image.setCameraModel(rsMeta.getString(12));
-			image.setAperture(rsMeta.getString(13));
-			image.setShutterSpeed(rsMeta.getString(14));
-			image.setISO(rsMeta.getInt(15));
-			image.setOrientation(rsMeta.getInt(16));
+			image.setCompressedSize(rsMeta.getLong(11));
+			image.setCameraMaker(rsMeta.getString(12));
+			image.setCameraModel(rsMeta.getString(13));
+			image.setAperture(rsMeta.getString(14));
+			image.setShutterSpeed(rsMeta.getString(15));
+			
+			int iso = rsMeta.getInt(16);
+			if (iso > 0)
+				image.setISO(iso);
+			
+			image.setOrientation(rsMeta.getInt(17));
 
-			if (rsMeta.getDate(17) != null)
-			{
-				oldGreg.setTime(rsMeta.getDate(17));
-				image.setTakenDate(DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg));
-			}
 			if (rsMeta.getDate(18) != null)
 			{
 				oldGreg.setTime(rsMeta.getDate(18));
-				image.setTakenDateFile(DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg));
+				image.setTakenDate(DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg));
 			}
 			if (rsMeta.getDate(19) != null)
 			{
 				oldGreg.setTime(rsMeta.getDate(19));
-				image.setTakenDateMeta(DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg));
+				image.setTakenDateFile(DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg));
 			}
 			if (rsMeta.getDate(20) != null)
 			{
 				oldGreg.setTime(rsMeta.getDate(20));
+				image.setTakenDateMeta(DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg));
+			}
+			if (rsMeta.getDate(21) != null)
+			{
+				oldGreg.setTime(rsMeta.getDate(21));
 				image.setUploadDate(DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg));
 			}
 
-			image.setUdfChar1(rsMeta.getString(21));
-			image.setUdfChar2(rsMeta.getString(22));
-			image.setUdfChar3(rsMeta.getString(23));
+			image.setUdfChar1(rsMeta.getString(22));
+			image.setUdfChar2(rsMeta.getString(23));
+			image.setUdfChar3(rsMeta.getString(24));
 			
-			image.setUdfText1(rsMeta.getString(24));
-			image.setUdfNum1(rsMeta.getBigDecimal(25));
-			image.setUdfNum2(rsMeta.getBigDecimal(26));
-			image.setUdfNum3(rsMeta.getBigDecimal(27));
+			image.setUdfText1(rsMeta.getString(25));
+			image.setUdfNum1(rsMeta.getBigDecimal(26));
+			image.setUdfNum2(rsMeta.getBigDecimal(27));
+			image.setUdfNum3(rsMeta.getBigDecimal(28));
 			
-			if (rsMeta.getDate(28) != null)
-			{
-				oldGreg.setTime(rsMeta.getDate(28));
-				image.setUdfDate1(DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg));
-			}
 			if (rsMeta.getDate(29) != null)
 			{
 				oldGreg.setTime(rsMeta.getDate(29));
-				image.setUdfDate2(DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg));
+				image.setUdfDate1(DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg));
 			}
 			if (rsMeta.getDate(30) != null)
 			{
 				oldGreg.setTime(rsMeta.getDate(30));
+				image.setUdfDate2(DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg));
+			}
+			if (rsMeta.getDate(31) != null)
+			{
+				oldGreg.setTime(rsMeta.getDate(31));
 				image.setUdfDate3(DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg));
 			}
 
-			image.setStatus(rsMeta.getInt(31));
+			image.setStatus(rsMeta.getInt(32));
 			
 			psTag = conn.prepareStatement(selectTagSql);
 			psTag.setLong(1, imageId);
@@ -381,7 +386,7 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 				+ "VALUES (?,?,?,?,?,?,?,?,dbo.GetDateNoMS(),?,0,?)";
 		
 		String sqlMeta = "INSERT INTO [ImageMeta] ([ImageId],"
-				+ "[Width],[Height],[Size],[TakenDate],[TakenDateFile],[UploadDate],"
+				+ "[Width],[Height],[Size],[CompressedSize],[TakenDate],[TakenDateFile],[UploadDate],"
 				+ "[UdfChar1],[UdfChar2],[UdfChar3],[UdfText1],"
 				+ "[UdfNum1],[UdfNum2],[UdfNum3],[UdfDate1],[UdfDate2],[UdfDate3]) "
 				+ "VALUES (?,?,?,?,?,?,dbo.GetDateNoMS(),?,?,?,?,?,?,?,?,?,?)";
@@ -423,40 +428,41 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 			psMeta.setLong(2, newImage.getWidth());
 			psMeta.setLong(3, newImage.getHeight());
 			psMeta.setLong(4, newImage.getSize());
+			psMeta.setLong(5, newImage.getCompressedSize());
 
-			if (newImage.isTakenDateSet())
-			{ psMeta.setDate(5,new java.sql.Date(newImage.getTakenDate().toGregorianCalendar().getTime().getTime())); }
-			else
-			{ psMeta.setNull(5, java.sql.Types.DATE); }
-			
-			if (newImage.getTakenDateFile() != null)
-			{ psMeta.setDate(6,new java.sql.Date(newImage.getTakenDateFile().toGregorianCalendar().getTime().getTime())); }
+			if (newImage.isTakenDateSet()  && newImage.getTakenDate().getYear() > 1800)
+			{ psMeta.setDate(6,new java.sql.Date(newImage.getTakenDate().toGregorianCalendar().getTime().getTime())); }
 			else
 			{ psMeta.setNull(6, java.sql.Types.DATE); }
 			
-			psMeta.setString(7, newImage.getUdfChar1());
-			psMeta.setString(8, newImage.getUdfChar2());
-			psMeta.setString(9, newImage.getUdfChar3());
+			if (newImage.getTakenDateFile() != null && newImage.getTakenDateFile().getYear() > 1800)
+			{ psMeta.setDate(7,new java.sql.Date(newImage.getTakenDateFile().toGregorianCalendar().getTime().getTime())); }
+			else
+			{ psMeta.setNull(7, java.sql.Types.DATE); }
 			
-			psMeta.setString(10, newImage.getUdfText1());
-			psMeta.setBigDecimal(11, newImage.getUdfNum1());
-			psMeta.setBigDecimal(12, newImage.getUdfNum2());
-			psMeta.setBigDecimal(13, newImage.getUdfNum3());
+			psMeta.setString(8, newImage.getUdfChar1());
+			psMeta.setString(9, newImage.getUdfChar2());
+			psMeta.setString(10, newImage.getUdfChar3());
+			
+			psMeta.setString(11, newImage.getUdfText1());
+			psMeta.setBigDecimal(12, newImage.getUdfNum1());
+			psMeta.setBigDecimal(13, newImage.getUdfNum2());
+			psMeta.setBigDecimal(14, newImage.getUdfNum3());
 			
 			if (newImage.getUdfDate1() != null)
-			{ psMeta.setDate(14,new java.sql.Date(newImage.getUdfDate1().toGregorianCalendar().getTime().getTime())); }
-			else
-			{ psMeta.setNull(14, java.sql.Types.DATE); }
-			
-			if (newImage.getUdfDate2() != null)
-			{ psMeta.setDate(15,new java.sql.Date(newImage.getUdfDate2().toGregorianCalendar().getTime().getTime())); }
+			{ psMeta.setDate(15,new java.sql.Date(newImage.getUdfDate1().toGregorianCalendar().getTime().getTime())); }
 			else
 			{ psMeta.setNull(15, java.sql.Types.DATE); }
 			
-			if (newImage.getUdfDate3() != null)
-			{ psMeta.setDate(16,new java.sql.Date(newImage.getUdfDate3().toGregorianCalendar().getTime().getTime())); }
+			if (newImage.getUdfDate2() != null)
+			{ psMeta.setDate(16,new java.sql.Date(newImage.getUdfDate2().toGregorianCalendar().getTime().getTime())); }
 			else
 			{ psMeta.setNull(16, java.sql.Types.DATE); }
+			
+			if (newImage.getUdfDate3() != null)
+			{ psMeta.setDate(17,new java.sql.Date(newImage.getUdfDate3().toGregorianCalendar().getTime().getTime())); }
+			else
+			{ psMeta.setNull(17, java.sql.Types.DATE); }
 
 			//Validate new record was successful.
 			if (1 != psMeta.executeUpdate())
@@ -512,7 +518,7 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 		String sqlImage = "UPDATE [Image] SET [Name] = ?,[Description] = ?, [RecordVersion] = [RecordVersion] + 1, [LastUpdated] = dbo.GetDateNoMS() "
 				+ "WHERE [ImageId] = ? AND [UserId] = ? AND [RecordVersion]= ?";
 						
-		String sqlMeta = "UPDATE [ImageMeta] SET [Width] = ?,[Height] = ?,[Size] = ?,"
+		String sqlMeta = "UPDATE [ImageMeta] SET [Width] = ?,[Height] = ?,[Size] = ?,[CompressedSize] = ?,"
 				+ "[CameraMaker] = ?,[CameraModel] = ?,[Aperture] = ?,[ShutterSpeed] = ?,"
 				+ "[ISO] = ?,[Orientation] = ?,[TakenDate] = ?,[TakenDateFile] = ?,[TakenDateMeta] = ?,"
 				+ "[UdfChar1] = ?,[UdfChar2] = ?,[UdfChar3] = ?,[UdfText1] = ?,[UdfNum1] = ?,[UdfNum2] = ?,"
@@ -553,50 +559,54 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 			psMeta.setLong(1, existingImage.getWidth());
 			psMeta.setLong(2, existingImage.getHeight());
 			psMeta.setLong(3, existingImage.getSize());
-			psMeta.setString(4, existingImage.getCameraMaker());
-			psMeta.setString(5, existingImage.getCameraModel());
-			psMeta.setString(6, existingImage.getAperture());
-			psMeta.setString(7, existingImage.getShutterSpeed());
-			psMeta.setInt(8, existingImage.getISO());
-			psMeta.setInt(9, existingImage.getOrientation());
-
-			//Should of already been defaulted to a value.
-			psMeta.setDate(10,new java.sql.Date(existingImage.getTakenDate().toGregorianCalendar().getTime().getTime()));
+			psMeta.setLong(4,  existingImage.getCompressedSize());
+			psMeta.setString(5, existingImage.getCameraMaker());
+			psMeta.setString(6, existingImage.getCameraModel());
+			psMeta.setString(7, existingImage.getAperture());
+			psMeta.setString(8, existingImage.getShutterSpeed());
+			psMeta.setInt(9, existingImage.getISO());
+			psMeta.setInt(10, existingImage.getOrientation());
 			
-			if (existingImage.getTakenDateFile() != null)
-			{ psMeta.setDate(11,new java.sql.Date(existingImage.getTakenDateFile().toGregorianCalendar().getTime().getTime())); }
+			if (existingImage.getTakenDate() != null && existingImage.getTakenDate().getYear() > 1800)
+			{ psMeta.setDate(11,new java.sql.Date(existingImage.getTakenDate().toGregorianCalendar().getTime().getTime())); }
 			else
 			{ psMeta.setNull(11, java.sql.Types.DATE); }
 			
-			if (existingImage.getTakenDateMeta() != null)
-			{ psMeta.setDate(12,new java.sql.Date(existingImage.getTakenDateMeta().toGregorianCalendar().getTime().getTime())); }
+			
+			if (existingImage.getTakenDateFile() != null && existingImage.getTakenDateFile().getYear() > 1800)
+			{ psMeta.setDate(12,new java.sql.Date(existingImage.getTakenDateFile().toGregorianCalendar().getTime().getTime())); }
 			else
 			{ psMeta.setNull(12, java.sql.Types.DATE); }
 			
-			psMeta.setString(13, existingImage.getUdfChar1());
-			psMeta.setString(14, existingImage.getUdfChar2());
-			psMeta.setString(15, existingImage.getUdfChar3());
-			psMeta.setString(16, existingImage.getUdfText1());
-			psMeta.setBigDecimal(17, existingImage.getUdfNum1());
-			psMeta.setBigDecimal(18, existingImage.getUdfNum2());
-			psMeta.setBigDecimal(19, existingImage.getUdfNum3());
-			
-			if (existingImage.getUdfDate1() != null)
-			{ psMeta.setDate(20,new java.sql.Date(existingImage.getUdfDate1().toGregorianCalendar().getTime().getTime())); }
+			if (existingImage.getTakenDateMeta() != null && existingImage.getTakenDateMeta().getYear() > 1800)
+			{ psMeta.setDate(13,new java.sql.Date(existingImage.getTakenDateMeta().toGregorianCalendar().getTime().getTime())); }
 			else
-			{ psMeta.setNull(20, java.sql.Types.DATE); }
+			{ psMeta.setNull(13, java.sql.Types.DATE); }
 			
-			if (existingImage.getUdfDate2() != null)
-			{ psMeta.setDate(21,new java.sql.Date(existingImage.getUdfDate2().toGregorianCalendar().getTime().getTime())); }
+			psMeta.setString(14, existingImage.getUdfChar1());
+			psMeta.setString(15, existingImage.getUdfChar2());
+			psMeta.setString(16, existingImage.getUdfChar3());
+			psMeta.setString(17, existingImage.getUdfText1());
+			psMeta.setBigDecimal(18, existingImage.getUdfNum1());
+			psMeta.setBigDecimal(19, existingImage.getUdfNum2());
+			psMeta.setBigDecimal(20, existingImage.getUdfNum3());
+			
+			if (existingImage.getUdfDate1() != null && existingImage.getUdfDate1().getYear() > 1800)
+			{ psMeta.setDate(21,new java.sql.Date(existingImage.getUdfDate1().toGregorianCalendar().getTime().getTime())); }
 			else
 			{ psMeta.setNull(21, java.sql.Types.DATE); }
 			
-			if (existingImage.getUdfDate3() != null)
-			{ psMeta.setDate(22,new java.sql.Date(existingImage.getUdfDate3().toGregorianCalendar().getTime().getTime())); }
+			if (existingImage.getUdfDate2() != null && existingImage.getUdfDate2().getYear() > 1800)
+			{ psMeta.setDate(22,new java.sql.Date(existingImage.getUdfDate2().toGregorianCalendar().getTime().getTime())); }
 			else
 			{ psMeta.setNull(22, java.sql.Types.DATE); }
 			
-			psMeta.setLong(23, existingImage.getId());
+			if (existingImage.getUdfDate3() != null && existingImage.getUdfDate3().getYear() > 1800)
+			{ psMeta.setDate(23,new java.sql.Date(existingImage.getUdfDate3().toGregorianCalendar().getTime().getTime())); }
+			else
+			{ psMeta.setNull(23, java.sql.Types.DATE); }
+			
+			psMeta.setLong(24, existingImage.getId());
 			
 			//Validate new record was successful.
 			if (1 != psMeta.executeUpdate())

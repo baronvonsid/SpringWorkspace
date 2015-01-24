@@ -1,22 +1,26 @@
 package walla.business;
 
 import java.util.*;
+
 import walla.datatypes.auto.*;
 import walla.datatypes.java.*;
 import walla.db.*;
 import walla.utils.*;
 
-
 import javax.servlet.http.HttpServletRequest;
 import javax.sql.DataSource;
 import javax.xml.datatype.*;
+
 import org.apache.log4j.Logger;
 import org.springframework.http.HttpStatus;
+
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.security.*;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,7 +42,7 @@ public class AccountService {
 
 	public AccountService()
 	{
-		String simon = System.getProperty("simon.simon");
+
 	}
 	
 	//*************************************************************************************************************
@@ -52,18 +56,6 @@ public class AccountService {
 		2 - live (email and banking done)
 		3 - shutdown pending
 		4 - closed
-		
-		Email
-		0 - email not sent
-		1 - email sent 
-		2 - email not confirmed in timely manner
-		3 - email confirmed
-		
-		Banking
-		0 - not setup
-		1 - details received
-		2 - validated
-		3 - details need to be re-setup
 	 */
 	
 	//Create Account (Brief details) + Email.
@@ -76,16 +68,43 @@ public class AccountService {
 
 	public void CreateAccount(Account account, CustomResponse customResponse, CustomSessionState customSession)
 	{
-		String email = "";
+		String principleEmail = "";
+		String secondaryEmail = "";
+		String sql = "";
+		
 		long startMS = System.currentTimeMillis();
 		try 
 		{
-			email = (account.getEmail() == null) ? "" : account.getEmail();
+			
+			if (account.getEmails() != null && account.getEmails().getEmailRef() != null)
+			{
+				if (account.getEmails().getEmailRef().size() > 0)
+				{
+					//Construct update SQL statements
+					for (Iterator<Account.Emails.EmailRef> emailIterater = account.getEmails().getEmailRef().iterator(); emailIterater.hasNext();)
+					{
+						Account.Emails.EmailRef emailRef = (Account.Emails.EmailRef)emailIterater.next();
+						if (emailRef.isPrinciple())
+							principleEmail = (emailRef.getAddress() == null) ? "" : emailRef.getAddress();
+						
+						if (emailRef.isSecondary())
+							secondaryEmail = (emailRef.getAddress() == null) ? "" : emailRef.getAddress();
+					}
+				}
+			}
 			
 			//Create new account
-			if (!UserTools.ValidEmailAddress(email))
+			if (!UserTools.ValidEmailAddress(principleEmail))
 			{
-				meLogger.warn("Account create failed, email doesn't fit a standard form.  Email:" + email);
+				meLogger.warn("Account create failed, email doesn't fit a standard form.  Email:" + principleEmail);
+				customResponse.setMessage("Email doesn't fit a standard form");
+				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+				return;
+			}
+			
+			if (secondaryEmail.length() > 0 && !UserTools.ValidEmailAddress(secondaryEmail))
+			{
+				meLogger.warn("Account create failed, email doesn't fit a standard form.  Email:" + secondaryEmail);
 				customResponse.setMessage("Email doesn't fit a standard form");
 				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
 				return;
@@ -107,7 +126,10 @@ public class AccountService {
 				return;
 			}
 			
-			if (!accountDataHelper.ProfileNameIsUnique(account.getProfileName()))
+			sql = "SELECT COUNT(1) FROM [User] WHERE UPPER([ProfileName]) = UPPER(?) AND [status] IN (1,2,3,4)";
+			int nameCount = (int)utilityDataHelper.GetValueParamString(sql, account.getProfileName());
+			
+			if (nameCount > 0)
 			{
 				String error = "Profile name is already in use.  " + account.getProfileName();
 				meLogger.error(error);
@@ -116,7 +138,7 @@ public class AccountService {
 				return;
 			}
 
-			//check email is unique
+			//TODO check email is unique
 			
 			String salt = SecurityTools.GenerateSalt();
 			String passwordHash = SecurityTools.GetHashedPassword(account.getPassword(), salt, 160, 1000);
@@ -144,9 +166,16 @@ public class AccountService {
 			accountDataHelper.UpdateLogonState(newUserId, 0, null);
 			
 			//TODO decouple.
-			SendEmailConfirm(newUserId);
+			accountDataHelper.AddEmail(newUserId, principleEmail, true, false);
+			VerifyEmailRequest(newUserId, principleEmail);
 			
-			meLogger.info("New user has been created.  Email: " + account.getEmail() + " UserId:" + newUserId);
+			if (secondaryEmail.length() > 0)
+			{
+				accountDataHelper.AddEmail(newUserId, secondaryEmail, false, true);
+				VerifyEmailRequest(newUserId, secondaryEmail);
+			}
+			
+			meLogger.info("New user has been created.  Email: " + principleEmail + " UserId:" + newUserId);
 			customResponse.setResponseCode(HttpStatus.CREATED.value());
 		}
 		catch (WallaException wallaEx) {
@@ -156,7 +185,7 @@ public class AccountService {
 			meLogger.error(ex);
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
-		finally { UserTools.LogMethod("CreateAccount", meLogger, startMS, email); }
+		finally { UserTools.LogMethod("CreateAccount", meLogger, startMS, principleEmail); }
 	}
 	
 	public int UpdateAccount(Account account)
@@ -177,12 +206,12 @@ public class AccountService {
 		finally { UserTools.LogMethod("UpdateAccount", meLogger, startMS, account.getProfileName()); }
 	}
 
-	public Account GetAccount(long userId, CustomResponse customResponse)
+	public Account GetAccountMeta(long userId, CustomResponse customResponse)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
 		{
-			Account account = accountDataHelper.GetAccount(userId);
+			Account account = accountDataHelper.GetAccountMeta(userId);
 			if (account == null)
 			{
 				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
@@ -197,45 +226,77 @@ public class AccountService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return null;
 		}
-		finally { UserTools.LogMethod("GetAccount", meLogger, startMS, String.valueOf(userId)); }
+		finally { UserTools.LogMethod("GetAccountMeta", meLogger, startMS, String.valueOf(userId)); }
 	}
 	
-	public int AckEmailConfirm(String profileName, String requestValidationString)
+	public void EmailConfirm(String profileName, String requestValidationString, CustomResponse customResponse)
 	{
-		//TODO - expire email validation string
+		//Return email address if correctly validated.
 		long startMS = System.currentTimeMillis();
+		String message;
 		try
 		{
-			if (profileName.length() >30 || profileName.contains(" "))
+			if (profileName.length() > 30 || profileName.contains(" ") || profileName.contains("'"))
 			{
-				meLogger.error("Profile name is not set correctly.  " + profileName);
-				return HttpStatus.BAD_REQUEST.value();
+				message = "Profile name is not set correctly.  " + profileName;
+				meLogger.error(message);
+				customResponse.setMessage(message);
+				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+				return;
 			}
 			
-			String sql = "SELECT [UserId] FROM [dbo].[User] WHERE [ProfileName] = '" + profileName + "'";
-			long userId = utilityDataHelper.GetLong(sql);
+			long userId = (long)utilityDataHelper.GetValueParamString("SELECT [UserId] FROM [User] WHERE ProfileName = ?", profileName);
 			
-			sql = "SELECT [ValidationString] FROM [dbo].[User] WHERE [EmailStatus] = 1 AND [UserId] = " + userId;
-			String serverValidationString = utilityDataHelper.GetString(sql);
-			if (serverValidationString.equals(requestValidationString))
+			if (!accountDataHelper.ValidateEmailConfirm(userId, requestValidationString, customResponse))
 			{
-				accountDataHelper.UpdateEmailStatus(userId, 3, "");;
-				//Check if banking is all done and if so, mark the account as Live.
-				/*
-				sql = "SELECT [BankingStatus] FROM [User] WHERE UserId = " + userId;
-				int bankingStatus = utilityDataHelper.GetInt(sql);
-				if (bankingStatus == 2)
-				{
-					accountDataHelper.UpdateMainStatus(userId, 2);
-				}
-				*/
-				return HttpStatus.OK.value();
+				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+				Thread.sleep(2000);
+				return;
 			}
-			else
-			{
-				meLogger.error("AckEmailConfirm - Validation string didn't match for account: " + userId + " requestValidationString:" + requestValidationString);
-				return HttpStatus.BAD_REQUEST.value();
-			}
+			
+			//Email is OK, so verify and check if the account should now be set as live.
+			String email = customResponse.getMessage();
+
+			accountDataHelper.UpdateEmail(userId, email, EmailAction.Verified, "");
+			
+			//TODO decouple.
+			CheckUpdateAccountStatus(userId);
+			
+			customResponse.setResponseCode(HttpStatus.OK.value());
+			customResponse.setMessage("Email: " + email + " was validated.");
+		}
+		catch (WallaException wallaEx) {
+			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			customResponse.setMessage("Email address could not be validated, due to an unexpected system error.");
+		}
+		catch (Exception ex) {
+			meLogger.error(ex);
+			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			customResponse.setMessage("Email address could not be validated, due to an unexpected system error.");
+		}
+		finally { UserTools.LogMethod("EmailConfirm", meLogger, startMS, profileName); }
+	}
+
+	//TODO Decouple.
+	public void VerifyEmailRequest(long userId, String email)
+	{
+		//TODO decouple
+		VerifyEmail(userId, email);
+	}
+	
+	public int UpdateEmailAction(long userId, String email, EmailAction action)
+	{
+		long startMS = System.currentTimeMillis();
+		try 
+		{
+			accountDataHelper.UpdateEmail(userId, email, action, "");
+			
+			//TODO decouple.
+			if (action == EmailAction.Verified)
+				CheckUpdateAccountStatus(userId);
+			
+			
+			return HttpStatus.OK.value();
 		}
 		catch (WallaException wallaEx) {
 			return wallaEx.getCustomStatus();
@@ -244,12 +305,32 @@ public class AccountService {
 			meLogger.error(ex);
 			return HttpStatus.INTERNAL_SERVER_ERROR.value();
 		}
-		finally { UserTools.LogMethod("AckEmailConfirm", meLogger, startMS, profileName); }
+		finally { UserTools.LogMethod("UpdateEmailAction", meLogger, startMS, String.valueOf(userId) + " " + email); }
 	}
 
-	
-	
-	
+	public int AddEmail(long userId, String email, EmailAction action)
+	{
+		long startMS = System.currentTimeMillis();
+		try 
+		{
+			if (!accountDataHelper.EmailIsUnique(userId, email))
+			{
+				return HttpStatus.CONFLICT.value();
+			}
+			
+			accountDataHelper.AddEmail(userId, email, false, false);
+			return HttpStatus.OK.value();
+		}
+		catch (WallaException wallaEx) {
+			return wallaEx.getCustomStatus();
+		}
+		catch (Exception ex) {
+			meLogger.error(ex);
+			return HttpStatus.INTERNAL_SERVER_ERROR.value();
+		}
+		finally { UserTools.LogMethod("AddEmail", meLogger, startMS, String.valueOf(userId) + " " + email); }
+	}
+
 	
 	public long CreateUserApp(long userId, int appId, int platformId, UserApp proposedUserApp, CustomResponse customResponse)
 	{
@@ -415,6 +496,10 @@ public class AccountService {
 					return null;
 				}
 			}
+			else
+			{
+				utilityDataHelper.ExecuteSql("UPDATE [UserApp] SET LastUsed = dbo.GetDateNoMS() WHERE UserAppId = " + userApp.getId());
+			}
 			
 			customResponse.setResponseCode(HttpStatus.OK.value());
 			return userApp;
@@ -434,16 +519,21 @@ public class AccountService {
 	public boolean CheckProfileNameIsUnique(String profileName, CustomResponse customResponse)
 	{
 		long startMS = System.currentTimeMillis();
+		boolean isUnique = false;
 		try 
 		{
-			if (profileName.length() >30 || profileName.contains(" "))
+			if (profileName.length() >30 || profileName.contains(" ") || profileName.contains("'"))
 			{
 				meLogger.error("Profile name is not set correctly.  " + profileName);
 				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
 				return false;
 			}
 			
-			boolean isUnique = accountDataHelper.ProfileNameIsUnique(profileName);
+			String sql = "SELECT COUNT(1) FROM [User] WHERE UPPER([ProfileName]) = UPPER(?) AND [status] IN (1,2,3,4)";
+			int nameCount = (int)utilityDataHelper.GetValueParamString(sql, profileName);
+			if (nameCount == 0)
+				isUnique = true;
+			
 			customResponse.setResponseCode(HttpStatus.OK.value());
 			return isUnique;
 		}
@@ -813,13 +903,33 @@ public class AccountService {
 	//*************************************  Messaging initiated methods ******************************************
 	//*************************************************************************************************************
 	
-	public void SendEmailConfirm(long userId) 
+
+	public void CheckUpdateAccountStatus(long userId) 
+	{
+		try
+		{
+			if (accountDataHelper.ShouldAccountBeLive(userId))
+			{
+				//Account should be switched to live from either init or frozen.
+				accountDataHelper.UpdateAccountStatus(userId, AccountStatus.Live);
+			}
+		}
+		catch (WallaException wallaEx) {
+			meLogger.error("Unexpected error when Checking/Updating account to be live.");
+		}
+		catch (Exception ex) {
+			meLogger.error("Unexpected error when Checking/Updating account to be live.", ex);
+		}
+	}
+	
+	
+	public void VerifyEmail(long userId, String email) 
 	{
 		try
 		{
 			String validationString = UserTools.GetComplexString();
-			accountDataHelper.UpdateEmailStatus(userId, 1, validationString.substring(0,32));
-			
+			accountDataHelper.UpdateEmail(userId, email, EmailAction.SetupValidation, validationString.substring(0,32));
+
 			//TODO actually send email.
 		}
 		catch (WallaException wallaEx) {

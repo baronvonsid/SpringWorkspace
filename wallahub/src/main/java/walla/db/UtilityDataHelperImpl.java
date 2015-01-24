@@ -371,6 +371,75 @@ public class UtilityDataHelperImpl implements UtilityDataHelper{
 		}
 	}
 	
+	public Object GetValueParamString(String sql, String param) throws WallaException
+	{
+		long startMS = System.currentTimeMillis();
+		Connection conn = null;
+		PreparedStatement ps = null;
+		ResultSet resultset = null;
+		
+		try {			
+			conn = dataSource.getConnection();
+
+			ps = conn.prepareStatement(sql);
+			ps.setString(1, param);
+			
+			resultset = ps.executeQuery();
+			if (resultset.next())
+			{
+				return resultset.getObject(1);
+			}
+			else
+			{
+				return null;
+			}
+		}
+		catch (SQLException sqlEx) {
+			meLogger.error(sqlEx);
+			throw new WallaException("UtilityDataHelperImpl", "GetStringParamString", sqlEx.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value()); 
+		} 
+		finally {
+			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
+			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
+	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
+	        UserTools.LogMethod("GetStringParamString", meLogger, startMS, sql);
+		}
+	}
+	
+	public int ExecuteSql(String sql) throws WallaException
+	{
+		long startMS = System.currentTimeMillis();
+		Connection conn = null;
+		Statement ds = null;
+		
+		try {
+			conn = dataSource.getConnection();
+			conn.setAutoCommit(false);
+
+			ds = conn.createStatement();
+			int recordCount = ds.executeUpdate(sql);
+
+			ds.close();
+			conn.commit();
+			
+			return recordCount;
+		}
+		catch (SQLException sqlEx) {
+			if (conn != null) { try { conn.rollback(); } catch (SQLException ignoreEx) {} }
+			meLogger.error(sqlEx);
+			throw new WallaException(sqlEx,HttpStatus.INTERNAL_SERVER_ERROR.value());
+		} 
+		catch (Exception ex) {
+			if (conn != null) { try { conn.rollback(); } catch (SQLException ignoreEx) {} }
+			throw ex;
+		} 
+		finally {
+			if (ds != null) try { if (!ds.isClosed()) {ds.close();} } catch (SQLException logOrIgnore) {}
+	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
+	        UserTools.LogMethod("ExecuteSql", meLogger, startMS, sql);
+		}
+	}
+
 	public UtilityDataHelperImpl() {
 		meLogger.debug("UtilityDataHelperImpl object instantiated.");
 	}
