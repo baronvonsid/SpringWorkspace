@@ -20,7 +20,7 @@ public interface AccountDataHelper {
 	public boolean ValidateEmailConfirm(long userId, String requestValidationString, CustomResponse customResponse);
 	public void AddEmail(long userId, String email, boolean principle, boolean secondary) throws WallaException;
 	public void UpdateEmail(long userId, String email, EmailAction action, String validationString) throws WallaException;
-	public boolean ShouldAccountBeLive(long userId);
+	public String ShouldAccountBeLive(long userId) throws WallaException;
 	
 	public boolean EmailIsUnique(long userId, String email) throws WallaException;
 	public UserApp GetUserApp(long userId, long userAppId) throws WallaException;
@@ -28,6 +28,7 @@ public interface AccountDataHelper {
 	public void CreateUserApp(long userId, UserApp userApp) throws WallaException;
 	public void UpdateUserApp(long userId, UserApp userApp) throws WallaException;
 	
-	public LogonState GetLogonState(String userName, String email) throws WallaException;
+	public LogonState GetLogonState(String userName) throws WallaException;
 	public void UpdateLogonState(long userId, int failedLoginCount, Date failedLoginLast) throws WallaException;
+	public void UpdatePassword(long userId, String passwordHash, String salt) throws WallaException;
 }

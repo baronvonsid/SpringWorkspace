@@ -20,15 +20,14 @@ targetNamespace="http://ws.fotowalla.com/Account"
 			3 - shutdown pending
 			4 - closed
 		-->
-		
+		<element type="string" name="AccountMessage" />
 		<element type="int" name="AccountType" />
 		<element type="string" name="AccountTypeName" />
-		<element type="double" name="StorageGBLimit" />
-		<element type="int" name="MonthlyUploadCap" />
-		<element type="int" name="UploadCount30Days" />
+		<element type="date" name="PasswordChangeDate" />
         <element type="date" name="OpenDate" />
         <element type="date" name="CloseDate" />
         <element type="string" name="Key" />
+		<element type="string" name="SecurityMessage" />
 
         <element name="Emails">
           <complexType>
@@ -50,14 +49,18 @@ targetNamespace="http://ws.fotowalla.com/Account"
         <element name="StorageSummary">
           <complexType>
             <sequence>
+			  <element type="double" name="StorageGBLimit" />
+			  <element type="int" name="MonthlyUploadCap" />
+			  <element type="int" name="UploadCount30Days" />
               <element type="double" name="SizeGB" />
               <element type="double" name="CompressedSizeGB" />
               <element type="int" name="ImageCount" />
               <element name="FormatRef" maxOccurs="unbounded" minOccurs="0">
 	              <complexType>
 	              	<sequence maxOccurs="1" minOccurs="0">
-                      <element type="string" name="Name" />
+                      <element type="string" name="Format" />
                       <element type="double" name="SizeGB"/>
+                      <element type="double" name="CompressedSizeGB"/>
                       <element type="int" name="ImageCount" />
                     </sequence>
 	              </complexType>
@@ -67,6 +70,7 @@ targetNamespace="http://ws.fotowalla.com/Account"
 	              	<sequence maxOccurs="1" minOccurs="0">
                       <element type="string" name="Name" />
                       <element type="double" name="SizeGB"/>
+                      <element type="double" name="CompressedSizeGB"/>
                       <element type="int" name="ImageCount" />
                     </sequence>
 	              </complexType>
@@ -76,6 +80,7 @@ targetNamespace="http://ws.fotowalla.com/Account"
 	              	<sequence maxOccurs="1" minOccurs="0">
                       <element type="string" name="Year" />
                       <element type="double" name="SizeGB"/>
+                      <element type="double" name="CompressedSizeGB"/>
                       <element type="int" name="ImageCount" />
                     </sequence>
 	              </complexType>

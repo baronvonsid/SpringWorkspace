@@ -342,6 +342,38 @@ public final class UserTools {
 		}
 	}
 	
+	public static CustomSessionState GetInitialAdminSession(HttpServletRequest request, Logger meLogger) throws WallaException
+	{
+		HttpSession session = request.getSession(false);
+		if (session == null)
+		{
+			meLogger.warn("The tomcat session has not been established.");
+			return null;
+		}
+
+		CustomSessionState customSession = (CustomSessionState)session.getAttribute("CustomSessionState");
+		if (customSession == null)
+		{
+			meLogger.warn("The custom session state has not been established.");
+			return null;
+		}
+			
+		if (customSession.isAuthenticated())
+		{
+			meLogger.warn("The session has already been authorised.");
+			return null;
+		}	
+		
+		if (customSession.getRemoteAddress().compareTo(GetIpAddress(request)) != 0)
+		{
+			String error = "IP address of the session has changed since the logon was established.";
+			meLogger.error(error);
+			throw new WallaException("UserTools", "GetInitialAdminSession", error, HttpStatus.FORBIDDEN.value()); 
+		}
+		
+		return customSession;
+	}
+	
 	public static CustomSessionState GetValidAdminSession(String requestProfileName, HttpServletRequest request, Logger meLogger)
 	{
 		HttpSession session = request.getSession(false);
@@ -500,7 +532,7 @@ public final class UserTools {
 		{
 			String error = "IP address of the session has changed since the logon was established.";
 			meLogger.error(error);
-			throw new WallaException("UserTools", "GetGallerySessionAuth", error, HttpStatus.FORBIDDEN.value()); 
+			throw new WallaException("UserTools", "GetGallerySession", error, HttpStatus.FORBIDDEN.value()); 
 		}
 		
 		return customSession;

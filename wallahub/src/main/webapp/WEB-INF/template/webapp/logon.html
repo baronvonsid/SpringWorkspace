@@ -1,36 +1,79 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html>
 <head>
-<meta charset="ISO-8859-1" />
-<title>fotowalla - logon</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta http-equiv="Content-Language" content="en" />
+
+    <link rel="stylesheet" th:href="@{/static/css/jquery-ui.css}" href="http://localhost:8082/wallahub/static/css/jquery-ui.css" />
+    <link rel="stylesheet" th:href="@{/static/css/wallawebapp.css}" href="http://localhost:8082/wallahub/static/css/wallawebapp.css" />
+
+    <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet" />
+
+    <link th:href="@{/static/images/fotowallabrowser.png}" rel="icon"
+          type="image/x-icon"
+          href="http://localhost:8082/wallahub/static/images/fotowallabrowser.png" />
+
+    <title>fotowalla logon</title>
+    <meta name="description" content="fotowalla logon" />
+
 </head>
+
 <body>
-	<form action="#" th:action="@{./logon(referrer=${referrer})}" th:object="${logon}" method="post">
-		<input type="hidden" name="Key" th:field="*{Key}" />
-		<table>
-			<tr>
-				<td>Profile Name</td>
-				<td><input type="text" th:field="*{ProfileName}" /></td>
-				<td th:if="${#fields.hasErrors('ProfileName')}" th:errors="*{ProfileName}">Name error</td>
-			</tr>	
-			<tr>
-				<td>Email</td>
-				<td><input type="email" th:field="*{email}" /></td>
-				<td th:if="${#fields.hasErrors('email')}" th:errors="*{email}">Email error</td>
-			</tr>
-			<tr>
-				<td>Password</td>
-				<td><input type="text" th:field="*{password}" /></td>
-				<td th:if="${#fields.hasErrors('password')}" th:errors="*{password}">Password error</td>
-			</tr>
-			
-			<tr>
-				<td colspan="3" th:if="${message != null}" th:text="${message}">Server errors</td>
-			</tr>
-			<tr>
-				<td><button type="submit">Logon</button></td>
-			</tr>
-		</table>
-	</form>
+
+    <div class="clearstyles" role="main">
+        <div class="clearstyles" style="width:300px;margin-top:50px;margin-right: auto;margin-left: auto;">
+
+            <!-- Change Password -->
+            <div class="content-group-box">
+                <h3 class="content-group-heading">fotowalla logon</h3>
+                <div class="content-group-inner">
+
+                    <form action="#" th:action="@{./logon(referrer=${referrer})}" th:object="${logon}" method="post">
+                        <input type="hidden" name="Key" th:field="*{Key}" />
+
+                        <dl class="form">
+                            <dt>
+                                <label for="profileName">Profile name</label>
+                            </dt>
+                            <dd>
+                                <input tabindex="1" id="profileName" type="text" th:field="*{profileName}" />
+                            </dd>
+                        </dl>
+                        <dl class="form">
+                            <dt>
+                                <p>Or</p>
+                            </dt>
+                        </dl>
+                        <dl class="form">
+                            <dt>
+                                <label for="email">Email</label>
+                            </dt>
+                            <dd>
+                                <input tabindex="2" id="email" type="email" th:field="*{email}" />
+                            </dd>
+                        </dl>
+
+                        <dl class="form">
+                            <dt>
+                                <label for="password">Password</label>
+                            </dt>
+                            <dd>
+                                <input tabindex="3"
+                                       id="password" required="required" type="password" th:field="*{password}" />
+                            </dd>
+                        </dl>
+                        <p>
+                            <button tabindex="4" class="button green">Logon</button>
+                        </p>
+                        <p th:if="${message != null}" class="errortext"><i class="fa fa-exclamation"></i><span style="margin-left: 5px;" th:text="${message}" class="errortext">Server error</span></p>
+                    </form>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
 </body>
 </html>

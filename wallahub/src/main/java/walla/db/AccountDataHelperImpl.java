@@ -140,6 +140,55 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 	        UserTools.LogMethod("UpdateAccount", meLogger, startMS, String.valueOf(account.getId()));
 		}
 	}
+
+	public void UpdatePassword(long userId, String passwordHash, String salt) throws WallaException
+	{
+		long startMS = System.currentTimeMillis();
+		Connection conn = null;
+		PreparedStatement ps = null;
+		
+		try {			
+			int returnCount = 0;
+			String updateSql = null;
+			
+			conn = dataSource.getConnection();
+			conn.setAutoCommit(false);
+			
+			updateSql = "UPDATE [dbo].[User] SET [FailedLoginCount] = 0, [FailedLoginLast] = NULL, "
+					+ " [PasswordHash] = ?, [Salt] = ?, [PasswordChangeDate] = GetDate() WHERE [UserId] = ?";
+
+			ps = conn.prepareStatement(updateSql);
+			ps.setString(1, passwordHash);
+			ps.setString(2, salt);
+			ps.setLong(3, userId);
+
+			returnCount = ps.executeUpdate();
+			ps.close();
+			if (returnCount != 1)
+			{
+				conn.rollback();
+				String error = "Update statement didn't return a success count of 1.";
+				meLogger.error(error);
+				throw new WallaException("AccountDataHelperImpl", "UpdatePassword", error, HttpStatus.CONFLICT.value()); 
+			}
+			
+			conn.commit();
+		}
+		catch (SQLException sqlEx) {
+			meLogger.error(sqlEx);
+			throw new WallaException(sqlEx);
+		}
+		catch (Exception ex) {
+			throw ex;
+		}
+		finally {
+	        if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
+	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
+	        UserTools.LogMethod("UpdatePassword", meLogger, startMS, String.valueOf(userId));
+		}
+	}
+	
+	
 	
 	public void UpdateAccountStatus(long userId, AccountStatus status) throws WallaException
 	{
@@ -204,11 +253,69 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		}
 	}
 
-	//TODO
-	public boolean ShouldAccountBeLive(long userId)
+	public String ShouldAccountBeLive(long userId) throws WallaException
 	{
 		//Checks to see if bank details and email are OK, and account can accept images.
-		return false;
+		//TODO add banking stuff.
+		//TODO check image limit.
+		
+		
+		long startMS = System.currentTimeMillis();
+		Connection conn = null;
+		PreparedStatement ps = null;
+		ResultSet resultset = null;
+		
+		try {			
+			conn = dataSource.getConnection();
+			
+			String selectSql = "SELECT COUNT(1) FROM [Email] WHERE [UserId] = ? AND [Verified] = 1 AND [Principle] = 1 AND [Active] = 1";
+			ps = conn.prepareStatement(selectSql);
+			ps.setLong(1, userId);
+			
+			resultset = ps.executeQuery();
+
+			if (!resultset.next())
+			{
+				String error = "No record returned from count sql: " + selectSql;
+				meLogger.error(error);
+				throw new WallaException("AccountDataHelperImpl", "ShouldAccountBeLive", error, HttpStatus.INTERNAL_SERVER_ERROR.value()); 
+			}
+
+			if (resultset.getInt(1) != 1)
+				return "Principle email address is not valid.  Go to the account tab for email setup to enter new details.";
+			
+			//TODO Change to compressed size.
+			selectSql = "SELECT CASE WHEN CAST([StorageGBLimit] as float) > CAST([SizeGB] AS float) " +
+					" THEN 0 ELSE 1 END AS ISOVER FROM [AccountStorageSummary] WHERE [UserId] = ?";
+			
+			ps = conn.prepareStatement(selectSql);
+			ps.setLong(1, userId);
+			
+			resultset = ps.executeQuery();
+			if (!resultset.next())
+			{
+				String error = "No record returned from sql: " + selectSql;
+				meLogger.error(error);
+				throw new WallaException("AccountDataHelperImpl", "ShouldAccountBeLive", error, HttpStatus.INTERNAL_SERVER_ERROR.value()); 
+			}
+
+			if (resultset.getInt(1) == 0)
+				return "OK";
+			else
+				return "You have reached the maximum upload size for your account.  Go to the account storage tab to view your current usage.";
+			
+			
+		}
+		catch (SQLException sqlEx) {
+			meLogger.error(sqlEx);
+			throw new WallaException(sqlEx);
+		}
+		finally {
+			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
+	        if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
+	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
+	        UserTools.LogMethod("ShouldAccountBeLive", meLogger, startMS, String.valueOf(userId));
+		}
 	}
 	
 	public boolean ValidateEmailConfirm(long userId, String requestValidationString, CustomResponse customResponse)
@@ -279,12 +386,56 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		}
 	}
 
-	//TODO
 	public void AddEmail(long userId, String email, boolean principle, boolean secondary) throws WallaException
 	{
+		long startMS = System.currentTimeMillis();
 		String sql = "INSERT INTO [Email] ([UserId],[Address],[Active],[Principle],[Secondary],[Verified])"
-				+ " VALUES (?,?,1,0,0,0)";
+				+ " VALUES (?,?,1,?,?,0)";
+
+		Connection conn = null;
+		PreparedStatement ps = null;
+		try {			
+			int returnCount = 0;
+
+			conn = dataSource.getConnection();
+			conn.setAutoCommit(false);
 			
+			//Insert main tag record.
+			ps = conn.prepareStatement(sql);
+			ps.setLong(1, userId);
+			ps.setString(2, email);
+			ps.setBoolean(3, principle);
+			ps.setBoolean(4, secondary);
+			
+			//Execute insert statement.
+			returnCount = ps.executeUpdate();
+			
+			//Validate new record was successful.
+			if (returnCount != 1)
+			{
+				conn.rollback();
+				String error = "Insert statement didn't return a success count of 1.";
+				meLogger.error(error);
+				throw new WallaException(this.getClass().getName(), "AddEmail", error, HttpStatus.INTERNAL_SERVER_ERROR.value()); 				
+			}
+			
+			conn.commit();
+		}
+		catch (SQLException sqlEx) {
+			if (conn != null) { try { conn.rollback(); } catch (SQLException ignoreEx) {} }
+			meLogger.error(sqlEx);
+			throw new WallaException(sqlEx);
+		} 
+		catch (Exception ex) {
+			if (conn != null) { try { conn.rollback(); } catch (SQLException ignoreEx) {} }
+			throw ex;
+		}
+		finally {
+	        if (ps != null) try { ps.close(); } catch (SQLException logOrIgnore) {}
+	        if (conn != null) try { conn.close(); } catch (SQLException logOrIgnore) {}
+	        UserTools.LogMethod("AddEmail", meLogger, startMS, String.valueOf(userId) + " " + email);
+		}
+		
 	}
 	
 	public void UpdateEmail(long userId, String email, EmailAction action, String validationString) throws WallaException
@@ -481,7 +632,6 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 	}
 	*/
 	
-	//TODO remove any storage, add email bits.
 	public Account GetAccountMeta(long userId)
 	{
 		long startMS = System.currentTimeMillis();
@@ -490,13 +640,14 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		ResultSet resultset = null;
 		Account account = null;
 		
-		try {			
+		try {
 			conn = dataSource.getConnection();
 
-			String selectSql = "SELECT [ProfileName],[Description],[Email],[Status],[AccountTypeName],[RecordVersion],[OpenDate],[CloseDate],[StorageGBLimit],"
-								+ "[StorageGBCurrent],[TotalImages],[MonthlyUploadCap],[UploadCount30Days] FROM [dbo].[AccountSummary] "
-								+ "WHERE [UserId] = ?";
-							
+			String selectSql = "SELECT U.[ProfileName],U.[Description],U.[Country],U.[Timezone],U.[Newsletter], "
+					+ "U.[Status],AT.[AccountType],AT.[Name],U.[PasswordChangeDate],U.[OpenDate],U.[CloseDate],U.[RecordVersion] "
+					+ "FROM [User] U INNER JOIN [dbo].[AccountType] AT ON U.AccountType = AT.AccountType "
+					+ "WHERE U.[UserId] = ?";
+
 			ps = conn.prepareStatement(selectSql);
 			ps.setLong(1, userId);
 
@@ -511,33 +662,66 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			account.setId(userId);
 			account.setProfileName(resultset.getString(1));
 			account.setDesc(resultset.getString(2));
-			//account.setEmail(resultset.getString(3));
-			account.setStatus(resultset.getInt(4));
-			account.setAccountTypeName(resultset.getString(5));
-			account.setVersion(resultset.getInt(6));
+			account.setCountry(resultset.getString(3));
+			account.setTimezone(resultset.getString(4));
+			account.setNewsletter(resultset.getBoolean(5));
+			
+			account.setStatus(resultset.getInt(6));
+			account.setAccountType(resultset.getInt(7));
+			account.setAccountTypeName(resultset.getString(8));
 			
 			GregorianCalendar oldGreg = new GregorianCalendar();
 			XMLGregorianCalendar xmlOldGreg = null;
-			if (resultset.getTimestamp(7) != null)
+			
+			if (resultset.getTimestamp(9) != null)
 			{
-				oldGreg.setTime(resultset.getTimestamp(7));
+				oldGreg.setTime(resultset.getTimestamp(9));
+				xmlOldGreg = DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg);
+				account.setPasswordChangeDate(xmlOldGreg);
+			}
+			
+			if (resultset.getTimestamp(10) != null)
+			{
+				oldGreg.setTime(resultset.getTimestamp(10));
 				xmlOldGreg = DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg);
 				account.setOpenDate(xmlOldGreg);
 			}
 			
-			if (resultset.getTimestamp(8) != null)
+			if (resultset.getTimestamp(11) != null)
 			{
-				oldGreg.setTime(resultset.getTimestamp(8));
+				oldGreg.setTime(resultset.getTimestamp(11));
 				xmlOldGreg = DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg);
 				account.setCloseDate(xmlOldGreg);
 			}
 			
-			account.setStorageGBLimit(resultset.getDouble(9));
-			//account.setStorageGBCurrent(resultset.getDouble(10));
-			//account.setTotalImages(resultset.getInt(11));
-			account.setMonthlyUploadCap(resultset.getInt(12));
-			account.setUploadCount30Days(resultset.getInt(13));
+			account.setVersion(resultset.getInt(12));
+			
+			resultset.close();
+			ps.close();
 
+
+			selectSql = "SELECT [Address],[Principle],[Secondary],[Verified] "
+					  + "FROM [Email] WHERE [Active] = 1 AND [UserId] = ? ORDER BY [Principle], [Secondary]";
+			
+			ps = conn.prepareStatement(selectSql);
+			ps.setLong(1, userId);
+			resultset = ps.executeQuery();
+
+			account.setEmails(new Account.Emails());
+			while (resultset.next())
+			{
+				Account.Emails.EmailRef email = new Account.Emails.EmailRef();
+				email.setAddress(resultset.getString(1));
+				email.setPrinciple(resultset.getBoolean(2));
+				email.setSecondary(resultset.getBoolean(3));
+				email.setVerified(resultset.getBoolean(4));
+				
+				account.getEmails().getEmailRef().add(email);
+			}
+			
+			resultset.close();
+			ps.close();
+			
 			return account;
 		}
 		catch (SQLException sqlEx) {
@@ -552,16 +736,130 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetAccount", meLogger, startMS, String.valueOf(userId));
+	        UserTools.LogMethod("GetAccountMeta", meLogger, startMS, String.valueOf(userId));
 		}
 	}
 
-	//TODO implement, along with view
 	public Account GetAccountStorageSummary(long userId)
 	{
+		long startMS = System.currentTimeMillis();
+		Connection conn = null;
+		PreparedStatement ps = null;
+		ResultSet resultset = null;
+		Account account = null;
 		
-		return null;
-		
+		try {
+			conn = dataSource.getConnection();
+
+			String selectSql = "SELECT [StorageGBLimit], [MonthlyUploadCap], [UploadCount30Days], [ImageCount], "
+					+ "[SizeGB], [CompressedSizeGB] FROM [AccountStorageSummary] WHERE [UserId] = ?";
+
+			ps = conn.prepareStatement(selectSql);
+			ps.setLong(1, userId);
+
+			resultset = ps.executeQuery();
+
+			if (!resultset.next())
+				return null;
+			
+			account = new Account();
+			account.setId(userId);
+			account.setStorageSummary(new Account.StorageSummary());
+			account.getStorageSummary().setStorageGBLimit(resultset.getDouble(1));
+			account.getStorageSummary().setMonthlyUploadCap(resultset.getInt(2));
+			account.getStorageSummary().setUploadCount30Days(resultset.getInt(3));
+			account.getStorageSummary().setImageCount(resultset.getInt(4));
+			account.getStorageSummary().setSizeGB(resultset.getDouble(5));
+			account.getStorageSummary().setCompressedSizeGB(resultset.getDouble(6));
+
+			resultset.close();
+			ps.close();
+
+			/**************************************************************************/
+			/* Add format summary */
+			selectSql = "SELECT [Format], ImageCount, SizeGB, CompressedSizeGB FROM AccountStorageFormat "
+						+ "WHERE UserId = ? ORDER BY 3 desc";
+			
+			ps = conn.prepareStatement(selectSql);
+			ps.setLong(1, userId);
+			resultset = ps.executeQuery();
+
+			while (resultset.next())
+			{
+				Account.StorageSummary.FormatRef format = new Account.StorageSummary.FormatRef();
+				format.setFormat(resultset.getString(1));
+				format.setImageCount(resultset.getInt(2));
+				format.setSizeGB(resultset.getDouble(3));
+				format.setCompressedSizeGB(resultset.getDouble(4));
+				
+				account.getStorageSummary().getFormatRef().add(format);
+			}
+			
+			resultset.close();
+			ps.close();
+			
+			/**************************************************************************/
+			/* Add upload source summary */
+			selectSql = "SELECT UploadSource, ImageCount, SizeGB, CompressedSizeGB FROM AccountStorageSource "
+						+ "WHERE UserId = ? ORDER BY 3 desc";
+			
+			ps = conn.prepareStatement(selectSql);
+			ps.setLong(1, userId);
+			resultset = ps.executeQuery();
+
+			while (resultset.next())
+			{
+				Account.StorageSummary.UploadSourceRef uploadSource = new Account.StorageSummary.UploadSourceRef();
+				uploadSource.setName(resultset.getString(1));
+				uploadSource.setImageCount(resultset.getInt(2));
+				uploadSource.setSizeGB(resultset.getDouble(3));
+				uploadSource.setCompressedSizeGB(resultset.getDouble(4));
+				
+				account.getStorageSummary().getUploadSourceRef().add(uploadSource);
+			}
+			
+			resultset.close();
+			ps.close();
+			
+			/**************************************************************************/
+			/* Add format summary */
+			selectSql = "SELECT [Year], ImageCount, SizeGB, CompressedSizeGB FROM AccountStorageYear "
+						+ "WHERE UserId = ? ORDER BY 1";
+			
+			ps = conn.prepareStatement(selectSql);
+			ps.setLong(1, userId);
+			resultset = ps.executeQuery();
+
+			while (resultset.next())
+			{
+				Account.StorageSummary.ImageYearRef imageYear = new Account.StorageSummary.ImageYearRef();
+				imageYear.setYear(resultset.getString(1));
+				imageYear.setImageCount(resultset.getInt(2));
+				imageYear.setSizeGB(resultset.getDouble(3));
+				imageYear.setCompressedSizeGB(resultset.getDouble(4));
+				
+				account.getStorageSummary().getImageYearRef().add(imageYear);
+			}
+			
+			resultset.close();
+			ps.close();
+			
+			return account;
+		}
+		catch (SQLException sqlEx) {
+			meLogger.error(sqlEx);
+			return null;
+		} 
+		catch (Exception ex) {
+			meLogger.error(ex);
+			return null;
+		}
+		finally {
+			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
+			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
+	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
+	        UserTools.LogMethod("GetAccountStorageSummary", meLogger, startMS, String.valueOf(userId));
+		}
 	}
 	
 	public void CreateUserApp(long userId, UserApp userApp) throws WallaException
@@ -804,7 +1102,7 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		}
 	}
 
-	public LogonState GetLogonState(String userName, String email)
+	public LogonState GetLogonState(String userName)
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -816,11 +1114,11 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			conn = dataSource.getConnection();
 
 			String selectSql = "SELECT [UserId], [ProfileName], [PasswordHash], [Salt], [FailedLoginCount], [FailedLoginLast] "
-								+ "FROM [dbo].[User] WHERE ([ProfileName] = ? OR [email] = ?) AND [Status] < 4";
+								+ "FROM [dbo].[User] WHERE [ProfileName] = ? AND [Status] < 5";
 							
 			ps = conn.prepareStatement(selectSql);
 			ps.setString(1, userName);
-			ps.setString(2, email);
+			//ps.setString(2, email);
 
 			resultset = ps.executeQuery();
 
@@ -849,7 +1147,7 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetLogonState", meLogger, startMS, userName + " " + email);
+	        UserTools.LogMethod("GetLogonState", meLogger, startMS, userName);
 		}
 	}
 	

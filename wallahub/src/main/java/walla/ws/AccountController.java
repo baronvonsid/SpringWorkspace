@@ -160,7 +160,9 @@ public class AccountController {
 				if (!customSession.getProfileName().equalsIgnoreCase(account.getProfileName())
 						|| customSession.getUserId() != account.getId())
 				{
-					responseCode = accountService.UpdateAccount(account);
+					CustomResponse customResponse = new CustomResponse();
+					accountService.UpdateAccount(account,customResponse);
+					responseCode = customResponse.getResponseCode();
 				}
 				else
 				{
@@ -526,13 +528,13 @@ public class AccountController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			String key = accountService.GetLogonToken(logon, request, customSession, customResponse);
+			String key = accountService.GetLogonToken(request, customSession, customResponse);
 			responseCode = customResponse.getResponseCode();
 			
 			if (customResponse.getResponseCode() == HttpStatus.OK.value())
 			{
 				responseLogon.setKey(key);
-				responseLogon.setProfileName(customSession.getProfileName());
+				//responseLogon.setProfileName(customSession.getProfileName());
 				return responseLogon;
 			}
 			else
@@ -584,7 +586,9 @@ public class AccountController {
 				return;
 			}
 			
-			if (accountService.LogonCheck(logon, request, customSession))
+			CustomResponse customResponse = new CustomResponse();
+			accountService.LogonCheck(logon, request, customSession, customResponse);
+			if (customResponse.getResponseCode() == HttpStatus.OK.value())
 			{
 				Cookie wallaSessionIdCookie = new Cookie("X-Walla-Id", UserTools.GetLatestWallaId(customSession));
 				wallaSessionIdCookie.setPath("/wallahub/");
