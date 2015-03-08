@@ -12,6 +12,10 @@ public class NewAccount {
 	private String description = "";
 	
 	@NotNull
+	@Size(min=0, max=50)
+	private String country = "";
+	
+	@NotNull
 	@Size(min=8, max=30)
 	private String password = "";
 	
@@ -44,6 +48,12 @@ public class NewAccount {
 	{
 		this.description = value;
 	}
+	
+	public String getCountry()
+	{ return this.country; }
+	
+	public void setCountry(String value)
+	{ this.country = value; }
 	
 	public String getPassword()
 	{

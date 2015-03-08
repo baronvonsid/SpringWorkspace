@@ -1,0 +1,151 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta http-equiv="Content-Language" content="en" />
+    
+    <link rel="stylesheet" th:href="@{/static/css/jquery-ui.css}" href="http://localhost:8082/wallahub/static/css/jquery-ui.css" />
+    <link rel="stylesheet" th:href="@{/static/css/wallawebapp.css}" href="http://localhost:8082/wallahub/static/css/wallawebapp.css" />
+
+    <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet" />
+
+    <link th:href="@{/static/images/fotowallabrowser.png}" rel="icon"
+          type="image/x-icon"
+          href="http://localhost:8082/wallahub/static/images/fotowallabrowser.png" />
+
+    <title>Account contacts</title>
+    <meta name="description" content="fotowalla - account contacts" />
+    
+</head>
+
+<body>
+
+    <div class="clearstyles" role="main">
+
+        <div class="clearstyles" style="width:800px;margin-top:50px;margin-right: auto;margin-left: auto;">
+            <div class="column-layout">
+                <div class="column one-fourth" role="navigation">
+                    <nav class="left-nav-list">
+                        <h3 class="nav-list-heading">Profile settings</h3>
+
+                        <a class="nav-list-item"
+                           href="account">Account</a>
+
+                        <a class="nav-list-item"
+                           href="security">Security</a>
+
+                        <a class="nav-list-item selected"
+                           href="contact">Contact</a>
+
+                        <a class="nav-list-item"
+                           href="billing">Billing</a>
+
+                        <a class="nav-list-item"
+                           href="applications">Applications</a>
+
+                        <a class="nav-list-item"
+                           href="storage">Storage</a>
+                    </nav>
+                </div>
+
+                <div class="column three-fourths">
+
+	                    <div class="content-group-box">
+	                        <h3 class="content-group-heading"><i class="fa fa-envelope-o" style="margin-right: 6px;"></i>Email accounts</h3>
+	                        <div class="content-group-inner">
+	                        <form id="mainForm" name="mainForm" action="#" th:action="@{./contact}" th:object="${accountSettings}" method="post">
+			                    <input type="hidden" name="Id" th:field="*{Id}" />
+			                    <input type="hidden" name="profileName" th:field="*{profileName}" />
+			                    <input type="hidden" name="action" th:field="*{action}" />
+			                    <input type="hidden" name="actionEmail" th:field="*{actionEmail}" />
+	                        
+	                            <p>
+	                                You should setup an alternative email address.  This can be used to re-validate your credentials, if your primary email account is compromised.
+	                            </p>
+	
+	                            <ul class="content-list" id="settings-emails" th:each="e : *{Emails}">
+	                            	<li class="clearfix biglistitem">
+	                            		<span th:if="${e.principle == true}" class="emaillabel green">Primary</span>
+	                            		<span th:if="${e.secondary == true}" class="emaillabel green">Alternate</span>
+	                            		<span th:if="${e.verified == false}" class="emaillabel red">Verify!</span>
+	                                    <span th:text="${e.address}">testemail@testemail.com</span>
+	                                    
+	                                    <span class="emailbuttonsspan">
+	                                        <button th:if="${e.verified == true and e.secondary == true}" data-action="SetPrinciple" th:attr="data-email=${e.address}" class="smallbutton" title="Set this email to be your primary">
+	                                            <i class="fa fa-envelope-o fa-fw fa-green"></i> 
+	                                        </button>
+	                                        <button th:if="${e.verified == false}" data-action="ResendEmail" th:attr="data-email=${e.address}" class="smallbutton" title="Re-send verification email">
+	                                            <i class="fa fa-share fa-fw fa-green"></i>
+	                                        </button>
+	                                        <button th:if="${e.principle == false}" data-action="DeleteEmail" th:attr="data-email=${e.address}" class="smallbutton" title="Delete this email address" >
+	                                            <i class="fa fa-trash-o fa-fw fa-red"></i>
+	                                        </button>
+	                                    </span>
+	                                </li>
+	
+	<!--
+	                                <li class="clearfix biglistitem">
+	                                    <span class="emaillabel red">Verify!</span>
+	                                    baronvonsid4@gmail.com
+	                                    <span class="emailbuttonsspan">
+	                                        <button class="smallbutton" title="Re-send verification email">
+	                                            <i class="fa fa-share fa-fw fa-green"></i>
+	                                        </button>
+	                                    </span>
+	                                </li>-->
+	
+	                            </ul>
+	
+								<p th:if="${message != null}" class="errortext"><i class="fa fa-exclamation"></i><span style="margin-left: 5px;" th:text="${message}" class="errortext">Server error</span></p>
+	    </form>
+	                            <div style="margin: 0px; padding: 0px; display: inline;"></div>
+	                            <dl class="form entryformitem">
+	                                <dt><label for="email">Add email address</label></dt>
+	                                <dd>
+	                                    <input tabindex="2" class="short" id="newEmail" name="newEmail" type="email" size="100" />
+	                                    <button id="addEmail" name="addEmail" class="smallbutton green" title="Add a new email address"><i class="fa fa-plus" style="margin-right: 6px;"></i>Add</button>
+	                                </dd>
+	                            </dl>
+	
+	                        </div>
+	                    </div>
+					         
+                </div>
+            </div>
+
+        </div>
+</div>
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+
+    <script>
+    
+    //Suppress bubbling on submit.
+    
+    	$("#addEmail").click(function(currentElement) 
+    			{
+    				//var email = $(currentElement).attr("data-email");
+    				var email = $("#newEmail").val();
+    				$("#actionEmail").val(email);
+    				$("#action").val("AddEmail");
+    				$("#mainForm").submit();
+    			});
+
+    	
+    	$("button[data-action]" ).click(function(currentElement)
+    			{
+    				var email = $(currentElement.currentTarget).attr('data-email');
+    				var action = $(currentElement.currentTarget).attr('data-action');
+    				
+    				$("#actionEmail").val(email);
+    				$("#action").val(action);
+    				$("#mainForm").submit();
+    			});
+
+    </script>
+
+   
+</body>
+</html>

@@ -1,20 +1,43 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html>
 <head>
-<meta charset="ISO-8859-1" />
-<title>fotowalla - error</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta http-equiv="Content-Language" content="en" />
+
+    <link rel="stylesheet" th:href="@{/static/css/jquery-ui.css}" href="http://localhost:8082/wallahub/static/css/jquery-ui.css" />
+    <link rel="stylesheet" th:href="@{/static/css/wallawebapp.css}" href="http://localhost:8082/wallahub/static/css/wallawebapp.css" />
+
+    <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet" />
+
+    <link th:href="@{/static/images/fotowallabrowser.png}" rel="icon"
+          type="image/x-icon"
+          href="http://localhost:8082/wallahub/static/images/fotowallabrowser.png" />
+
+    <title>fotowalla error</title>
+    <meta name="description" content="fotowalla error" />
+
 </head>
+
 <body>
-	
-		<table>
-			<tr>
-				<td>Oppsy</td>
-				<td th:text="${message}">42</td>
-			</tr>
-			<tr>
-				<td>Sorry</td>
-			</tr>
-			<tr><td><a href="logon" th:href="@{/v1/web/logon}">Logon</a></td></tr>
-		</table>
+
+    <div class="clearstyles" role="main">
+        <div class="clearstyles" style="width:300px;margin-top:50px;margin-right: auto;margin-left: auto;">
+
+            <!-- Change Password -->
+            <div class="content-group-box">
+                <h3 class="content-group-heading">Opsy! System error</h3>
+                <div class="content-group-inner">
+
+                    <p th:if="${message != null}" class="errortext"><i class="fa fa-exclamation"></i><span style="margin-left: 5px;" th:text="${message}" class="errortext">Server error</span></p>
+                    <p th:if="${message == null}" class="errortext"><i class="fa fa-exclamation"></i><span style="margin-left: 5px;" class="errortext">An unexpected error was encountered.</span></p>
+                    <hr />
+                    <p class="explain ejecting">You session has been logged out, please <a href="logon" th:href="@{/v1/web/logon}">click</a> here to login again.</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
 </body>
 </html>

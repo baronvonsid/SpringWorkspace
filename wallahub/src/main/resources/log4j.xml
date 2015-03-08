@@ -20,10 +20,11 @@
 	</appender>
 	
 	<!-- Application Loggers -->
-	<logger name="walla.utils">
+	<logger name="walla.*">
 		<level value="debug" />
 	</logger>
 	
+	<!--
 	<logger name="walla.business">
 		<level value="debug" />
 	</logger>
@@ -35,6 +36,11 @@
 	<logger name="walla.ws.impl">
 		<level value="debug" />
 	</logger>
+
+	<logger name="walla.ws.impl">
+		<level value="debug" />
+	</logger>
+	-->
 	
 	<!-- 3rdparty Loggers -->
 	<logger name="org.springframework.core">
@@ -52,9 +58,12 @@
 <!--  .web  -->
 
 	<logger name="org.springframework">
-		<level value="debug" />
+		<level value="warn" />
 	</logger>
 
+	<logger name="org.thymeleaf">
+		<level value="warn" />
+	</logger>
 
 	<!-- Root Logger -->
 	<root>

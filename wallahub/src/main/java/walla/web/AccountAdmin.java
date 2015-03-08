@@ -2,6 +2,7 @@ package walla.web;
 
 import java.io.UnsupportedEncodingException;
 import java.util.GregorianCalendar;
+import java.util.Iterator;
 import java.util.Map;
 
 import javax.servlet.http.Cookie;
@@ -170,11 +171,20 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			{
 				Account account = new Account();
 				account.setProfileName(newAccount.getProfileName());
-				//account.setEmail(newAccount.getEmail());
 				account.setDesc(newAccount.getDescription());
 				account.setPassword(newAccount.getPassword());
 				account.setAccountType(newAccount.getAccountType());
 				account.setKey(newAccount.getKey());
+				account.setCountry(newAccount.getCountry());
+				account.setNewsletter(true);
+				
+				Account.Emails.EmailRef emailRef = new Account.Emails.EmailRef();
+				emailRef.setAddress(newAccount.getEmail());
+				emailRef.setPrinciple(true);
+				emailRef.setSecondary(false);
+				emailRef.setVerified(false);
+				account.setEmails(new Account.Emails());
+				account.getEmails().getEmailRef().add(emailRef);
 				
 				CustomSessionState customSession = UserTools.CheckNewUserSession(account, request, meLogger);
 				if (customSession != null)
@@ -187,7 +197,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 						wallaSessionIdCookie.setPath("/wallahub/");
 						response.addCookie(wallaSessionIdCookie);
 						
-						responseJsp = "redirect:" + account.getProfileName() + "/accountsummary";
+						responseJsp = "redirect:" + customSession.getProfileName() + "/settings/account";
 					}
 					else if (customResponse.getResponseCode() == HttpStatus.BAD_REQUEST.value())
 					{			
@@ -359,11 +369,9 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			}
 			else
 			{
-				Thread.sleep(1000);
-				model.addAttribute("message", "Logon failed, please check your details and try again");
-				responseJsp = RedirectToLogonMaintainReferrer("Request failed security checks.",request, referrer);
+				String message = customResponse.getMessage() == null ? "Logon failed, please check your details and try again" : customResponse.getMessage();
+				responseJsp = RedirectToLogonMaintainReferrer(message,request, referrer);
 			}
-				
 				
 			return responseJsp;
 		}
@@ -399,36 +407,23 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 				return responseJsp;
 			}
 			
-			//TODO check if object already exists in the session.  Use that if so. 
-			Account account = accountService.GetAccountMeta(customSession.getUserId(), customResponse);
+			if (customSession.getAccount() == null)
+			{
+				Account account = accountService.GetAccountMeta(customSession.getUserId(), customResponse);
+				if (customResponse.getResponseCode() != HttpStatus.OK.value())
+				{
+					model.addAttribute("message", defaultMessage);
+					return responseJsp;
+				}
+				customSession.setAccount(account);
+			}
 			
-			if (customResponse.getResponseCode() == HttpStatus.OK.value())
-			{
-				//Convert from internal object to web facing object.
-				MergeSettingsToAccount(account, accountSettings);
-				/*
-				accountSettings.setProfileName(account.getProfileName());
-				accountSettings.setDescription(account.getDesc());
-				accountSettings.setCountry(account.getCountry());
-				accountSettings.setTimezone(account.getTimezone());
-				accountSettings.setNewsletter(account.isNewsletter());
-				accountSettings.setAccountMessage(account.getAccountMessage());
-				accountSettings.setAccountTypeName(account.getAccountTypeName());
-				accountSettings.setOpenDate(account.getOpenDate().toGregorianCalendar().getTime());
-				accountSettings.setVersion(account.getVersion());
-				accountSettings.setId(account.getId());
-				accountSettings.setAccountMessage(account.getAccountMessage());
-				*/
-				
-				if (message != null)
-					model.addAttribute("message", message);
-				
-				responseJsp = "webapp/settings/account";
-			}
-			else
-			{
-				model.addAttribute("message", defaultMessage);
-			}
+			MergeSettingsToAccount(customSession.getAccount(), accountSettings);
+
+			if (message != null)
+				model.addAttribute("message", message);
+			
+			responseJsp = "webapp/settings/account";
 			
 			return responseJsp;
 		}
@@ -551,24 +546,25 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 				return responseJsp;
 			}
 			
-			//TODO get from memory.
-			Account account = accountService.GetAccountMeta(customSession.getUserId(), customResponse);
+			if (customSession.getAccount() == null)
+			{
+				Account account = accountService.GetAccountMeta(customSession.getUserId(), customResponse);
+				if (customResponse.getResponseCode() != HttpStatus.OK.value())
+				{
+					model.addAttribute("message", defaultMessage);
+					return responseJsp;
+				}
+				customSession.setAccount(account);
+			}
 			
-			if (customResponse.getResponseCode() == HttpStatus.OK.value())
-			{
-				//Convert from internal object to web facing object.
-				logon.setProfileName(account.getProfileName());
-				logon.setSecurityMessage(account.getSecurityMessage());
+			//Convert from internal object to web facing object.
+			logon.setProfileName(customSession.getAccount().getProfileName());
+			logon.setSecurityMessage(customSession.getAccount().getSecurityMessage());
 
-				if (message != null)
-					model.addAttribute("message", message);
-				
-				responseJsp = "webapp/settings/security";
-			}
-			else
-			{
-				model.addAttribute("message", defaultMessage);
-			}
+			if (message != null)
+				model.addAttribute("message", message);
+			
+			responseJsp = "webapp/settings/security";
 
 			return responseJsp;
 		}
@@ -629,9 +625,12 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 					model.addAttribute("message", "Security settings update failed, there was an error on the server");
 				else
 					model.addAttribute("message", customResponse.getMessage());
+				
+				responseJsp = "webapp/settings/security";
 			}
 			
-			responseJsp = "webapp/settings/security";
+			customSession.setAccount(null);
+			
 			return responseJsp;
 		}
 		catch (Exception ex) {
@@ -641,6 +640,310 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 		}
 		finally { UserTools.LogWebFormMethod("SettingsSecurityPost", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}	
+
+	@RequestMapping(value="/{profileName}/settings/contact", method=RequestMethod.GET)
+	public String SettingsContactGet(
+			@PathVariable("profileName") String profileName,
+			@RequestParam(value="message", required=false) String message,
+			AccountSettings accountSettings,
+			Model model,
+			HttpServletRequest request,
+			HttpServletResponse response)
+	{
+		long startMS = System.currentTimeMillis();
+		String defaultMessage = "Contact settings could not be retrieved at this time.";
+		String responseJsp = "webapp/generalerror";
+		try
+		{
+			response.addHeader("Cache-Control", "no-cache");
+			
+			CustomResponse customResponse = new CustomResponse();
+			CustomSessionState customSession = UserTools.GetValidAdminSession(profileName, request, meLogger);
+			if (customSession == null)
+			{
+				responseJsp = RedirectToLogon("Contact settings request not authorised.", request);
+				return responseJsp;
+			}
+			
+			if (customSession.getAccount() == null)
+			{
+				Account account = accountService.GetAccountMeta(customSession.getUserId(), customResponse);
+				if (customResponse.getResponseCode() != HttpStatus.OK.value())
+				{
+					model.addAttribute("message", defaultMessage);
+					return responseJsp;
+				}
+				customSession.setAccount(account);
+			}
+			
+			MergeSettingsToAccount(customSession.getAccount(), accountSettings);
+
+			if (message != null)
+				model.addAttribute("message", message);
+				
+			responseJsp = "webapp/settings/contact";
+			return responseJsp;
+		}
+		catch (Exception ex) {
+			meLogger.error(ex);
+			model.addAttribute("message", defaultMessage);
+			return responseJsp;
+		}
+		finally { UserTools.LogWebFormMethod("SettingsContactGet", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+	}
+	
+	@RequestMapping(value="/{profileName}/settings/contact", method=RequestMethod.POST)
+	public String SettingsContactPost(
+			@Valid AccountSettings accountSettings,
+			BindingResult bindingResult,
+			Model model,
+			@PathVariable("profileName") String profileName,
+			HttpServletRequest request,
+			HttpServletResponse response)
+	{
+		long startMS = System.currentTimeMillis();
+		String defaultMessage = "Account contacts could not be updated at this time.";
+		String responseJsp = "webapp/generalerror";
+		try
+		{
+			response.addHeader("Cache-Control", "no-cache");
+						
+			if (bindingResult.hasErrors())
+			{
+				responseJsp = "webapp/settings/contact";
+			}
+			else
+			{
+				CustomSessionState customSession = UserTools.GetValidAdminSession(profileName, request, meLogger);
+				if (customSession == null)
+				{
+					responseJsp = RedirectToLogon("Account settings update failed, your session has ended.  Please login again.", request);
+					return responseJsp;
+				}
+				else
+				{
+					if (!customSession.getProfileName().equalsIgnoreCase(accountSettings.getProfileName())
+							|| customSession.getUserId() != accountSettings.getId())
+					{
+						responseJsp = RedirectToLogon("Account settings update failed, an invalid action was requested.  Your session has been closed.", request);
+						return responseJsp;
+					}
+					else
+					{
+						CustomResponse customResponse = new CustomResponse();
+						switch (accountSettings.getAction())
+						{
+							case "AddEmail":
+								accountService.AddEmail(customSession.getUserId(), accountSettings.getActionEmail(), customResponse);
+								break;
+								
+							case "SetPrinciple":
+								accountService.UpdateEmailAction(customSession.getUserId(), accountSettings.getActionEmail(), EmailAction.Principle, customResponse);
+								break;
+
+							case "ResendEmail":
+								accountService.VerifyEmailRequest(customSession.getUserId(), accountSettings.getActionEmail(), customResponse);
+								break;
+								
+							case "DeleteEmail":
+								accountService.UpdateEmailAction(customSession.getUserId(), accountSettings.getActionEmail(), EmailAction.Delete, customResponse);
+								break;								
+						}
+
+						if (customResponse.getResponseCode() == HttpStatus.OK.value())
+						{
+							responseJsp = "redirect:" + urlPrefix + "/" + customSession.getProfileName() + "/settings/contact";
+							model.addAttribute("message", "Contact updated.");
+							customSession.setAccount(null);
+						}
+						else
+						{
+							if (customResponse.getMessage() == null)
+								model.addAttribute("message", "Contact update failed, there was an error on the server");
+							else
+								model.addAttribute("message", customResponse.getMessage());
+							
+							MergeSettingsToAccount(customSession.getAccount(), accountSettings);
+							
+							responseJsp = "webapp/settings/contact";
+						}
+					}
+				}
+
+			}
+			return responseJsp;
+		}
+		catch (Exception ex) {
+			meLogger.error(ex);
+			model.addAttribute("message", defaultMessage);
+			return responseJsp;
+		}
+		finally { UserTools.LogWebFormMethod("SettingsContactPost", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+	}
+	
+	
+	@RequestMapping(value="/{profileName}/settings/billing", method=RequestMethod.GET)
+	public String SettingsBillingGet(
+			@PathVariable("profileName") String profileName,
+			@RequestParam(value="message", required=false) String message,
+			AccountSettings accountSettings,
+			Model model,
+			HttpServletRequest request,
+			HttpServletResponse response)
+	{
+		long startMS = System.currentTimeMillis();
+		String defaultMessage = "Billing settings could not be retrieved at this time.";
+		String responseJsp = "webapp/generalerror";
+		try
+		{
+			response.addHeader("Cache-Control", "no-cache");
+			
+			CustomResponse customResponse = new CustomResponse();
+			CustomSessionState customSession = UserTools.GetValidAdminSession(profileName, request, meLogger);
+			if (customSession == null)
+			{
+				responseJsp = RedirectToLogon("Billing settings request not authorised.", request);
+				return responseJsp;
+			}
+			
+			if (customSession.getAccount() == null)
+			{
+				Account account = accountService.GetAccountMeta(customSession.getUserId(), customResponse);
+				if (customResponse.getResponseCode() != HttpStatus.OK.value())
+				{
+					model.addAttribute("message", defaultMessage);
+					return responseJsp;
+				}
+				customSession.setAccount(account);
+			}
+			
+			MergeSettingsToAccount(customSession.getAccount(), accountSettings);
+
+			//TODO actually implement billing.
+			
+			if (message != null)
+				model.addAttribute("message", message);
+			
+			responseJsp = "webapp/settings/billing";
+			
+			return responseJsp;
+		}
+		catch (Exception ex) {
+			meLogger.error(ex);
+			model.addAttribute("message", defaultMessage);
+			return responseJsp;
+		}
+		finally { UserTools.LogWebFormMethod("SettingsBillingGet", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+	}
+	
+	@RequestMapping(value="/{profileName}/settings/applications", method=RequestMethod.GET)
+	public String SettingsApplicationsGet(
+			@PathVariable("profileName") String profileName,
+			@RequestParam(value="message", required=false) String message,
+			AccountSettings accountSettings,
+			Model model,
+			HttpServletRequest request,
+			HttpServletResponse response)
+	{
+		long startMS = System.currentTimeMillis();
+		String defaultMessage = "Application settings could not be retrieved at this time.";
+		String responseJsp = "webapp/generalerror";
+		try
+		{
+			response.addHeader("Cache-Control", "no-cache");
+			
+			CustomResponse customResponse = new CustomResponse();
+			CustomSessionState customSession = UserTools.GetValidAdminSession(profileName, request, meLogger);
+			if (customSession == null)
+			{
+				responseJsp = RedirectToLogon("Application settings request not authorised.", request);
+				return responseJsp;
+			}
+			
+			if (customSession.getAccount() == null)
+			{
+				Account account = accountService.GetAccountMeta(customSession.getUserId(), customResponse);
+				if (customResponse.getResponseCode() != HttpStatus.OK.value())
+				{
+					model.addAttribute("message", defaultMessage);
+					return responseJsp;
+				}
+				customSession.setAccount(account);
+			}
+			
+			MergeSettingsToAccount(customSession.getAccount(), accountSettings);
+
+			//TODO actually implement applications.
+			
+			if (message != null)
+				model.addAttribute("message", message);
+			
+			responseJsp = "webapp/settings/applications";
+			
+			return responseJsp;
+		}
+		catch (Exception ex) {
+			meLogger.error(ex);
+			model.addAttribute("message", defaultMessage);
+			return responseJsp;
+		}
+		finally { UserTools.LogWebFormMethod("SettingsApplicationsGet", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+	}
+	
+	@RequestMapping(value="/{profileName}/settings/storage", method=RequestMethod.GET)
+	public String SettingsStorageGet(
+			@PathVariable("profileName") String profileName,
+			@RequestParam(value="message", required=false) String message,
+			//@RequestParam(value="force", required=false) Boolean force,
+			//AccountStorage accountStorage,
+			Model model,
+			HttpServletRequest request,
+			HttpServletResponse response)
+	{
+		long startMS = System.currentTimeMillis();
+		String defaultMessage = "Storage settings could not be retrieved at this time.";
+		String responseJsp = "webapp/generalerror";
+		try
+		{
+			response.addHeader("Cache-Control", "no-cache");
+			
+			CustomResponse customResponse = new CustomResponse();
+			CustomSessionState customSession = UserTools.GetValidAdminSession(profileName, request, meLogger);
+			if (customSession == null)
+			{
+				responseJsp = RedirectToLogon("Storage settings request not authorised.", request);
+				return responseJsp;
+			}
+			
+			
+			if (customSession.getAccountStorage() == null) // || force)
+			{
+				AccountStorage storage = accountService.GetAccountStorage(customSession.getUserId(), customResponse);
+				if (customResponse.getResponseCode() != HttpStatus.OK.value())
+				{
+					model.addAttribute("message", defaultMessage);
+					return responseJsp;
+				}
+				customSession.setAccountStorage(storage);
+			}			
+
+			model.addAttribute("accountStorage", customSession.getAccountStorage());
+			//MergeStorageObjects(accountStorage, customSession.getAccountStorage());
+
+			if (message != null)
+				model.addAttribute("message", message);
+			
+			responseJsp = "webapp/settings/storage";
+			
+			return responseJsp;
+		}
+		catch (Exception ex) {
+			meLogger.error(ex);
+			model.addAttribute("message", defaultMessage);
+			return responseJsp;
+		}
+		finally { UserTools.LogWebFormMethod("SettingsStorageGet", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+	}
 	
 	@RequestMapping(value="/{profileName}/gallery/{galleryName}/logon", method=RequestMethod.GET)
 	public String GalleryLogonGet(
@@ -843,6 +1146,19 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			+ "&message=" + UserTools.EncodeString(message, request);	
 	}
 	
+	private void MergeStorageObjects(AccountStorage request, AccountStorage session)
+	{
+		request.setStorageMessage(session.getStorageMessage());
+		request.setStorageGBLimit(session.getStorageGBLimit());
+		request.setMonthlyUploadCap(session.getMonthlyUploadCap());
+		request.setUploadCount30Days(session.getUploadCount30Days());
+		request.setSizeGB(session.getSizeGB());
+		request.setCompressedSizeGB(session.getCompressedSizeGB());
+		request.setImageCount(session.getImageCount());
+
+
+	}
+	
 	private void MergeSettingsToAccount(Account account, AccountSettings accountSettings)
 	{
 		accountSettings.setProfileName(account.getProfileName());
@@ -856,6 +1172,23 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 		accountSettings.setVersion(account.getVersion());
 		accountSettings.setId(account.getId());
 		accountSettings.setAccountMessage(account.getAccountMessage());	
+		
+		if (account.getEmails().getEmailRef().size() > 0)
+		{
+
+			for (Iterator<Account.Emails.EmailRef> imageIterater = account.getEmails().getEmailRef().iterator(); imageIterater.hasNext();)
+			{
+				Account.Emails.EmailRef current = (Account.Emails.EmailRef)imageIterater.next();
+				
+				AccountSettings.EmailRef emailRef = new AccountSettings.EmailRef();
+				emailRef.setAddress(current.getAddress());
+				emailRef.setPrinciple(current.isPrinciple());
+				emailRef.setSecondary(current.isSecondary());
+				emailRef.setVerified(current.isVerified());
+				
+				accountSettings.getEmails().add(emailRef);
+			}
+		}
 	}
 	
 	

@@ -56,7 +56,7 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			conn = dataSource.getConnection();
 			conn.setAutoCommit(true);
 			
-			String sprocSql = "EXEC [dbo].[SetupNewUser] ?, ?, ?, ?, ?, ?, ?";
+			String sprocSql = "EXEC [dbo].[SetupNewUser] ?, ?, ?, ?, ?, ?, ?, ?, ?";
 				
 			createSproc = conn.prepareCall(sprocSql);
 			createSproc.setString(1, newAccount.getProfileName());
@@ -70,7 +70,7 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			createSproc.registerOutParameter(9, Types.INTEGER);
 			createSproc.execute();
 			    
-			return createSproc.getLong(7);
+			return createSproc.getLong(9);
 		    //if (newUserId < 1)
 		    //{
 		    //	String error = "SetupNewUser sproc didn't return a valid user number";
@@ -455,7 +455,6 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			String sql = "";
 			String secondSql = "";
 			
-			
 			if (action == EmailAction.Delete || action == EmailAction.SetupValidation || action == EmailAction.Verified)
 			{
 				switch (action)
@@ -740,13 +739,13 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		}
 	}
 
-	public Account GetAccountStorageSummary(long userId)
+	public AccountStorage GetAccountStorage(long userId)
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
 		PreparedStatement ps = null;
 		ResultSet resultset = null;
-		Account account = null;
+		AccountStorage accountStorage = null;
 		
 		try {
 			conn = dataSource.getConnection();
@@ -762,15 +761,14 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			if (!resultset.next())
 				return null;
 			
-			account = new Account();
-			account.setId(userId);
-			account.setStorageSummary(new Account.StorageSummary());
-			account.getStorageSummary().setStorageGBLimit(resultset.getDouble(1));
-			account.getStorageSummary().setMonthlyUploadCap(resultset.getInt(2));
-			account.getStorageSummary().setUploadCount30Days(resultset.getInt(3));
-			account.getStorageSummary().setImageCount(resultset.getInt(4));
-			account.getStorageSummary().setSizeGB(resultset.getDouble(5));
-			account.getStorageSummary().setCompressedSizeGB(resultset.getDouble(6));
+			accountStorage = new AccountStorage();
+			accountStorage.setId(userId);
+			accountStorage.setStorageGBLimit(resultset.getDouble(1));
+			accountStorage.setMonthlyUploadCap(resultset.getInt(2));
+			accountStorage.setUploadCount30Days(resultset.getInt(3));
+			accountStorage.setImageCount(resultset.getInt(4));
+			accountStorage.setSizeGB(resultset.getDouble(5));
+			accountStorage.setCompressedSizeGB(resultset.getDouble(6));
 
 			resultset.close();
 			ps.close();
@@ -786,13 +784,13 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 
 			while (resultset.next())
 			{
-				Account.StorageSummary.FormatRef format = new Account.StorageSummary.FormatRef();
+				AccountStorage.FormatRef format = new AccountStorage.FormatRef();
 				format.setFormat(resultset.getString(1));
 				format.setImageCount(resultset.getInt(2));
 				format.setSizeGB(resultset.getDouble(3));
 				format.setCompressedSizeGB(resultset.getDouble(4));
 				
-				account.getStorageSummary().getFormatRef().add(format);
+				accountStorage.getFormatRef().add(format);
 			}
 			
 			resultset.close();
@@ -809,13 +807,13 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 
 			while (resultset.next())
 			{
-				Account.StorageSummary.UploadSourceRef uploadSource = new Account.StorageSummary.UploadSourceRef();
+				AccountStorage.UploadSourceRef uploadSource = new AccountStorage.UploadSourceRef();
 				uploadSource.setName(resultset.getString(1));
 				uploadSource.setImageCount(resultset.getInt(2));
 				uploadSource.setSizeGB(resultset.getDouble(3));
 				uploadSource.setCompressedSizeGB(resultset.getDouble(4));
 				
-				account.getStorageSummary().getUploadSourceRef().add(uploadSource);
+				accountStorage.getUploadSourceRef().add(uploadSource);
 			}
 			
 			resultset.close();
@@ -832,19 +830,19 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 
 			while (resultset.next())
 			{
-				Account.StorageSummary.ImageYearRef imageYear = new Account.StorageSummary.ImageYearRef();
+				AccountStorage.ImageYearRef imageYear = new AccountStorage.ImageYearRef();
 				imageYear.setYear(resultset.getString(1));
 				imageYear.setImageCount(resultset.getInt(2));
 				imageYear.setSizeGB(resultset.getDouble(3));
 				imageYear.setCompressedSizeGB(resultset.getDouble(4));
 				
-				account.getStorageSummary().getImageYearRef().add(imageYear);
+				accountStorage.getImageYearRef().add(imageYear);
 			}
 			
 			resultset.close();
 			ps.close();
 			
-			return account;
+			return accountStorage;
 		}
 		catch (SQLException sqlEx) {
 			meLogger.error(sqlEx);
@@ -858,7 +856,7 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetAccountStorageSummary", meLogger, startMS, String.valueOf(userId));
+	        UserTools.LogMethod("GetAccountStorage", meLogger, startMS, String.valueOf(userId));
 		}
 	}
 	

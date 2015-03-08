@@ -27,6 +27,9 @@ public class CustomSessionState {
 	private Date failedLogonLast = null;
 	private String remoteAddress = "";
 	
+	private Account account = null;
+	private AccountStorage accountStorage = null;
+	
 	public String getProfileName()
 	{
 		return this.profileName;
@@ -201,5 +204,23 @@ public class CustomSessionState {
 		this.remoteAddress = value;
 	}
 	
+	public Account getAccount()
+	{
+		return this.account;
+	}
 	
+	public void setAccount(Account value)
+	{
+		this.account = value;
+	}
+	
+	public AccountStorage getAccountStorage()
+	{
+		return this.accountStorage;
+	}
+	
+	public void setAccountStorage(AccountStorage value)
+	{
+		this.accountStorage = value;
+	}
 }

@@ -77,7 +77,7 @@
 			style="margin-right: -4px;"
 			data-description="Image description"
 			data-shot-meta="Shot meta"
-    		data-file-meta="File meta"><img th:attr="src=@{'/v1/ws/'+${customSessionState.profileName}+'/' + (${isPreview} ? 'imagepreview' : 'image') + '/' +${i.id}+'/'+${presentation.thumbHeight}+'/'+${presentation.thumbWidth}+'/'},title=${gallery.showImageName} ? ${i.name} : ''"  src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg"></img></a>
+    		data-file-meta="File meta"><img th:attr="src=@{'/v1/ws/'+${customSessionState.profileName}+'/' + (${isPreview} ? 'imagepreview' : 'image') + '/' +${i.id}+'/'+ ${presentation.thumbHeight} * 2 +'/'+ ${presentation.thumbWidth} * 2 +'/'},title=${gallery.showImageName} ? ${i.name} : '', width=${presentation.thumbWidth}"  src="http://localhost:8082/wallahub/static/images/gallery/test/75x75/1.jpg"></img></a>
 
 		
 		<a href="http://localhost:8082/wallahub/static/images/gallery/test/1920x1080/1.jpg" th:remove="all" title="Soome name">

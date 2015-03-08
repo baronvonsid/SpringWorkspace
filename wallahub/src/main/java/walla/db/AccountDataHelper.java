@@ -15,7 +15,7 @@ public interface AccountDataHelper {
 	public long CreateAccount(Account newAccount, String passwordHash, String salt) throws WallaException;
 	public void UpdateAccount(Account acount) throws WallaException;
 	public Account GetAccountMeta(long userId);
-	public Account GetAccountStorageSummary(long userId);
+	public AccountStorage GetAccountStorage(long userId);
 	public void UpdateAccountStatus(long userId, AccountStatus status) throws WallaException;
 	public boolean ValidateEmailConfirm(long userId, String requestValidationString, CustomResponse customResponse);
 	public void AddEmail(long userId, String email, boolean principle, boolean secondary) throws WallaException;

@@ -494,10 +494,8 @@ public class AccountController {
 	}
 	
 	//POST /logontoken
-	@RequestMapping(value="/logontoken", method=RequestMethod.POST, produces=MediaType.APPLICATION_XML_VALUE,
-			consumes = MediaType.APPLICATION_XML_VALUE, headers={"Accept-Charset=utf-8"} )
+	@RequestMapping(value="/logon/token", method=RequestMethod.GET, produces=MediaType.APPLICATION_XML_VALUE, headers={"Accept-Charset=utf-8"} )
 	public @ResponseBody Logon GetLogonToken(
-			@RequestBody Logon logon,
 			HttpServletRequest request, 
 			HttpServletResponse response)
 	{	
@@ -510,19 +508,36 @@ public class AccountController {
 			response.addHeader("Cache-Control", "no-cache");
 			
 			//TODO add remote address to the DB, to check for other sessions, from other IPs coming in.
-			
+			/*
 			if (logon == null)
 			{
 				meLogger.warn("Logon request made, but no logon object submitted");
 				responseCode = HttpStatus.BAD_REQUEST.value();
 				return null;
 			}
+			*/
 			
-			HttpSession tomcatSession = request.getSession(true);
+			CustomSessionState customSession = null;
+			try
+			{
+				customSession =  UserTools.GetInitialAdminSession(request, meLogger);
+			}
+			catch (WallaException wallaEx)
+			{
+				//Unexpected action,  forbidden.
+				Thread.sleep(10000);
+				responseCode = wallaEx.getCustomStatus();
+				return null;
+			}
 			
-			CustomSessionState customSession = (CustomSessionState)tomcatSession.getAttribute("CustomSessionState");
 			if (customSession == null)
 			{
+				//Existing session is not valid, so start again.
+				HttpSession tomcatSession = request.getSession(false);
+				if (tomcatSession != null)
+					tomcatSession.invalidate();
+				
+				tomcatSession = request.getSession(true);
 				customSession = new CustomSessionState();
 				tomcatSession.setAttribute("CustomSessionState", customSession);
 			}
@@ -534,7 +549,6 @@ public class AccountController {
 			if (customResponse.getResponseCode() == HttpStatus.OK.value())
 			{
 				responseLogon.setKey(key);
-				//responseLogon.setProfileName(customSession.getProfileName());
 				return responseLogon;
 			}
 			else

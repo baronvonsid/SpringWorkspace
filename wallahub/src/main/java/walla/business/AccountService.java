@@ -141,6 +141,9 @@ public class AccountService {
 
 			//TODO check email is unique
 			
+			//TODO auto find timezone
+			account.setTimezone("GMT");
+			
 			String salt = SecurityTools.GenerateSalt();
 			String passwordHash = SecurityTools.GetHashedPassword(account.getPassword(), salt, 160, 1000);
 			
@@ -168,13 +171,9 @@ public class AccountService {
 			
 			//TODO decouple.
 			accountDataHelper.AddEmail(newUserId, principleEmail, true, false);
-			VerifyEmailRequest(newUserId, principleEmail);
 			
 			if (secondaryEmail.length() > 0)
-			{
 				accountDataHelper.AddEmail(newUserId, secondaryEmail, false, true);
-				VerifyEmailRequest(newUserId, secondaryEmail);
-			}
 			
 			meLogger.info("New user has been created.  Email: " + principleEmail + " UserId:" + newUserId);
 			customResponse.setResponseCode(HttpStatus.CREATED.value());
@@ -306,6 +305,32 @@ public class AccountService {
 		finally { UserTools.LogMethod("GetAccountMeta", meLogger, startMS, String.valueOf(userId)); }
 	}
 	
+	public AccountStorage GetAccountStorage(long userId, CustomResponse customResponse)
+	{
+		long startMS = System.currentTimeMillis();
+		try 
+		{
+			AccountStorage accountStorage = accountDataHelper.GetAccountStorage(userId);
+			if (accountStorage == null)
+			{
+				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+				return null;
+			}
+
+			
+			accountStorage.setStorageMessage("test message");
+
+			customResponse.setResponseCode(HttpStatus.OK.value());
+			return accountStorage;
+		}
+		catch (Exception ex) {
+			meLogger.error(ex);
+			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			return null;
+		}
+		finally { UserTools.LogMethod("GetAccountStorage", meLogger, startMS, String.valueOf(userId)); }
+	}
+	
 	public void EmailConfirm(String profileName, String requestValidationString, CustomResponse customResponse)
 	{
 		//Return email address if correctly validated.
@@ -354,14 +379,30 @@ public class AccountService {
 		finally { UserTools.LogMethod("EmailConfirm", meLogger, startMS, profileName); }
 	}
 
-	//TODO Decouple.
-	public void VerifyEmailRequest(long userId, String email)
+	public void VerifyEmailRequest(long userId, String email, CustomResponse customResponse)
 	{
-		//TODO decouple
-		VerifyEmail(userId, email);
+		long startMS = System.currentTimeMillis();
+		try
+		{
+			String validationString = UserTools.GetComplexString();
+			accountDataHelper.UpdateEmail(userId, email, EmailAction.SetupValidation, validationString.substring(0,32));
+			
+			//TODO decouple
+			SendVerifyEmail(userId, email, validationString);
+			
+			customResponse.setResponseCode(HttpStatus.OK.value());
+		}
+		catch (WallaException wallaEx) {
+			customResponse.setResponseCode(wallaEx.getCustomStatus());
+		}
+		catch (Exception ex) {
+			meLogger.error(ex);
+			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+		}
+		finally { UserTools.LogMethod("UpdateEmailAction", meLogger, startMS, String.valueOf(userId) + " " + email); }
 	}
 	
-	public int UpdateEmailAction(long userId, String email, EmailAction action)
+	public void UpdateEmailAction(long userId, String email, EmailAction action, CustomResponse customResponse)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
@@ -373,37 +414,39 @@ public class AccountService {
 				CheckUpdateAccountStatus(userId);
 			
 			
-			return HttpStatus.OK.value();
+			customResponse.setResponseCode(HttpStatus.OK.value());
 		}
 		catch (WallaException wallaEx) {
-			return wallaEx.getCustomStatus();
+			customResponse.setResponseCode(wallaEx.getCustomStatus());
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
-			return HttpStatus.INTERNAL_SERVER_ERROR.value();
+			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
 		finally { UserTools.LogMethod("UpdateEmailAction", meLogger, startMS, String.valueOf(userId) + " " + email); }
 	}
 
-	public int AddEmail(long userId, String email, EmailAction action)
+	public void AddEmail(long userId, String email, CustomResponse customResponse)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
 		{
 			if (!accountDataHelper.EmailIsUnique(userId, email))
 			{
-				return HttpStatus.CONFLICT.value();
+				customResponse.setResponseCode(HttpStatus.CONFLICT.value());
+				customResponse.setMessage("Email address is not unique.");
+				return;
 			}
 			
 			accountDataHelper.AddEmail(userId, email, false, false);
-			return HttpStatus.OK.value();
+			VerifyEmailRequest(userId, email, customResponse);
 		}
 		catch (WallaException wallaEx) {
-			return wallaEx.getCustomStatus();
+			customResponse.setResponseCode(wallaEx.getCustomStatus());
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
-			return HttpStatus.INTERNAL_SERVER_ERROR.value();
+			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
 		finally { UserTools.LogMethod("AddEmail", meLogger, startMS, String.valueOf(userId) + " " + email); }
 	}
@@ -842,6 +885,7 @@ public class AccountService {
 		String password = "";
 		String requestKey = "";
 		String email = "";
+		String message = "";
 		try
 		{
 			//TODO add customResponse. coes and messages.
@@ -869,40 +913,52 @@ public class AccountService {
 				
 			    if (calendar.getTime().after(new Date()))
 			    {
-			    	meLogger.warn("Subsequent logon request too soon after previous failure. (session)");
+			    	message = "Subsequent logon request too soon after previous failure.  Please try again later.";
+			    	meLogger.warn(message);
+			    	customResponse.setResponseCode(HttpStatus.FORBIDDEN.value());
 			    	return;
 			    }
 			}
 
 			if (customSession.getRemoteAddress().compareTo(request.getRemoteAddr()) != 0)
 			{
-				meLogger.warn("IP address of the session has changed since the logon key was issued..");
-				return;
+		    	message = "IP address of the session has changed since the logon key was issued.";
+		    	meLogger.warn(message);
+		    	customResponse.setResponseCode(HttpStatus.FORBIDDEN.value());
+		    	return;
 			}
 			
 			if ((profileName == null && email == null) || password == null || requestKey == null)
 			{
-				meLogger.warn("Not all the logon fields were supplied, logon failed.");
-				return;
+		    	message = "Not all the logon fields were supplied, logon failed.";
+		    	meLogger.warn(message);
+		    	customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+		    	return;
 			}
 		    
 			if ((profileName.length() < 5 && email.length() < 5) || password.length() < 8 || requestKey.length() != 32)
 			{
-				meLogger.warn("The logon fields supplied did meet minimum size, logon failed.  profileName:" + profileName + " password length:" + password.length() + " key:" + requestKey);
-				return;
+		    	message = "The logon fields supplied did meet minimum size, logon failed.  profileName:" + profileName + " password length:" + password.length() + " key:" + requestKey;
+		    	meLogger.warn(message);
+		    	customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+		    	return;
 			}
 			
 		    //Check one-off logon key, matches between server and request.
 			if (requestKey.compareTo(logon.getKey()) != 0)
 			{
-				meLogger.warn("One off logon key, does not match request.  ServerKey:" + requestKey + " RequestKey:" + logon.getKey());
-				return;
+		    	message = "One off logon key, does not match request.  ServerKey:" + requestKey + " RequestKey:" + logon.getKey();
+		    	meLogger.warn(message);
+		    	customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+		    	return;
 			}
 			
 			LogonState userStateDb = accountDataHelper.GetLogonState(profileName);
 			if (userStateDb == null)
 			{
-				meLogger.warn("Logon state could not be retrieved from the database.  ProfileName: " + profileName);
+		    	message = "Logon state could not be retrieved from the database.  ProfileName: " + profileName;
+		    	meLogger.warn(message);
+		    	customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
 		    	return;
 			}
 			
@@ -912,9 +968,14 @@ public class AccountService {
 				long diffInMillies = now.getTime() - userStateDb.getFailedLogonLast().getTime();
 				long minsDiff = TimeUnit.MINUTES.convert(diffInMillies, TimeUnit.MILLISECONDS);
 				if (minsDiff < 30)
-					customResponse.setMessage("Your account has been temporarily frozen, as the maximum allowed login attempts was breached.  Please contact fotowalla support if you did not make these attempts, otherwise wait " + (30-minsDiff) + " minutes and try again.");
+				{
+			    	message = "Your account has been temporarily frozen, as the maximum allowed login attempts was breached.  Please contact fotowalla support if you did not make these attempts, otherwise wait " + (30-minsDiff) + " minutes and try again.";
+			    	meLogger.warn(message);
+			    	customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+			    	customResponse.setMessage(message);
+			    	return;
+				}
 			}
-			
 			//Get a hash of the password attempt.
 			String passwordAttemptHash = SecurityTools.GetHashedPassword(logon.getPassword(), userStateDb.getSalt(), 160, 1000);
 			if (SecurityTools.SlowEquals(passwordAttemptHash.getBytes(), userStateDb.getPasswordHash().getBytes()))
@@ -931,8 +992,7 @@ public class AccountService {
 				}
 				accountDataHelper.UpdateLogonState(userStateDb.getUserId(), 0, null);
 				meLogger.debug("Logon successfull for User: " + logon.getProfileName());
-				
-				return;
+				customResponse.setResponseCode(HttpStatus.OK.value());
 			}
 			else
 			{
@@ -947,14 +1007,22 @@ public class AccountService {
 				accountDataHelper.UpdateLogonState(userStateDb.getUserId(), failCount, new Date());
 				meLogger.warn("Password didn't match, logon failed.");
 
-				customResponse.setMessage("The system has detected multiple logon failures, and will slow down subsequent attempts.  Please double check your credentials before proceeding.");				
+
+				
 				//Check for number of recent failures.  More than 5? then 10 seconds delay.
 				if (customSession.getFailedLogonCount() > 5)
+				{
 					Thread.sleep(10000);
+					customResponse.setMessage("The system has detected multiple logon failures, and will slow down subsequent attempts.  Please double check your credentials before proceeding.");				
+				}
 				else
-					Thread.sleep(1000);
+				{
+					Thread.sleep(2000);
+					customResponse.setMessage("Login failed.  Please double check your credentials before proceeding.");				
+				}
 				
-				return;
+				
+				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
 			}
 			
 		}
@@ -1080,19 +1148,15 @@ public class AccountService {
 		}
 	}
 	
-	
-	public void VerifyEmail(long userId, String email) 
+	public void SendVerifyEmail(long userId, String email, String validationString) 
 	{
 		try
 		{
-			String validationString = UserTools.GetComplexString();
-			accountDataHelper.UpdateEmail(userId, email, EmailAction.SetupValidation, validationString.substring(0,32));
-
 			//TODO actually send email.
 		}
-		catch (WallaException wallaEx) {
-			meLogger.error("Unexpected error when trying to process SendEmailConfirmation");
-		}
+		//catch (WallaException wallaEx) {
+		//	meLogger.error("Unexpected error when trying to process SendEmailConfirmation");
+		//}
 		catch (Exception ex) {
 			meLogger.error("Unexpected error when trying to proces SendEmailConfirmation", ex);
 		}

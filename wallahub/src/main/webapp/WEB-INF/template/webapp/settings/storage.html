@@ -1,0 +1,156 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta http-equiv="Content-Language" content="en" />
+
+    <link rel="stylesheet" th:href="@{/static/css/jquery-ui.css}" href="http://localhost:8082/wallahub/static/css/jquery-ui.css" />
+    <link rel="stylesheet" th:href="@{/static/css/wallawebapp.css}" href="http://localhost:8082/wallahub/static/css/wallawebapp.css" />
+
+    <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet" />
+
+    <link th:href="@{/static/images/fotowallabrowser.png}" rel="icon"
+          type="image/x-icon"
+          href="http://localhost:8082/wallahub/static/images/fotowallabrowser.png" />
+
+    <title>Storage</title>
+    <meta name="description" content="fotowalla - storage breakdown" />
+
+</head>
+
+<body>
+    
+
+    <div class="clearstyles" role="main">
+
+        <div class="clearstyles" style="width:800px;margin-top:50px;margin-right: auto;margin-left: auto;">
+            <div class="column-layout">
+                <div class="column one-fourth" role="navigation">
+                    <nav class="left-nav-list">
+                        <h3 class="nav-list-heading">Profile settings</h3>
+
+                        <a class="nav-list-item"
+                           href="account">Account</a>
+
+                        <a class="nav-list-item"
+                           href="security">Security</a>
+
+                        <a class="nav-list-item"
+                           href="contact">Contact</a>
+
+                        <a class="nav-list-item"
+                           href="billing">Billing</a>
+
+                        <a class="nav-list-item"
+                           href="applications">Applications</a>
+
+                        <a class="nav-list-item selected"
+                           href="storage">Storage</a>
+                    </nav>
+
+                </div>
+
+                <div class="column three-fourths">
+
+                    <div class="content-group-box">
+                        <h3 class="content-group-heading">Storage summary</h3>
+                        <div class="content-group-inner">
+                            <ul class="content-list">
+                                <li th:if="${message != null}">
+                                    <p class="errortext"><i class="fa fa-exclamation"></i><span style="margin-left: 5px;" th:text="${message}" class="errortext">Server error</span></p>
+                                </li>
+                                <li th:if="*{storageMessage != null}">
+                                    <p th:text="*{storageMessage}"></p>
+                                </li>
+                                <li>
+                                    <span style="float: right;" th:text="${accountStorage.StorageGBLimit} + 'GB'">###GB</span>
+                                    <i class="fa fa-minus fa-fw" style="margin-right: 5px;"></i>Plan storage limit (compressed)
+                                </li>
+                                <li>
+                                    <span style="float: right;" th:text="${accountStorage.CompressedSizeGB} + 'GB / ' + ${accountStorage.SizeGB} + 'GB'">###GB</span>
+                                    <i class="fa fa-minus fa-fw" style="margin-right: 5px;"></i>Currently used (compressed/uncompressed)
+                                </li>
+                                <li>
+                                    <span style="float: right;" th:text="${accountStorage.ImageCount}">###GB</span>
+                                    <i class="fa fa-minus fa-fw" style="margin-right: 5px;"></i>Number of images
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="content-group-box">
+                        <h3 class="content-group-heading">Breakdown</h3>
+                        <div class="content-group-inner">
+
+                            <ul class="content-list">
+                                <li th:each="formatRef : ${accountStorage.FormatRef}">
+                                    <i class="fa fa-minus fa-fw" style="margin-right: 5px;float: left;"></i>
+                                    <span style="float: left;" th:text="${formatRef.Format} + ' - ' + ${formatRef.SizeGB} + 'GB \ ' + ${formatRef.ImageCount} + ' images'">JPEG - 20GB \ 300 images</span>
+                                    
+                                </li>
+                            </ul>
+
+                            <ul class="content-list">
+                                <li th:each="uploadSourceRef : ${accountStorage.UploadSourceRef}">
+                                    <i class="fa fa-minus fa-fw" style="margin-right: 5px;float: left;"></i>
+                                    <span style="float: left;" th:text="${uploadSourceRef.Name} + ' - ' + ${uploadSourceRef.SizeGB} + 'GB \ ' + ${uploadSourceRef.ImageCount} + ' images'">JPEG - 20GB \ 300 images</span>
+                                </li>
+                            </ul>
+
+                            <ul class="content-list">
+                                <li th:each="imageYearRef : ${accountStorage.ImageYearRef}">
+                                    <i class="fa fa-minus fa-fw" style="margin-right: 5px;float: left;"></i>
+                                    <span style="float: left;" th:text="${imageYearRef.Year} + ' - ' + ${imageYearRef.SizeGB} + 'GB \ ' + ${imageYearRef.ImageCount} + ' images'">JPEG - 20GB \ 300 images</span>
+                                </li>
+                            </ul>
+
+                            <div style="width:600px; height: 300px;">
+                                <canvas id="chart-area"></canvas>
+                            </div>
+
+                        </div>
+                    </div>
+
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script th:attr="src=@{/static/scripts/Chart.js}" src="./static/scripts/Chart.js"></script>
+
+    <script>
+
+        var doughnutData = [
+				{
+				    value: 300,
+				    label: "Red"
+				},
+				{
+				    value: 50,
+				    label: "Green"
+				}
+
+        ];
+
+        
+
+        window.onload = function () {
+            var ctx = document.getElementById("chart-area").getContext("2d");
+            window.myDoughnut = new Chart(ctx).Doughnut(GetDoughnut(), { responsive: true });
+
+
+        };
+
+        function GetDoughnut()
+        {
+            return doughnutData;
+        }
+
+    </script>
+
+
+</body>
+</html>

@@ -1,0 +1,116 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta http-equiv="Content-Language" content="en" />
+    
+    <link rel="stylesheet" th:href="@{/static/css/jquery-ui.css}" href="http://localhost:8082/wallahub/static/css/jquery-ui.css" />
+    <link rel="stylesheet" th:href="@{/static/css/wallawebapp.css}" href="http://localhost:8082/wallahub/static/css/wallawebapp.css" />
+
+    <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet" />
+
+    <link th:href="@{/static/images/fotowallabrowser.png}" rel="icon"
+          type="image/x-icon"
+          href="http://localhost:8082/wallahub/static/images/fotowallabrowser.png" />
+
+    <title>Security settings</title>
+    <meta name="description" content="fotowalla - security settings" />
+</head>
+
+<body>
+
+    <div class="clearstyles" role="main">
+
+        <div class="clearstyles" style="width:800px;margin-top:50px;margin-right: auto;margin-left: auto;">
+            <div class="column-layout">
+                <div class="column one-fourth" role="navigation">
+                    <nav class="left-nav-list">
+                        <h3 class="nav-list-heading">Profile settings</h3>
+
+                        <a class="nav-list-item"
+                           href="account">Account</a>
+
+                        <a class="nav-list-item selected"
+                           href="security">Security</a>
+
+                        <a class="nav-list-item"
+                           href="contact">Contact</a>
+
+                        <a class="nav-list-item"
+                           href="billing">Billing</a>
+
+                        <a class="nav-list-item"
+                           href="applications">Applications</a>
+
+                        <a class="nav-list-item"
+                           href="storage">Storage</a>
+                    </nav>
+                </div>
+
+                <div class="column three-fourths">
+                    <!-- Change Password -->
+                    <div class="content-group-box">
+                        <h3 class="content-group-heading">Change password</h3>
+                        <div class="content-group-inner">
+                        	<form action="#" th:action="@{./security}" th:object="${logon}" method="post">
+                                <p>
+                                    When choosing your password, please ensure it is at least 8 charactors in length, and includes upper and lower case letters.
+                                </p>
+                                
+                                <dl class="form">
+                                    <dt>
+                                        <label for="currentPassword">Old password</label>
+                                    </dt>
+                                    <dd>
+                                        <input id="currentPassword" tabindex="1" class="short" maxlength="30" th:field="*{oldPassword}"
+                                                required="required" type="password" />
+                                        <p th:if="${#fields.hasErrors('oldPassword')}" class="errortext"><i class="fa fa-exclamation"></i><span style="margin-left: 5px;" th:errors="*{oldPassword}" class="errortext">Validation error</span></p>   
+                                    </dd>
+
+                                </dl>
+                                <dl class="form">
+                                    <dt>
+                                        <label for="newPassword">New password</label>
+                                    </dt>
+                                    <dd>
+                                        <input id="newPassword" tabindex="1" class="short" maxlength="30" th:field="*{password}"
+                                                required="required" type="password" />
+                                        <p th:if="${#fields.hasErrors('password')}" class="errortext"><i class="fa fa-exclamation"></i><span style="margin-left: 5px;" th:errors="*{password}" class="errortext">Validation error</span></p>   
+                                    </dd>
+                                    
+                                </dl>
+                                <dl class="form">
+                                    <dt>
+                                        <label for="newPasswordConfirm">
+                                            Confirm new password
+                                        </label>
+                                    </dt>
+                                    <dd>
+                                        <input tabindex="2" class="short" maxlength="30"
+                                               id="newPasswordConfirm" required="required"
+                                               type="password" />
+                                    </dd>
+                                </dl>
+                                <p>
+                                    <button tabindex="2" class="button green"><i class="fa fa-check" style="margin-right: 6px;"></i>Update password</button>
+                                    <span style="margin-left: 10px;">
+                                        <a href="../forgotpassword">I forgot my password  <i class="fa fa-frown-o"></i></a>
+                                    </span>
+                                </p>
+                                <p th:if="${message != null}" class="errortext"><i class="fa fa-exclamation"></i><span style="margin-left: 5px;" th:text="${message}" class="errortext">Server error</span></p>
+                            
+                            	<!-- *{#strings.length(securityMessage) > 0} -->
+                            	<p th:if="*{securityMessage != null}" class="help">
+                                <i class="fa fa-info icon"></i><span style="margin-left: 5px;" th:text="*{securityMessage}" class="errortext">Your password was last changed: 24/11/2014.  We recommend changing your password every 180 days</span></p>
+                        	</form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>

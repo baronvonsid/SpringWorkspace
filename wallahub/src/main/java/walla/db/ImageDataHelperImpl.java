@@ -389,7 +389,7 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 				+ "[Width],[Height],[Size],[CompressedSize],[TakenDate],[TakenDateFile],[UploadDate],"
 				+ "[UdfChar1],[UdfChar2],[UdfChar3],[UdfText1],"
 				+ "[UdfNum1],[UdfNum2],[UdfNum3],[UdfDate1],[UdfDate2],[UdfDate3]) "
-				+ "VALUES (?,?,?,?,?,?,dbo.GetDateNoMS(),?,?,?,?,?,?,?,?,?,?)";
+				+ "VALUES (?,?,?,?,?,?,?,dbo.GetDateNoMS(),?,?,?,?,?,?,?,?,?,?)";
 		
 		Connection conn = null;
 		PreparedStatement psImage = null;
@@ -429,7 +429,8 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 			psMeta.setLong(3, newImage.getHeight());
 			psMeta.setLong(4, newImage.getSize());
 			psMeta.setLong(5, newImage.getCompressedSize());
-
+			//psMeta.setLong(5, 0);
+			
 			if (newImage.isTakenDateSet()  && newImage.getTakenDate().getYear() > 1800)
 			{ psMeta.setDate(6,new java.sql.Date(newImage.getTakenDate().toGregorianCalendar().getTime().getTime())); }
 			else

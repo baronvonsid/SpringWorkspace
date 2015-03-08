@@ -10,7 +10,7 @@ import javax.xml.bind.annotation.XmlElement;
 
 import walla.datatypes.auto.Account;
 
-public class AccountSettings {
+public class AccountStoragetodel {
 
 	/*
 		  <element name="Account">
