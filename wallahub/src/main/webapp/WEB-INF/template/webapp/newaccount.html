@@ -29,7 +29,7 @@
                 <h3 class="content-group-heading">Create Account</h3>
                 <div class="content-group-inner">
 
-                    <form action="#" th:action="@{./newaccount}" th:object="${newAccount}" method="post">
+                    <form id="mainForm" action="#" th:action="@{./newaccount}" th:object="${newAccount}" method="post">
                         <input type="hidden" name="key" th:field="*{key}" />
                         <input type="hidden" name="accountType" th:field="*{accountType}" />
 
@@ -326,16 +326,25 @@
 
                         <dl class="form">
                             <dt>
-                                <label for="password">Password</label>
+                                <label for="newPassword">Password</label>
                             </dt>
                             <dd>
-                                <input tabindex="5" id="password" class="short" required="required" type="password" th:field="*{password}" />
-                                <p id="passwordError" class="errortext"><i class="fa fa-exclamation"></i><span id="passwordErrorText" style="margin-left: 5px;" class="errortext">Validation error</span></p>
+                                <input tabindex="5" id="newPassword" class="short" required="required" type="password" th:field="*{password}" maxlength="30"  />
+                                <span style="margin-left: 5px;" id="passwordStrengthText" class="errortext">Password strength</span>
+
+					             <table width="250px" style="margin-top: 3px;" >
+		                           <tr style="height:10px">
+		                           <td id="tdBad" ></td>
+		                           <td id="tdWeak"></td>
+		                           <td id="tdStrong"></td>
+		                           <td id="tdBest"></td>
+		                           </tr>
+								</table>
                             </dd>
                         </dl>
                         <dl class="form">
                             <dt>
-                                <label for="password">Confirm Password</label>
+                                <label for="confirmPassword">Confirm Password</label>
                             </dt>
                             <dd>
                                 <input tabindex="6" id="confirmPassword" class="short" required="required" type="password" />
@@ -355,13 +364,17 @@
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
     <script th:attr="src=@{/static/scripts/jquery-ui.min.js}" src="http://localhost:8082/wallahub/static/scripts/jquery-ui.min.js"></script>
     <script th:attr="src=@{/static/scripts/jquery.select-to-autocomplete.js}" src="http://localhost:8082/wallahub/static/scripts/jquery.select-to-autocomplete.js"></script>
-
-    <script>
+	<script th:attr="src=@{/static/scripts/passwordchecking.js}" src="http://localhost:8082/wallahub/static/scripts/src=@{/static/scripts/passwordchecking.js"></script>
+	
+	<script>
     jQuery(document).ready(
-    function ($) {
-        $('select').selectToAutocomplete();
-    });
-    </script>
+    	    function ($) {
+    	    	$("#passwordStrengthText").hide();
+    	    
+    	        $('select').selectToAutocomplete();
+    	        
+    	    });
+	</script>
 
 </body>
 </html>

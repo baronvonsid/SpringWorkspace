@@ -27,8 +27,11 @@ public interface AccountDataHelper {
 	public long FindExistingUserApp(long userId, int appId, int platformId, String machineName) throws WallaException;
 	public void CreateUserApp(long userId, UserApp userApp) throws WallaException;
 	public void UpdateUserApp(long userId, UserApp userApp) throws WallaException;
+	public void UserAppBlockUnblock(long userId, long userAppId, boolean block) throws WallaException;
 	
 	public LogonState GetLogonState(String userName) throws WallaException;
 	public void UpdateLogonState(long userId, int failedLoginCount, Date failedLoginLast) throws WallaException;
 	public void UpdatePassword(long userId, String passwordHash, String salt) throws WallaException;
+	public void UpdateTempSalt(long userId, String salt) throws WallaException;
+	public AccountActionSummary GetAccountActions(long userId);
 }

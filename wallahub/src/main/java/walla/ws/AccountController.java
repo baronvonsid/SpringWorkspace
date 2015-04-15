@@ -13,6 +13,7 @@ import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
 
+import javax.annotation.Resource;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -71,12 +72,8 @@ public class AccountController {
 
 	private static final Logger meLogger = Logger.getLogger(AccountController.class);
 
-	//@Autowired
-	//private CustomSessionState sessionState;
-	
-	@Autowired
+	@Resource(name="accountServicePooled")
 	private AccountService accountService;
-	
 	
 	//GET /newusertoken
 	@RequestMapping(value="/newusertoken", method=RequestMethod.GET, produces=MediaType.APPLICATION_XML_VALUE,
@@ -651,7 +648,48 @@ public class AccountController {
 		finally { UserTools.LogWebMethod("Logout", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
 	}
 	
-	//TODO Change Password.
+	//GET /{profileName}/logon
+	@RequestMapping(value="/{profileName}/logontoken", method=RequestMethod.GET, produces=MediaType.APPLICATION_XML_VALUE,
+			headers={"Accept-Charset=utf-8"} )
+	public @ResponseBody String GetGalleryPassThroughToken(
+			@PathVariable("profileName") String profileName,
+			HttpServletRequest request, 
+			HttpServletResponse response)
+	{	
+		long startMS = System.currentTimeMillis();
+		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
+		try
+		{
+			response.addHeader("Cache-Control", "no-cache");
+			CustomSessionState customSession = UserTools.GetValidAdminSession(profileName, request, meLogger);
+			if (customSession == null)
+			{
+				responseCode = HttpStatus.UNAUTHORIZED.value();
+				return "";
+			}
+			
+			CustomResponse customResponse = new CustomResponse();
+			String token = accountService.GetAdminPassThroughToken(request, customSession, customResponse);
+			
+			responseCode = customResponse.getResponseCode();
+			
+			if (customResponse.getResponseCode() == HttpStatus.OK.value())
+			{
+				return "<token>" + token + "</token>";
+			}
+			else
+			{
+				return "";
+			}
+		}
+		catch (Exception ex) {
+			meLogger.error(ex);
+			return "";
+		}
+		finally { UserTools.LogWebMethod("GetGalleryPassThroughToken", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+	}
+	
+	
 	
 	//  GET /session
 	@RequestMapping(value="/session", method=RequestMethod.GET, 

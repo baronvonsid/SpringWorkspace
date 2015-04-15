@@ -99,7 +99,7 @@
 	                            </ul>
 	
 								<p th:if="${message != null}" class="errortext"><i class="fa fa-exclamation"></i><span style="margin-left: 5px;" th:text="${message}" class="errortext">Server error</span></p>
-	    </form>
+	    
 	                            <div style="margin: 0px; padding: 0px; display: inline;"></div>
 	                            <dl class="form entryformitem">
 	                                <dt><label for="email">Add email address</label></dt>
@@ -108,7 +108,7 @@
 	                                    <button id="addEmail" name="addEmail" class="smallbutton green" title="Add a new email address"><i class="fa fa-plus" style="margin-right: 6px;"></i>Add</button>
 	                                </dd>
 	                            </dl>
-	
+	</form>
 	                        </div>
 	                    </div>
 					         
@@ -130,7 +130,7 @@
     				var email = $("#newEmail").val();
     				$("#actionEmail").val(email);
     				$("#action").val("AddEmail");
-    				$("#mainForm").submit();
+    				$("#mainForm").one("submit");
     			});
 
     	
@@ -141,9 +141,11 @@
     				
     				$("#actionEmail").val(email);
     				$("#action").val(action);
-    				$("#mainForm").submit();
+    				$("#mainForm").one("submit");
     			});
 
+
+    	
     </script>
 
    

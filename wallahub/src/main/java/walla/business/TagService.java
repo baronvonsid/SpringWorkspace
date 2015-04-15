@@ -1,19 +1,24 @@
 package walla.business;
 
 import java.util.*;
+
 import walla.datatypes.auto.*;
 import walla.datatypes.java.*;
 import walla.db.*;
 import walla.utils.*;
 
+import javax.annotation.Resource;
 import javax.sql.DataSource;
 import javax.xml.datatype.*;
+
 import org.apache.log4j.Logger;
 import org.springframework.http.HttpStatus;
+
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,10 +28,20 @@ import org.springframework.beans.factory.annotation.Qualifier;
 @Service("TagService")
 public class TagService {
 
+	@Resource(name="tagDataHelper")
 	private TagDataHelperImpl tagDataHelper;
+	
+	@Resource(name="utilityDataHelper")
 	private UtilityDataHelperImpl utilityDataHelper;
+	
+	@Resource(name="cachedData")
 	private CachedData cachedData;
+	
+	@Resource(name="galleryServicePooled")
 	private GalleryService galleryService;
+	
+	@Resource(name="utilityServicePooled")
+	private UtilityService utilityService;
 	
 	private static final Logger meLogger = Logger.getLogger(TagService.class);
 
@@ -34,7 +49,12 @@ public class TagService {
 	//***********************************  Web server synchronous methods *****************************************
 	//*************************************************************************************************************
 	
-	public int CreateUpdateTag(long userId, Tag newtag, String tagName)
+	public TagService()
+	{
+		meLogger.debug("TagService object instantiated.");
+	}
+	
+	public int CreateUpdateTag(long userId, Tag newtag, String tagName, long userAppId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
@@ -51,6 +71,7 @@ public class TagService {
 				
 				long newTagId = utilityDataHelper.GetNewId("TagId");
 				tagDataHelper.CreateTag(userId, newtag, newTagId);
+				utilityService.AddAction(ActionType.UserApp, userAppId, "TagAdd", tagName);
 				return HttpStatus.CREATED.value();
 			}
 			else
@@ -63,6 +84,7 @@ public class TagService {
 				
 				tagDataHelper.UpdateTag(userId, newtag);
 				
+				utilityService.AddAction(ActionType.UserApp, userAppId, "TagUpd", tagName);
 				if (!existingTag.getName().equals(tagName))
 				{
 					return HttpStatus.MOVED_PERMANENTLY.value();
@@ -83,7 +105,7 @@ public class TagService {
 		finally {UserTools.LogMethod("CreateUpdateTag", meLogger, startMS, String.valueOf(userId) + " " + tagName);}
 	}
 
-	public int DeleteTag(long userId, Tag tag, String tagName)
+	public int DeleteTag(long userId, Tag tag, String tagName, long userAppId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
@@ -99,6 +121,7 @@ public class TagService {
 			//TODO decouple method
 			TagRippleDelete(userId, tag.getId());
 			
+			utilityService.AddAction(ActionType.UserApp, userAppId, "TagDel", tagName);
 			return HttpStatus.OK.value();
 		}
 		catch (WallaException wallaEx) {
@@ -169,11 +192,9 @@ public class TagService {
 			tagList = tagDataHelper.GetUserTagList(userId);
 			if (tagList != null)
 			{
-				GregorianCalendar gregory = new GregorianCalendar();
-				gregory.setTime(lastUpdate);
-				XMLGregorianCalendar xmlOldGreg = DatatypeFactory.newInstance().newXMLGregorianCalendar(gregory);
-				
-				tagList.setLastChanged(xmlOldGreg);
+				Calendar lastUpdateCalendar = Calendar.getInstance();
+				lastUpdateCalendar.setTime(lastUpdate);
+				tagList.setLastChanged(lastUpdateCalendar);
 			}
 			
 			customResponse.setResponseCode(HttpStatus.OK.value());
@@ -192,7 +213,7 @@ public class TagService {
 		finally {UserTools.LogMethod("GetTagListForUser", meLogger, startMS, String.valueOf(userId));}
 	}
 
-	public int AddRemoveTagImages(long userId, String tagName, ImageIdList moveList, boolean add)
+	public int AddRemoveTagImages(long userId, String tagName, ImageIdList moveList, boolean add, long userAppId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
@@ -208,6 +229,8 @@ public class TagService {
 
 			//TODO decouple method
 			TagRippleUpdate(userId, tag.getId());
+			
+			utilityService.AddAction(ActionType.UserApp, userAppId, "TagImgChg", "");
 			
 			return HttpStatus.OK.value();
 		}
@@ -344,6 +367,7 @@ public class TagService {
 		finally {UserTools.LogMethod("TagRippleDelete", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(tagId));}
  	}
 	
+ 	/*
 	public void setTagDataHelper(TagDataHelperImpl tagDataHelper)
 	{
 		this.tagDataHelper = tagDataHelper;
@@ -363,4 +387,11 @@ public class TagService {
 	{
 		this.galleryService = galleryService;
 	}
+	
+	public void setUtilityService(UtilityService utilityService)
+	{
+		this.utilityService = utilityService;
+	}
+	*/
+ 	
 }

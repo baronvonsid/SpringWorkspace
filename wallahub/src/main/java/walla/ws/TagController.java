@@ -1,8 +1,6 @@
 package walla.ws;
 
 import javax.validation.Valid;
-
-
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
@@ -12,6 +10,7 @@ import org.w3c.dom.*;
 import java.util.Date;
 import java.util.List;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -53,11 +52,8 @@ import walla.utils.*;
 public class TagController {
 
 	private static final Logger meLogger = Logger.getLogger(TagController.class);
-
-	//@Autowired
-	//private CustomSessionState sessionState;
 	
-	@Autowired
+	@Resource(name="tagServicePooled")
 	private TagService tagService;
 	
 	//  PUT /{profileName}/tag/{tagName}
@@ -108,7 +104,7 @@ public class TagController {
 				return;
 			}
 	
-			responseCode = tagService.CreateUpdateTag(customSession.getUserId(), newTag, tagName);
+			responseCode = tagService.CreateUpdateTag(customSession.getUserId(), newTag, tagName, customSession.getUserAppId());
 			if (responseCode == HttpStatus.MOVED_PERMANENTLY.value())
 			{
 				String newLocation = "/" + profileName + "/tag/" + newTag.getName();
@@ -147,7 +143,7 @@ public class TagController {
 				return;
 			}
 	
-			responseCode = tagService.DeleteTag(customSession.getUserId(), existingTag, tagName);
+			responseCode = tagService.DeleteTag(customSession.getUserId(), existingTag, tagName, customSession.getUserAppId());
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
@@ -256,7 +252,7 @@ public class TagController {
 				return;
 			}
 	
-			responseCode = tagService.AddRemoveTagImages(customSession.getUserId(), tagName, moveList, true);
+			responseCode = tagService.AddRemoveTagImages(customSession.getUserId(), tagName, moveList, true, customSession.getUserAppId());
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
@@ -288,7 +284,7 @@ public class TagController {
 				return;
 			}
 	
-			responseCode = tagService.AddRemoveTagImages(customSession.getUserId(), tagName, moveList, false);
+			responseCode = tagService.AddRemoveTagImages(customSession.getUserId(), tagName, moveList, false, customSession.getUserAppId());
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);

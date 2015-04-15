@@ -1,5 +1,6 @@
 package walla.business;
 
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 import walla.datatypes.auto.*;
@@ -7,6 +8,7 @@ import walla.datatypes.java.*;
 import walla.db.*;
 import walla.utils.*;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.sql.DataSource;
 import javax.xml.datatype.*;
@@ -32,18 +34,32 @@ import org.apache.commons.lang3.*;
 @Service("AccountService")
 public class AccountService {
 
+	@Resource(name="accountDataHelper")
 	private AccountDataHelperImpl accountDataHelper;
+	
+	@Resource(name="utilityDataHelper")
 	private UtilityDataHelperImpl utilityDataHelper;
+	
+	@Resource(name="tagServicePooled")
 	private TagService tagService;
+	
+	@Resource(name="categoryServicePooled")
 	private CategoryService categoryService;
+	
+	@Resource(name="galleryServicePooled")
 	private GalleryService galleryService;
+	
+	@Resource(name="cachedData")
 	private CachedData cachedData;
+	
+	@Resource(name="utilityServicePooled")
+	private UtilityService utilityService;
 	
 	private static final Logger meLogger = Logger.getLogger(AccountService.class);
 
 	public AccountService()
 	{
-
+		meLogger.debug("AccountService object instantiated.");
 	}
 	
 	//*************************************************************************************************************
@@ -176,6 +192,8 @@ public class AccountService {
 				accountDataHelper.AddEmail(newUserId, secondaryEmail, false, true);
 			
 			meLogger.info("New user has been created.  Email: " + principleEmail + " UserId:" + newUserId);
+			utilityService.AddAction(ActionType.Account, newUserId, "AcctNew", "");
+			
 			customResponse.setResponseCode(HttpStatus.CREATED.value());
 		}
 		catch (WallaException wallaEx) {
@@ -197,6 +215,8 @@ public class AccountService {
 			
 			accountDataHelper.UpdateAccount(account);
 			customResponse.setResponseCode(HttpStatus.OK.value());
+			
+			utilityService.AddAction(ActionType.Account,account.getId(), "AcctEdit", "");
 		}
 		catch (WallaException wallaEx) {
 			customResponse.setResponseCode(wallaEx.getCustomStatus());
@@ -205,7 +225,7 @@ public class AccountService {
 			meLogger.error(ex);
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
-		finally { UserTools.LogMethod("UpdateAccount", meLogger, startMS, account.getProfileName()); }
+		finally { UserTools.LogMethod("UpdateAccount", meLogger, startMS, "" + account.getId()); }
 	}
 
 	public void CloseAccount(Account account, CustomResponse customResponse, CustomSessionState customSession)
@@ -231,7 +251,7 @@ public class AccountService {
 				meLogger.warn(message);
 				customResponse.setMessage(message);
 				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
-				Thread.sleep(10000);
+				Thread.sleep(2000);
 
 				return;
 			}
@@ -240,6 +260,8 @@ public class AccountService {
 			
 			accountDataHelper.UpdateAccountStatus(account.getId(), AccountStatus.Closing);
 			customResponse.setResponseCode(HttpStatus.OK.value());
+			
+			utilityService.AddAction(ActionType.Account, account.getId(), "AcctClose", "");
 		}
 		catch (WallaException wallaEx) {
 			customResponse.setResponseCode(wallaEx.getCustomStatus());
@@ -279,19 +301,25 @@ public class AccountService {
 						
 				break;
 				case 4:
-					//TODO change date formatting!!
-					account.setAccountMessage("Account is being closed down.  This was requested on: " + account.getCloseDate().toString() + ".  During this 30 day close down period, you must download your collection.  You have # days left.");
+					Date now = new Date();
+					Date then = account.getCloseDate().getTime();
+					long diffInMillies = now.getTime() - then.getTime();
+					long daysDiff = TimeUnit.DAYS.convert(diffInMillies, TimeUnit.MILLISECONDS);
+					daysDiff = 30 - daysDiff;
+					
+					String closeDate = new SimpleDateFormat("dd MMM yyyy").format(then);
+					account.setAccountMessage("Account is being closed down.  This was requested on: " + closeDate + ".  During this 30 day close down period, you must download your collection.  You have " + daysDiff + " days left.");
 					break;
 			}
 			
 			//TODO expand out password change date message.
 			Date now = new Date();
-			Date then = account.getPasswordChangeDate().toGregorianCalendar().getTime();
+			Date then = account.getPasswordChangeDate().getTime();
 			
 			long diffInMillies = now.getTime() - then.getTime();
 			long daysDiff = TimeUnit.DAYS.convert(diffInMillies, TimeUnit.MILLISECONDS);
 			
-		    if (daysDiff > 1)
+		    if (daysDiff > 60)
 		    	account.setSecurityMessage("Your password should be changed periodically.  Its been " + daysDiff + " days since you have change it.");
 			
 			customResponse.setResponseCode(HttpStatus.OK.value());
@@ -317,7 +345,7 @@ public class AccountService {
 				return null;
 			}
 
-			
+			//TODO
 			accountStorage.setStorageMessage("test message");
 
 			customResponse.setResponseCode(HttpStatus.OK.value());
@@ -329,6 +357,29 @@ public class AccountService {
 			return null;
 		}
 		finally { UserTools.LogMethod("GetAccountStorage", meLogger, startMS, String.valueOf(userId)); }
+	}
+	
+	public AccountActionSummary GetAccountActions(long userId, CustomResponse customResponse)
+	{
+		long startMS = System.currentTimeMillis();
+		try 
+		{
+			AccountActionSummary summary = accountDataHelper.GetAccountActions(userId);
+			if (summary == null)
+			{
+				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+				return null;
+			}
+			
+			customResponse.setResponseCode(HttpStatus.OK.value());
+			return summary;
+		}
+		catch (Exception ex) {
+			meLogger.error(ex);
+			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			return null;
+		}
+		finally { UserTools.LogMethod("GetAccountActions", meLogger, startMS, String.valueOf(userId)); }
 	}
 	
 	public void EmailConfirm(String profileName, String requestValidationString, CustomResponse customResponse)
@@ -366,6 +417,8 @@ public class AccountService {
 			
 			customResponse.setResponseCode(HttpStatus.OK.value());
 			customResponse.setMessage("Email: " + email + " was validated.");
+			
+			utilityService.AddAction(ActionType.Account, userId, "EmailValid", email);
 		}
 		catch (WallaException wallaEx) {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
@@ -451,7 +504,6 @@ public class AccountService {
 		finally { UserTools.LogMethod("AddEmail", meLogger, startMS, String.valueOf(userId) + " " + email); }
 	}
 
-	
 	public long CreateUserApp(long userId, int appId, int platformId, UserApp proposedUserApp, CustomResponse customResponse)
 	{
 		long startMS = System.currentTimeMillis();
@@ -510,6 +562,8 @@ public class AccountService {
 			
 			accountDataHelper.CreateUserApp(userId, newUserApp);
 
+			utilityService.AddAction(ActionType.UserApp, userAppId, "UserAppNew", "");
+			
 			customResponse.setResponseCode(HttpStatus.CREATED.value());
 			return userAppId;
 		}
@@ -567,6 +621,7 @@ public class AccountService {
 			
 			accountDataHelper.UpdateUserApp(userId, updatedUserApp);
 
+			utilityService.AddAction(ActionType.UserApp, updatedUserApp.getId(), "UserAppUpd", "");
 			customResponse.setResponseCode(HttpStatus.OK.value());
 		}
 		catch (WallaException wallaEx) {
@@ -635,6 +690,39 @@ public class AccountService {
 		}
 		finally { UserTools.LogMethod("GetUserApp", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(userAppId)); }
 	}
+	
+	public void UserAppBlockUnblock(long userId, long userAppId, boolean block, CustomResponse customResponse)
+	{
+		long startMS = System.currentTimeMillis();
+		try 
+		{
+			UserApp userApp = accountDataHelper.GetUserApp(userId, userAppId);
+			if (userApp == null)
+			{
+				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+				customResponse.setMessage("Application settings could not be retrieved");
+				return;
+			}
+			
+			if (userApp.isBlocked() == block)
+			{
+				customResponse.setResponseCode(HttpStatus.CONFLICT.value());
+				customResponse.setMessage("Application update requested is not valid");
+				return;
+			}
+			
+			accountDataHelper.UserAppBlockUnblock(userId, userAppId, block);
+			customResponse.setResponseCode(HttpStatus.OK.value());
+		}
+		catch (WallaException wallaEx) {
+			customResponse.setResponseCode(wallaEx.getCustomStatus());
+		}
+		catch (Exception ex) {
+			meLogger.error(ex);
+			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+		}
+		finally { UserTools.LogMethod("UserAppBlockUnblock", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(userAppId)); }
+	}	
 	
 	public boolean CheckProfileNameIsUnique(String profileName, CustomResponse customResponse)
 	{
@@ -767,9 +855,12 @@ public class AccountService {
 			
 			customResponse.setResponseCode(HttpStatus.OK.value());
 			
+			utilityService.AddActionSecurityAccount("UserToken", newKey, null, request, customSession);
+			
 			return newKey;
 		}
 		catch (Exception ex) {
+			utilityService.AddActionSecurityAccount("TokenErr", "", null, request, customSession);
 			meLogger.error(ex);
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return "";
@@ -781,6 +872,7 @@ public class AccountService {
 	{
 		//Only reads user data from DB, any state is held in the session object.
 		long startMS = System.currentTimeMillis();
+		String message = "";
 		//String profileName = "";
 		//String email = "";
 		try
@@ -811,7 +903,9 @@ public class AccountService {
 				
 			    if (calendar.getTime().after(new Date()))
 			    {
-			    	meLogger.warn("Subsequent logon token request too soon after previous failure. (session)");
+			    	message = "Subsequent logon token request too soon after previous failure. (session)";
+			    	meLogger.warn(message);
+			    	utilityService.AddActionSecurityAccount("LoginSoon", message, null, request, customSession);
 			    	customResponse.setResponseCode(HttpStatus.FORBIDDEN.value());
 			    	return "";
 			    }
@@ -866,18 +960,19 @@ public class AccountService {
 			}
 			
 			customResponse.setResponseCode(HttpStatus.OK.value());
+			utilityService.AddActionSecurityAccount("LoginToken", newKey, null, request, customSession);
 			
 			return newKey;
 		}
 		catch (Exception ex) {
+			utilityService.AddActionSecurityAccount("TokenErr", "", null, request, customSession);
 			meLogger.error(ex);
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return "";
 		}
 		finally { UserTools.LogMethod("GetLogonToken", meLogger, startMS, ""); }
 	}
-	
-	
+
 	public void LogonCheck(Logon logon, HttpServletRequest request, CustomSessionState customSession, CustomResponse customResponse)
 	{
 		long startMS = System.currentTimeMillis();
@@ -915,6 +1010,7 @@ public class AccountService {
 			    {
 			    	message = "Subsequent logon request too soon after previous failure.  Please try again later.";
 			    	meLogger.warn(message);
+			    	utilityService.AddActionSecurityAccount("LoginSoon", message, logon, request, customSession);
 			    	customResponse.setResponseCode(HttpStatus.FORBIDDEN.value());
 			    	return;
 			    }
@@ -924,6 +1020,7 @@ public class AccountService {
 			{
 		    	message = "IP address of the session has changed since the logon key was issued.";
 		    	meLogger.warn(message);
+				utilityService.AddActionSecurityAccount("LoginInval", message, logon, request, customSession);
 		    	customResponse.setResponseCode(HttpStatus.FORBIDDEN.value());
 		    	return;
 			}
@@ -932,6 +1029,7 @@ public class AccountService {
 			{
 		    	message = "Not all the logon fields were supplied, logon failed.";
 		    	meLogger.warn(message);
+				utilityService.AddActionSecurityAccount("LoginInval", message, logon, request, customSession);
 		    	customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
 		    	return;
 			}
@@ -940,6 +1038,7 @@ public class AccountService {
 			{
 		    	message = "The logon fields supplied did meet minimum size, logon failed.  profileName:" + profileName + " password length:" + password.length() + " key:" + requestKey;
 		    	meLogger.warn(message);
+				utilityService.AddActionSecurityAccount("LoginInval", message, logon, request, customSession);
 		    	customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
 		    	return;
 			}
@@ -949,6 +1048,7 @@ public class AccountService {
 			{
 		    	message = "One off logon key, does not match request.  ServerKey:" + requestKey + " RequestKey:" + logon.getKey();
 		    	meLogger.warn(message);
+				utilityService.AddActionSecurityAccount("LoginInval", message, logon, request, customSession);
 		    	customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
 		    	return;
 			}
@@ -958,6 +1058,7 @@ public class AccountService {
 			{
 		    	message = "Logon state could not be retrieved from the database.  ProfileName: " + profileName;
 		    	meLogger.warn(message);
+				utilityService.AddActionSecurityAccount("LoginInval", message, logon, request, customSession);
 		    	customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
 		    	return;
 			}
@@ -969,8 +1070,9 @@ public class AccountService {
 				long minsDiff = TimeUnit.MINUTES.convert(diffInMillies, TimeUnit.MILLISECONDS);
 				if (minsDiff < 30)
 				{
-			    	message = "Your account has been temporarily frozen, as the maximum allowed login attempts was breached.  Please contact fotowalla support if you did not make these attempts, otherwise wait " + (30-minsDiff) + " minutes and try again.";
+			    	message = "Your account has been temporarily frozen, as the maximum allowed login attempts was breached.  Please wait " + (30-minsDiff) + " minutes and try again.";
 			    	meLogger.warn(message);
+					utilityService.AddActionSecurityAccount("LogFrozTry", message, logon, request, customSession);
 			    	customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
 			    	customResponse.setMessage(message);
 			    	return;
@@ -991,6 +1093,7 @@ public class AccountService {
 					customSession.setUserId(userStateDb.getUserId());
 				}
 				accountDataHelper.UpdateLogonState(userStateDb.getUserId(), 0, null);
+				utilityService.AddActionSecurityAccount("LoginOK", logon.getProfileName(), logon, request, customSession);
 				meLogger.debug("Logon successfull for User: " + logon.getProfileName());
 				customResponse.setResponseCode(HttpStatus.OK.value());
 			}
@@ -1005,8 +1108,9 @@ public class AccountService {
 				}
 				
 				accountDataHelper.UpdateLogonState(userStateDb.getUserId(), failCount, new Date());
-				meLogger.warn("Password didn't match, logon failed.");
-
+				message = "Password didn't match, logon failed.";
+				meLogger.warn(message);
+				utilityService.AddActionSecurityAccount("LoginKO", "Password didn't match, logon failed.", logon, request, customSession);
 
 				
 				//Check for number of recent failures.  More than 5? then 10 seconds delay.
@@ -1020,22 +1124,234 @@ public class AccountService {
 					Thread.sleep(2000);
 					customResponse.setMessage("Login failed.  Please double check your credentials before proceeding.");				
 				}
-				
-				
+
 				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
 			}
 			
 		}
 		catch (Exception ex) {
+			utilityService.AddActionSecurityAccount("LoginErr", "", logon, request, customSession);
 			meLogger.error(ex);
 			return;
 		}
 		finally { UserTools.LogMethod("LogonCheck", meLogger, startMS, profileName); }
 	}
 
-	public void ChangePassword(Logon logon, CustomResponse customResponse, CustomSessionState customSession)
+	public String GetAdminPassThroughToken(HttpServletRequest request, 
+			CustomSessionState customSession, CustomResponse customResponse)
+	{
+		//Only reads user data from DB, any state are held in the session object.
+		long startMS = System.currentTimeMillis();
+		String profileName = "";
+
+		try
+		{
+			profileName = customSession.getProfileName();
+			
+			// salt 19 + 13
+			String tempSalt = UserTools.GetComplexString().substring(0,19) + String.valueOf(System.currentTimeMillis());
+			String keyFactors = customSession.getProfileName() + UserTools.GetIpAddress(request);
+			
+			// Length 28
+			String token = SecurityTools.GetHashedPassword(keyFactors, tempSalt, 160, 1000);
+			
+			accountDataHelper.UpdateTempSalt(customSession.getUserId(), tempSalt);
+			
+			customResponse.setResponseCode(HttpStatus.OK.value());
+			
+			utilityService.AddActionSecurityAccount("PassToken", token, null, request, customSession);
+			
+			return token;
+		}
+		catch (Exception ex) {
+			utilityService.AddActionSecurityAccount("TokenErr", "", null, request, customSession);
+			meLogger.error(ex);
+			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			return "";
+		}
+		finally { UserTools.LogMethod("GetAdminPassThroughToken", meLogger, startMS, "ProfileName: " + profileName); }
+	}
+	
+	public void AutoLoginAdminUser(String logonToken, String profileName, HttpServletRequest request, 
+			CustomSessionState customSession, CustomResponse customResponse)
+	{
+		//Only reads user data from DB, any state are held in the session object.
+		long startMS = System.currentTimeMillis();
+		boolean passedCheck = false;
+		String message = "";
+		
+		try
+		{
+			logonToken = (logonToken == null) ? "" : logonToken;
+			profileName = (profileName == null) ? "" : profileName;
+			
+			if (profileName.length() > 30)
+			{
+				message = "AutoLoginAdminUser was passed an invalid argument. UserName: " + profileName;
+				meLogger.warn(message);
+				utilityService.AddActionSecurityAccount("LoginInval", message, null, request, customSession);
+				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+				customResponse.setMessage("Incorrect credentials received");
+				return;
+			}
+			
+			if (logonToken.length() != 28)
+			{
+				message = "LoginToken supplied are not valid.  User:" + profileName + " LogonToken:" + logonToken;
+				meLogger.warn(message);
+				utilityService.AddActionSecurityAccount("LoginInval", logonToken, null,request, customSession);
+				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+				customResponse.setMessage("Incorrect credentials received");
+				return;
+			}
+
+			if (customSession.getProfileName().length() > 0 && customSession.getProfileName().compareTo(profileName) != 0)
+			{
+				message = "Profile name supplied is different to profile on the session.  User:" + profileName;
+				meLogger.warn(message);
+				utilityService.AddActionSecurityAccount("LoginInval", message, null,request, customSession);
+				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+				customResponse.setMessage("Incorrect credentials received");
+				return;
+			}
+			
+			Date failedLogonLast = customSession.getFailedLogonLast();
+			if (failedLogonLast != null)
+			{
+			    Calendar calendar = Calendar.getInstance();
+			    calendar.setTime(failedLogonLast);
+			    
+			    //If less than five failed logons, ensure a retry is not done within 2 seconds.  Otherwise its a 30 second delay.
+			    if (customSession.getFailedLogonCount() <= 5)
+				    calendar.add(Calendar.SECOND, 2);
+			    else
+			    	calendar.add(Calendar.SECOND, 30);
+				
+			    if (calendar.getTime().after(new Date()))
+			    {
+			    	message = "Subsequent logon request too soon after previous failure.  Please try again later.";
+			    	meLogger.warn(message);
+			    	utilityService.AddActionSecurityAccount("LoginSoon", message, null, request, customSession);
+			    	customResponse.setResponseCode(HttpStatus.FORBIDDEN.value());
+			    	return;
+			    }
+			}
+			
+			LogonState logonState = accountDataHelper.GetLogonState(profileName);
+			if (logonState == null)
+			{
+				message = "Logon state could not be retrieved from the database.  ProfileName: " + profileName;
+				meLogger.warn(message);
+				utilityService.AddActionSecurityAccount("LoginInval", message, null,request, customSession);
+		    	customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+		    	customResponse.setMessage("Incorrect credentials received");
+		    	return;
+			}
+
+			if (logonState.getFailedLogonCount() > 5)
+			{
+				Date now = new Date();
+				long diffInMillies = now.getTime() - logonState.getFailedLogonLast().getTime();
+				long minsDiff = TimeUnit.MINUTES.convert(diffInMillies, TimeUnit.MILLISECONDS);
+				if (minsDiff < 30)
+				{
+					message = "Your account has been temporarily frozen, as the maximum allowed login attempts was breached.  Please wait " + (30-minsDiff) + " minutes and try again.";
+			    	meLogger.warn(message);
+			    	utilityService.AddActionSecurityAccount("LogFrozTry", message, null, request, customSession);
+			    	customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+			    	customResponse.setMessage(message);
+			    	return;
+				}
+			}
+			
+			String tempSalt = (logonState.getTempSalt() == null) ? "" : logonState.getTempSalt();
+			
+			if (tempSalt.length() != 32)
+			{
+				message = "Logon salt retrieved from the DB, was not the correct length: " + tempSalt;
+				meLogger.warn(message);
+				utilityService.AddActionSecurityAccount("LoginInval", message, null, request, customSession);
+		    	customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+		    	return;
+			}
+			
+			long saltTime = Long.valueOf(tempSalt.substring(19));
+			long diffMS = System.currentTimeMillis() - saltTime;
+			
+		    if (diffMS > 3000)
+		    {
+		    	message = "Logon request too long after token was issued. " + String.valueOf(diffMS) + "ms";
+		    	meLogger.warn(message);
+		    	utilityService.AddActionSecurityAccount("LoginLong", message, null, request, customSession);
+		    	customResponse.setResponseCode(HttpStatus.FORBIDDEN.value());
+		    	customResponse.setMessage("Login not completed in a timely manner.");
+		    	return;
+		    }
+			
+			String keyFactors = profileName + UserTools.GetIpAddress(request);
+			String logonTokenServer = SecurityTools.GetHashedPassword(keyFactors, tempSalt, 160, 1000);
+			
+			if (SecurityTools.SlowEquals(logonTokenServer.getBytes(), logonToken.getBytes()))
+			{
+				synchronized(customSession)
+				{
+					customSession.getCustomSessionIds().add(UserTools.GetComplexString());
+					customSession.setFailedLogonCount(0);
+					customSession.setFailedLogonLast(null);
+					customSession.setAuthenticated(true);
+					customSession.setAdmin(true);
+					customSession.setGalleryViewer(false);
+					customSession.setProfileName(logonState.getProfileName());
+					customSession.setUserId(logonState.getUserId());
+					customSession.setRemoteAddress(request.getRemoteAddr());
+				}
+				
+				accountDataHelper.UpdateLogonState(logonState.getUserId(), 0, null);
+				meLogger.debug("Admin logon successfull for User: " + customSession.getProfileName());
+				customResponse.setResponseCode(HttpStatus.OK.value());
+				utilityService.AddActionSecurityAccount("AutoLogOK", customSession.getProfileName(), null, request, customSession);
+			}
+			else
+			{
+				int failCount = logonState.getFailedLogonCount() + 1;
+				synchronized(customSession) 
+				{
+					customSession.setFailedLogonCount(failCount);
+					customSession.setFailedLogonLast(new Date());
+					customSession.setAuthenticated(false);
+				}
+				
+				accountDataHelper.UpdateLogonState(logonState.getUserId(), failCount, new Date());
+				message = "Pass through token didn't match, logon failed.  Profile: " + customSession.getProfileName() + " token: " + logonToken;
+				meLogger.warn(message);
+				utilityService.AddActionSecurityAccount("AutoLogKO", logonToken, null, request, customSession);
+				
+				//Check for number of recent failures.  More than 5? then 10 seconds delay.
+				if (customSession.getFailedLogonCount() > 5)
+				{
+					Thread.sleep(10000);
+					customResponse.setMessage("The system has detected multiple logon failures, and will slow down subsequent attempts.  Please double check your credentials before proceeding.");				
+				}
+				else
+				{
+					Thread.sleep(2000);
+					customResponse.setMessage("Login failed.  Please double check your credentials before proceeding.");				
+				}
+				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+			}
+			
+		}
+		catch (Exception ex) {
+			utilityService.AddActionSecurityAccount("LoginErr", "", null, request, customSession);
+			meLogger.error(ex);
+		}
+		finally { UserTools.LogMethod("AutoLoginAdminUser", meLogger, startMS, "ProfileName: " + profileName); }
+	}
+	
+	public void ChangePassword(Logon logon, HttpServletRequest request, CustomResponse customResponse, CustomSessionState customSession)
 	{
 		long startMS = System.currentTimeMillis();
+		String message = "";
 		try
 		{
 			Date failedLogonLast = customSession.getFailedLogonLast();
@@ -1052,7 +1368,9 @@ public class AccountService {
 				
 			    if (calendar.getTime().after(new Date()))
 			    {
-			    	meLogger.warn("Subsequent logon request too soon after previous failure. (session)");
+			    	message = "Subsequent logon request too soon after previous failure. (session)";
+			    	meLogger.warn(message);
+			    	utilityService.AddActionSecurityAccount("LoginSoon", message, logon, request, customSession);
 			    	customResponse.setResponseCode(HttpStatus.FORBIDDEN.value());
 			    	return;
 			    }
@@ -1060,8 +1378,9 @@ public class AccountService {
 			
 			if (!UserTools.CheckPasswordStrength(logon.getPassword()))
 			{
-				String message = "Update security failed, new password does not meet minimum complexity rules.";
+				message = "Update security failed, new password does not meet minimum complexity rules.";
 				meLogger.warn(message);
+				utilityService.AddActionSecurityAccount("PassCmplx", message, logon, request, customSession);
 				customResponse.setMessage(message);
 				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
 				return;
@@ -1070,8 +1389,9 @@ public class AccountService {
 			LogonState userStateDb = accountDataHelper.GetLogonState(logon.getProfileName());
 			if (userStateDb == null)
 			{
-				String message = "Logon state could not be retrieved from the database.  ProfileName: " + logon.getProfileName();
+				message = "Logon state could not be retrieved from the database.  ProfileName: " + logon.getProfileName();
 				meLogger.warn(message);
+				utilityService.AddActionSecurityAccount("LoginInval", message, logon, request, customSession);
 				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
 		    	return;
 			}
@@ -1079,8 +1399,9 @@ public class AccountService {
 			String passwordAttemptHash = SecurityTools.GetHashedPassword(logon.getOldPassword(), userStateDb.getSalt(), 160, 1000);
 			if (!SecurityTools.SlowEquals(passwordAttemptHash.getBytes(), userStateDb.getPasswordHash().getBytes()))
 			{
-				String message = "Current password is not correct, update password failed.";
+				message = "Current password is not correct, update password failed.";
 				meLogger.warn(message);
+				utilityService.AddActionSecurityAccount("PassUpdKO", message, logon, request, customSession);
 				customResponse.setMessage(message);
 				
 				int failCount = Math.max(userStateDb.getFailedLogonCount(), customSession.getFailedLogonCount()) + 1;
@@ -1115,10 +1436,13 @@ public class AccountService {
 				accountDataHelper.UpdatePassword(userStateDb.getUserId(), newPasswordHash, salt);
 				meLogger.debug("Change password successfull for User: " + logon.getProfileName());
 				
+				utilityService.AddAction(ActionType.Account, userStateDb.getUserId(), "PassUpdOK", "");
+				utilityService.AddActionSecurityAccount("PassUpdOK", logon.getProfileName(), logon, request, customSession);
 				customResponse.setResponseCode(HttpStatus.OK.value());
 			}
 		}
 		catch (Exception ex) {
+			utilityService.AddActionSecurityAccount("PassUpdErr", "", logon, request, customSession);
 			meLogger.error(ex);
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
@@ -1162,6 +1486,7 @@ public class AccountService {
 		}
 	}
 	
+	/*
 	public void setAccountDataHelper(AccountDataHelperImpl accountDataHelper)
 	{
 		this.accountDataHelper = accountDataHelper;
@@ -1191,4 +1516,11 @@ public class AccountService {
 	{
 		this.utilityDataHelper = utilityDataHelper;
 	}
+	
+	public void setUtilityService(UtilityService utilityService)
+	{
+		this.utilityService = utilityService;
+	}
+	*/
+	
 }

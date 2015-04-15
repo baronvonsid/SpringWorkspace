@@ -14,6 +14,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.Iterator;
@@ -188,8 +189,7 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		}
 	}
 	
-	
-	
+
 	public void UpdateAccountStatus(long userId, AccountStatus status) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
@@ -217,9 +217,11 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 				case Closing:
 					updateSql = "UPDATE [User] SET [RecordVersion] = [RecordVersion] + 1, [Status] = 4, [CloseDate] = GetDate() "
 							+ "WHERE UserId = ? AND [Status] IN (1,2,3)";
+					break;
 				case Closed:
 					updateSql = "UPDATE [User] SET [RecordVersion] = [RecordVersion] + 1, [Status] = 5 "
 							+ "WHERE UserId = ? AND [Status] = 4";
+					break;
 			}
 			 
 			ps = conn.prepareStatement(updateSql);
@@ -232,6 +234,7 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			{
 				conn.rollback();
 				String error = "Update status didn't return a success count of 1.";
+				meLogger.error(error);
 				throw new WallaException("ImageDataHelperImpl", "UpdateMainStatus", error, HttpStatus.INTERNAL_SERVER_ERROR.value()); 
 			}
 			
@@ -435,7 +438,6 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 	        if (conn != null) try { conn.close(); } catch (SQLException logOrIgnore) {}
 	        UserTools.LogMethod("AddEmail", meLogger, startMS, String.valueOf(userId) + " " + email);
 		}
-		
 	}
 	
 	public void UpdateEmail(long userId, String email, EmailAction action, String validationString) throws WallaException
@@ -525,6 +527,7 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 				{
 					conn.rollback();
 					String error = "Update email status didn't return a success count of 2.";
+					meLogger.error(error);
 					throw new WallaException("AccountDataHelperImpl", "UpdateEmail", error, HttpStatus.CONFLICT.value()); 
 				}
 				
@@ -533,6 +536,7 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			else
 			{
 				String error = "Incorrect email status update was used";
+				meLogger.error(error);
 				throw new WallaException("AccountDataHelperImpl", "UpdateEmail", error, HttpStatus.BAD_REQUEST.value()); 
 			}
 		}
@@ -674,23 +678,23 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			
 			if (resultset.getTimestamp(9) != null)
 			{
-				oldGreg.setTime(resultset.getTimestamp(9));
-				xmlOldGreg = DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg);
-				account.setPasswordChangeDate(xmlOldGreg);
+				Calendar passwordChangeCalendar = Calendar.getInstance();
+				passwordChangeCalendar.setTimeInMillis(resultset.getTimestamp(9).getTime());
+				account.setPasswordChangeDate(passwordChangeCalendar);
 			}
 			
 			if (resultset.getTimestamp(10) != null)
 			{
-				oldGreg.setTime(resultset.getTimestamp(10));
-				xmlOldGreg = DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg);
-				account.setOpenDate(xmlOldGreg);
+				Calendar openDateCalendar = Calendar.getInstance();
+				openDateCalendar.setTimeInMillis(resultset.getTimestamp(10).getTime());
+				account.setOpenDate(openDateCalendar);
 			}
 			
 			if (resultset.getTimestamp(11) != null)
 			{
-				oldGreg.setTime(resultset.getTimestamp(11));
-				xmlOldGreg = DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg);
-				account.setCloseDate(xmlOldGreg);
+				Calendar closeDateCalendar = Calendar.getInstance();
+				closeDateCalendar.setTimeInMillis(resultset.getTimestamp(11).getTime());
+				account.setCloseDate(closeDateCalendar);
 			}
 			
 			account.setVersion(resultset.getInt(12));
@@ -1053,12 +1057,13 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 				return null;
 			}
 			
-			if (resultset.getBoolean(5))
-			{
-		    	String error = "User app has been explicitly blocked, request cannot continue.";
-				meLogger.error(error);
-				throw new WallaException(this.getClass().getName(), "GetUserApp", error, HttpStatus.FORBIDDEN.value());
-			}
+			//TODO check when object is retrieved for an app.
+			//if (resultset.getBoolean(5))
+			//{
+		    //	String error = "User app has been explicitly blocked, request cannot continue.";
+			//	meLogger.error(error);
+			//	throw new WallaException(this.getClass().getName(), "GetUserApp", error, HttpStatus.FORBIDDEN.value());
+			//}
 			
 			userApp = new UserApp();
 			userApp.setId(userAppId);
@@ -1066,11 +1071,11 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			userApp.setPlatformId(resultset.getInt(2));
 			userApp.setMachineName(resultset.getString(3));
 
-			GregorianCalendar oldGreg = new GregorianCalendar();
-			oldGreg.setTime(resultset.getTimestamp(4));
-			XMLGregorianCalendar xmlOldGreg = DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg);
-			userApp.setLastUsed(xmlOldGreg);
+			Calendar lastUsedCalendar = Calendar.getInstance();
+			lastUsedCalendar.setTimeInMillis(resultset.getTimestamp(4).getTime());
+			userApp.setLastUsed(lastUsedCalendar);
 			
+			userApp.setBlocked(resultset.getBoolean(5));
 			userApp.setTagId(resultset.getLong(6));
 			userApp.setUserAppCategoryId(resultset.getLong(7));
 			userApp.setUserDefaultCategoryId(resultset.getLong(8));
@@ -1088,7 +1093,7 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			
 			return userApp;
 		}
-		catch (SQLException | DatatypeConfigurationException ex) {
+		catch (SQLException ex) {
 			meLogger.error(ex);
 			return null;
 		} 
@@ -1100,6 +1105,54 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		}
 	}
 
+	public void UserAppBlockUnblock(long userId, long userAppId, boolean block) throws WallaException
+	{
+		long startMS = System.currentTimeMillis();
+		Connection conn = null;
+		PreparedStatement ps = null;
+		
+		try {
+			int returnCount = 0;		
+			
+			conn = dataSource.getConnection();
+			conn.setAutoCommit(false);
+
+			String updateSql = "UPDATE [UserApp] SET Blocked = ?, [RecordVersion] = [RecordVersion] + 1 WHERE [UserId] = ? AND [UserAppId] = ?";
+
+			ps = conn.prepareStatement(updateSql);
+			ps.setBoolean(1, block);
+			ps.setLong(2, userId);
+			ps.setLong(3, userAppId);
+			
+			returnCount = ps.executeUpdate();
+			ps.close();
+			
+			if (returnCount != 1)
+			{
+				conn.rollback();
+				String error = "Update status didn't return a success count of 1.";
+				meLogger.error(error);
+				throw new WallaException("ImageDataHelperImpl", "UserAppBlockUnblock", error, HttpStatus.INTERNAL_SERVER_ERROR.value()); 
+			}
+			
+			conn.commit();
+		}
+		catch (SQLException sqlEx) {
+			if (conn != null) { try { conn.rollback(); } catch (SQLException ignoreEx) {} }
+			meLogger.error(sqlEx);
+			throw new WallaException(sqlEx);
+		} 
+		catch (Exception ex) {
+			if (conn != null) { try { conn.rollback(); } catch (SQLException ignoreEx) {} }
+			throw ex;
+		}
+		finally {
+	        if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
+	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
+	        UserTools.LogMethod("UserAppBlockUnblock", meLogger, startMS, String.valueOf(userAppId));
+		}
+	}
+	
 	public LogonState GetLogonState(String userName)
 	{
 		long startMS = System.currentTimeMillis();
@@ -1111,7 +1164,7 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		try {			
 			conn = dataSource.getConnection();
 
-			String selectSql = "SELECT [UserId], [ProfileName], [PasswordHash], [Salt], [FailedLoginCount], [FailedLoginLast] "
+			String selectSql = "SELECT [UserId], [ProfileName], [PasswordHash], [Salt], [TempSalt], [FailedLoginCount], [FailedLoginLast] "
 								+ "FROM [dbo].[User] WHERE [ProfileName] = ? AND [Status] < 5";
 							
 			ps = conn.prepareStatement(selectSql);
@@ -1130,10 +1183,11 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			logonState.setProfileName(resultset.getString(2));
 			logonState.setPasswordHash(resultset.getString(3));
 			logonState.setSalt(resultset.getString(4));
-			logonState.setFailedLogonCount(resultset.getInt(5));
+			logonState.setTempSalt(resultset.getString(5));
+			logonState.setFailedLogonCount(resultset.getInt(6));
 			
-			if (resultset.getTimestamp(6) != null)
-				logonState.setFailedLogonLast(resultset.getTimestamp(6));
+			if (resultset.getTimestamp(7) != null)
+				logonState.setFailedLogonLast(resultset.getTimestamp(7));
 			
 			return logonState;
 		}
@@ -1202,5 +1256,267 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 	        UserTools.LogMethod("UpdateLogonState", meLogger, startMS, String.valueOf(userId));
 		}
 	}
+	
+	public void UpdateTempSalt(long userId, String salt) throws WallaException
+	{
+		long startMS = System.currentTimeMillis();
+		Connection conn = null;
+		PreparedStatement ps = null;
+		int returnCount = 0;
+		try {
+			conn = dataSource.getConnection();
+			conn.setAutoCommit(false);
+			
+			//Process an update to the main record.
+			String updateVersionSql = "UPDATE [dbo].[User] SET [TempSalt] = ? "
+					+ "WHERE [UserId] = ?";
+
+			ps = conn.prepareStatement(updateVersionSql);
+			ps.setString(1, salt);
+			ps.setLong(2, userId);
+			
+			//Execute update and check response.
+			returnCount = ps.executeUpdate();
+			ps.close();
+			if (returnCount != 1)
+			{
+				conn.rollback();
+				String error = "Update statement didn't return a success count of 1.";
+				meLogger.error(error);
+				throw new WallaException("AccountDataHelperImpl", "UpdateTempSalt", error, HttpStatus.CONFLICT.value()); 
+			}
+			
+			conn.commit();
+		}
+		catch (SQLException sqlEx) {
+			if (conn != null) { try { conn.rollback(); } catch (SQLException ignoreEx) {} }
+			meLogger.error(sqlEx);
+			throw new WallaException(sqlEx,HttpStatus.INTERNAL_SERVER_ERROR.value());
+		} catch (Exception ex) {
+			if (conn != null) { try { conn.rollback(); } catch (SQLException ignoreEx) {} }
+			throw ex;
+		}
+		finally {
+	        if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
+	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
+	        UserTools.LogMethod("UpdateTempSalt", meLogger, startMS, String.valueOf(userId));
+		}
+	}
+	
+	public AccountActionSummary GetAccountActions(long userId)
+	{
+		/*
+		SELECT ACT.[Description] as ActionDesc, AA.[ActionDateTime], COUNT(1) AS NumTimes
+		FROM [ActionAccount] AA 
+		INNER JOIN [Action] ACT ON AA.[Action] = ACT.[Action]
+		WHERE AA.[ActionDateTime] > GetDate()-30
+		AND AA.[UserId] = 100001
+		GROUP BY ACT.[Description], AA.[ActionDateTime]
+		ORDER BY 3 DESC
+
+
+		SELECT A.[Name], P.ShortName, UA.[MachineName], UA.[Blocked], UA.[LastUsed]
+		FROM [UserApp] UA
+		INNER JOIN [App] A ON UA.[AppId] = A.[AppId]
+		INNER JOIN [Platform] P ON UA.[PlatformId] = P.[PlatformId]
+		WHERE UA.[UserId] = 100001
+
+
+		SELECT ACT.[Description] as ActionDesc, AU.[ActionDateTime], COUNT(1) AS NumTimes
+		FROM [ActionUserApp] AU
+		INNER JOIN [Action] ACT ON AU.[Action] = ACT.[Action]
+		WHERE AU.[ActionDateTime] > GetDate()-30
+		AND AU.[UserAppId] = 12345678
+		GROUP BY ACT.[Description], AU.[ActionDateTime]
+
+
+		SELECT G.[Name], G.[Description], ViewTotal.NumTimesTotal, ViewMonth.NumTimesMonth
+		FROM [Gallery] G 
+		INNER JOIN 
+			(SELECT AG.[GalleryId], COUNT(1) AS NumTimesTotal
+			FROM [ActionGallery] AG
+			WHERE AG.[Action] = 'GalViewOK'
+			GROUP BY AG.GalleryId) ViewTotal
+			ON G.[GalleryId] = ViewTotal.[GalleryId]
+		INNER JOIN 
+			(SELECT AG2.[GalleryId], COUNT(1) AS NumTimesMonth
+			FROM [ActionGallery] AG2
+			WHERE AG2.[Action] = 'GalViewOK' AND AG2.[ActionDateTime] > GetDate()-30
+			GROUP BY AG2.GalleryId) ViewMonth
+			ON G.[GalleryId] = ViewMonth.[GalleryId]
+		WHERE 
+			G.[AccessType] IN (1,2) 
+			AND G.[UserId] = 100001	
+	*/
+		
+		long startMS = System.currentTimeMillis();
+		Connection conn = null;
+		PreparedStatement ps = null;
+		ResultSet resultset = null;
+		AccountActionSummary summary = null;
+		
+		try {
+			conn = dataSource.getConnection();
+
+			/**************************************************************************/
+			/* Add account summary */
+			String selectSql = "SELECT ACT.[Description] as ActionDesc, CAST(AA.[ActionDateTime] AS Date) AS ActionDate, COUNT(1) AS NumTimes" +
+								" FROM [ActionAccount] AA" +
+								" INNER JOIN [Action] ACT ON AA.[Action] = ACT.[Action]" +
+								" WHERE AA.[ActionDateTime] > GetDate()-30" +
+								" AND AA.[UserId] = ?" +
+								" GROUP BY ACT.[Description], CAST(AA.[ActionDateTime] AS Date)" +
+								" ORDER BY 3 DESC";
+
+			ps = conn.prepareStatement(selectSql);
+			ps.setLong(1, userId);
+			resultset = ps.executeQuery();
+
+			summary = new AccountActionSummary();
+			
+			while (resultset.next())
+			{
+				AccountActionSummary.AccountActionRef current = new AccountActionSummary.AccountActionRef();
+				current.setActionDesc(resultset.getString(1));
+				
+				Calendar actionUsedCalendar = Calendar.getInstance();
+				actionUsedCalendar.setTimeInMillis(resultset.getTimestamp(2).getTime());
+				current.setActionDate(actionUsedCalendar);
+
+				current.setNumTimes(resultset.getInt(3));
+				
+				summary.getAccountActionRef().add(current);
+			}
+			
+			resultset.close();
+			ps.close();
+
+			/**************************************************************************/
+			/* Add gallery summary */
+			selectSql = "SELECT G.[Name], G.[Description], COALESCE(ViewTotal.NumTimesTotal,0) AS NumTimesTotal, COALESCE(ViewMonth.NumTimesMonth,0) AS NumTimesTotal " +
+						"FROM [Gallery] G " +
+						"LEFT OUTER JOIN " +
+						"(SELECT AG.[GalleryId], COUNT(1) AS NumTimesTotal " +
+						"FROM [ActionGallery] AG " +
+						"WHERE AG.[Action] = 'GalViewOK' " +
+						"GROUP BY AG.GalleryId) ViewTotal " +
+						"ON G.[GalleryId] = ViewTotal.[GalleryId] " +
+						"LEFT OUTER JOIN " +
+						"(SELECT AG2.[GalleryId], COUNT(1) AS NumTimesMonth " +
+						"FROM [ActionGallery] AG2 " +
+						"WHERE AG2.[Action] = 'GalViewOK' AND AG2.[ActionDateTime] > GetDate()-30 " +
+						"GROUP BY AG2.GalleryId) ViewMonth " +
+						"ON G.[GalleryId] = ViewMonth.[GalleryId] " +
+						"WHERE " +
+						"G.[AccessType] IN (1,2) " +
+						"AND G.[UserId] = ?";
+			
+			ps = conn.prepareStatement(selectSql);
+			ps.setLong(1, userId);
+			resultset = ps.executeQuery();
+
+			while (resultset.next())
+			{
+				AccountActionSummary.GalleryActionRef current = new AccountActionSummary.GalleryActionRef();
+				current.setGalleryName(resultset.getString(1));
+				current.setGalleryDesc(resultset.getString(2));
+				current.setViewMonth(resultset.getInt(3));
+				current.setViewTotal(resultset.getInt(4));
+				
+				summary.getGalleryActionRef().add(current);
+			}
+			
+			resultset.close();
+			ps.close();
+			
+			/**************************************************************************/
+			/* Add UserApps */
+			selectSql = "SELECT UA.[UserAppId], A.[Name], P.ShortName, UA.[MachineName], UA.[Blocked], UA.[LastUsed] " +
+						"FROM [UserApp] UA " +
+						"INNER JOIN [App] A ON UA.[AppId] = A.[AppId] " +
+						"INNER JOIN [Platform] P ON UA.[PlatformId] = P.[PlatformId] " +
+						"WHERE UA.[UserId] = ? " +
+						"ORDER BY 5";
+			
+			ps = conn.prepareStatement(selectSql);
+			ps.setLong(1, userId);
+			resultset = ps.executeQuery();
+
+			while (resultset.next())
+			{
+				AccountActionSummary.UserAppRef current = new AccountActionSummary.UserAppRef();
+				current.setUserAppId(resultset.getLong(1));
+				current.setAppName(resultset.getString(2));
+				current.setPlatform(resultset.getString(3));
+				current.setMachineName(resultset.getString(4));
+				current.setBlocked(resultset.getBoolean(5));
+				
+				Calendar lastUsedCalendar = Calendar.getInstance();
+				lastUsedCalendar.setTimeInMillis(resultset.getTimestamp(6).getTime());
+				current.setLastUsed(lastUsedCalendar);
+
+				summary.getUserAppRef().add(current);
+			}
+			
+			resultset.close();
+			ps.close();
+			
+			/**************************************************************************/
+			/* Add userapp action summary */
+			selectSql = "SELECT ACT.[Description] as ActionDesc, CAST(AU.[ActionDateTime] as Date) AS ActionDateTime, COUNT(1) AS NumTimes " +
+						"FROM [ActionUserApp] AU " +
+						"INNER JOIN [Action] ACT ON AU.[Action] = ACT.[Action] " +
+						"WHERE AU.[ActionDateTime] > GetDate()-30 " +
+						"AND AU.[UserAppId] = ? " +
+						"GROUP BY ACT.[Description], CAST(AU.[ActionDateTime] as Date) ORDER BY 2 DESC";
+			
+			for (int i = 0; i < summary.getUserAppRef().size(); i++)
+			{
+				AccountActionSummary.UserAppRef current = summary.getUserAppRef().get(i);
+				if (!current.isBlocked())
+				{
+					ps = conn.prepareStatement(selectSql);
+					ps.setLong(1, current.getUserAppId());
+					resultset = ps.executeQuery();
+		
+					while (resultset.next())
+					{
+						AccountActionSummary.UserAppRef.UserAppActionRef currentAction = new AccountActionSummary.UserAppRef.UserAppActionRef();
+						
+						currentAction.setActionDesc(resultset.getString(1));
+						
+						Calendar lastUsedCalendar = Calendar.getInstance();
+						lastUsedCalendar.setTimeInMillis(resultset.getTimestamp(2).getTime());
+						currentAction.setActionDate(lastUsedCalendar);
+
+						currentAction.setNumTimes(resultset.getInt(3));
+						
+						current.getUserAppActionRef().add(currentAction);
+					}
+					
+					resultset.close();
+					ps.close();
+				}
+			}
+			
+			return summary;
+		}
+		catch (SQLException sqlEx) {
+			meLogger.error(sqlEx);
+			return null;
+		} 
+		catch (Exception ex) {
+			meLogger.error(ex);
+			return null;
+		}
+		finally {
+			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
+			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
+	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
+	        UserTools.LogMethod("GetAccountActions", meLogger, startMS, String.valueOf(userId));
+		}
+		
+	}
+	
 	
 }

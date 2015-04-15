@@ -53,9 +53,10 @@
                 </div>
 
                 <div class="column three-fourths">
-                    <form action="#" th:action="@{./account}" th:object="${accountSettings}" method="post">
+                    <form action="#" id="mainAccountForm" th:action="@{./account}" th:object="${accountSettings}" method="post">
 						<input type="hidden" name="Id" th:field="*{Id}" />
 						<input type="hidden" name="Version" th:field="*{Version}" />
+                    	<input type="hidden" name="CurrentPassword" id="CurrentPassword" th:field="*{CurrentPassword}" />
                     
 	                    <div class="content-group-box">
 	                        <h3 class="content-group-heading">Profile:<span style="margin-left: 5px;" th:text="*{profileName}"></span></h3>
@@ -64,7 +65,7 @@
 									<p th:if="*{accountMessage != null}" th:text="*{accountMessage}"></p>
 
 	                                <p><strong>Account type:</strong><span style="margin-left: 5px;" th:text="*{accountTypeName}"></span></p>
-	                                <p><strong>Account Opened:</strong><span style="margin-left: 5px;" th:text="*{#dates.format(openDate,'dd MMM yyyy')}"></span></p>
+	                                <p><strong>Account opened:</strong><span style="margin-left: 5px;" th:text="*{#dates.format(openDate,'dd MMM yyyy')}"></span></p>
 
 	                                <dl class="form entry-control">
 	                                    <dt>
@@ -380,12 +381,12 @@
 	                                <hr class="facebox-separator" />
 	                                <!-- <form action="/users/baronvonsid" method="post" accept-charset="UTF-8"> -->
 	                                    <p>
-	                                        <label for="currentPassword">
+	                                        <label for="enterCurrentPassword">
 	                                            Please enter your password:
 	                                        </label>
-	                                        <input name="currentPassword" class="input-block" id="currentPassword" type="text" th:field="*{currentPassword}" />
+	                                        <input name="enterCurrentPassword" class="input-block" id="enterCurrentPassword" type="password" onkeyup="UpdatePassword(this);"  />
 	                                    </p>
-	                                    <button id="cmdCloseAccount" name="cmdCloseAccount" class="button button-block red" onkeypress="CloseSubmit();" onclick="CloseSubmit();">Close account</button>
+	                                    <button id="cmdCloseAccount" name="cmdCloseAccount" data-event="closeaccount" class="button button-block red" onkeypress="CloseAccountSubmit();" onclick="CloseAccountSubmit();">Close account</button>
 	                                <!-- </form> -->
 	                            </div>
 	
@@ -408,6 +409,7 @@
  <!--<script th:attr="src=@{/static/scripts/jquery-1.11.1.min.js}" src="http://localhost:8082/wallahub/static/static/scripts/jquery-1.11.1.min.js"></script>-->
     <script th:attr="src=@{/static/scripts/jquery-ui.min.js}" src="http://localhost:8082/wallahub/static/static/scripts/jquery-ui.min.js"></script>
     <script th:attr="src=@{/static/scripts/jquery.select-to-autocomplete.js}" src="http://localhost:8082/wallahub/static/static/scripts/jquery.select-to-autocomplete.js"></script>
+	<script th:attr="src=@{/static/scripts/passwordchecking.js}" src="http://localhost:8082/wallahub/static/scripts/src=@{/static/scripts/passwordchecking.js"></script>
 
 
     <script>
@@ -417,8 +419,6 @@
            
             $('a[rel*=facebox]').facebox();
             $('select').selectToAutocomplete();
-
-            
         });
     </script>
 
@@ -428,42 +428,14 @@
 -->
 
 	<script>
-	function CloseSubmit()
+	function UpdatePassword(element)
 	{
-		var passwordField = $( "#closePassword" );
-		var currentVal = $(passwordField).val();
-		alert(currentVal);
+		$("#CurrentPassword").val(element.value);
 	}
-	
-    function checkForPassword()
-    {
-    	var value = $( "#mepassword" ).val();
-    	
-        if(value.length > 0){
-        	$("#cmdCloseAccount").prop('disabled',false);
-        }
-        else{
-            $("#cmdCloseAccount").prop('disabled',true);
-        }
-    }
+
+
+
 	</script>
-
-	<!--
-    function validatePassword(passwordField)
-    {
-    	var value = $(passwordField).val();
-
-        if ( value.length > 0 )
-        {
-        	$("#cmdCloseAccount").prop("disabled", false);
-        }
-        else
-        {
-        	$("#cmdCloseAccount").prop("disabled", true);
-        }
-    }
-    -->
-    
 
 </body>
 </html>

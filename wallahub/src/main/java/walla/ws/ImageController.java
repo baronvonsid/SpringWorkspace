@@ -57,6 +57,7 @@ import java.util.zip.ZipInputStream;
 import java.awt.*;  
 import java.awt.image.*;  
 
+import javax.annotation.Resource;
 import javax.imageio.*;  
 import javax.imageio.stream.FileImageOutputStream;
 
@@ -94,7 +95,7 @@ public class ImageController {
 	//@Autowired
 	//private CustomSessionState sessionState;
 	
-	@Autowired
+	@Resource(name="imageServicePooled")
 	private ImageService imageService;
 	
 	@Autowired
@@ -137,7 +138,7 @@ public class ImageController {
 			//Use status to work if create or update
 			if (imageMeta.getStatus() == 4)
 			{
-				responseCode = imageService.CreateUpdateImageMeta(customSession.getUserId(), imageMeta, imageId);	
+				responseCode = imageService.CreateUpdateImageMeta(customSession.getUserId(), imageMeta, imageId, customSession.getUserAppId());	
 			}
 			else if (imageMeta.getStatus() == 1)
 			{
@@ -157,7 +158,7 @@ public class ImageController {
 					synchronized(customSession) {
 						customSession.getUploadFilesReceived().remove(foundIndex);
 					}
-					responseCode = imageService.CreateUpdateImageMeta(customSession.getUserId(), imageMeta, imageId);
+					responseCode = imageService.CreateUpdateImageMeta(customSession.getUserId(), imageMeta, imageId, customSession.getUserAppId());
 				}
 				else
 				{

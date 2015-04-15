@@ -13,6 +13,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.Iterator;
@@ -89,9 +90,9 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 				imageRef.setStatus(resultset.getInt(2));
 				imageRef.setName(resultset.getString(3));
 				
-				oldGreg.setTime(resultset.getTimestamp(4));
-				XMLGregorianCalendar xmlOldGreg = DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg);
-				imageRef.setLastUpdated(xmlOldGreg);
+				Calendar lastUpdatedCalendar = Calendar.getInstance();
+				lastUpdatedCalendar.setTimeInMillis(resultset.getTimestamp(4).getTime());
+				imageRef.setLastUpdated(lastUpdatedCalendar);
 				
 				imageRef.setError(resultset.getBoolean(5));
 				imageRef.setErrorMessage(resultset.getString(6));
@@ -102,7 +103,7 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 
 			return currentUploads;
 		}
-		catch (SQLException | DatatypeConfigurationException sqlEx) {
+		catch (SQLException sqlEx) {
 			meLogger.error(sqlEx);
 			return null;
 		} 
@@ -295,25 +296,30 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 			
 			image.setOrientation(rsMeta.getInt(17));
 
+			Calendar calendar = Calendar.getInstance();
 			if (rsMeta.getDate(18) != null)
 			{
-				oldGreg.setTime(rsMeta.getDate(18));
-				image.setTakenDate(DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg));
+				Calendar takenDateCalendar = Calendar.getInstance();
+				takenDateCalendar.setTimeInMillis(rsMeta.getTimestamp(18).getTime());
+				image.setTakenDate(takenDateCalendar);
 			}
 			if (rsMeta.getDate(19) != null)
 			{
-				oldGreg.setTime(rsMeta.getDate(19));
-				image.setTakenDateFile(DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg));
+				Calendar takenDateFileCalendar = Calendar.getInstance();
+				takenDateFileCalendar.setTimeInMillis(rsMeta.getTimestamp(19).getTime());
+				image.setTakenDateFile(takenDateFileCalendar);
 			}
 			if (rsMeta.getDate(20) != null)
 			{
-				oldGreg.setTime(rsMeta.getDate(20));
-				image.setTakenDateMeta(DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg));
+				Calendar takenDateMetaCalendar = Calendar.getInstance();
+				takenDateMetaCalendar.setTimeInMillis(rsMeta.getTimestamp(20).getTime());
+				image.setTakenDateMeta(takenDateMetaCalendar);
 			}
 			if (rsMeta.getDate(21) != null)
 			{
-				oldGreg.setTime(rsMeta.getDate(21));
-				image.setUploadDate(DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg));
+				Calendar uploadDateCalendar = Calendar.getInstance();
+				uploadDateCalendar.setTimeInMillis(rsMeta.getTimestamp(21).getTime());
+				image.setUploadDate(uploadDateCalendar);
 			}
 
 			image.setUdfChar1(rsMeta.getString(22));
@@ -327,18 +333,21 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 			
 			if (rsMeta.getDate(29) != null)
 			{
-				oldGreg.setTime(rsMeta.getDate(29));
-				image.setUdfDate1(DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg));
+				Calendar udfDate1Calendar = Calendar.getInstance();
+				udfDate1Calendar.setTimeInMillis(rsMeta.getTimestamp(29).getTime());
+				image.setUdfDate1(udfDate1Calendar);
 			}
 			if (rsMeta.getDate(30) != null)
 			{
-				oldGreg.setTime(rsMeta.getDate(30));
-				image.setUdfDate2(DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg));
+				Calendar udfDate2Calendar = Calendar.getInstance();
+				udfDate2Calendar.setTimeInMillis(rsMeta.getTimestamp(30).getTime());
+				image.setUdfDate2(udfDate2Calendar);
 			}
 			if (rsMeta.getDate(31) != null)
 			{
-				oldGreg.setTime(rsMeta.getDate(31));
-				image.setUdfDate3(DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg));
+				Calendar udfDate3Calendar = Calendar.getInstance();
+				udfDate3Calendar.setTimeInMillis(rsMeta.getTimestamp(31).getTime());
+				image.setUdfDate3(udfDate3Calendar);
 			}
 
 			image.setStatus(rsMeta.getInt(32));
@@ -364,7 +373,7 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 			
 			return image;
 		}
-		catch (SQLException | DatatypeConfigurationException sqlEx) {
+		catch (SQLException sqlEx) {
 			meLogger.error(sqlEx);
 			return null;
 		} 
@@ -431,13 +440,16 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 			psMeta.setLong(5, newImage.getCompressedSize());
 			//psMeta.setLong(5, 0);
 			
-			if (newImage.isTakenDateSet()  && newImage.getTakenDate().getYear() > 1800)
-			{ psMeta.setDate(6,new java.sql.Date(newImage.getTakenDate().toGregorianCalendar().getTime().getTime())); }
+			Calendar aLongTimeAgo = Calendar.getInstance();
+			aLongTimeAgo.set(1800, 1, 1);
+			
+			if (newImage.isTakenDateSet()  && newImage.getTakenDate().after(aLongTimeAgo))
+			{ psMeta.setDate(6,new java.sql.Date(newImage.getTakenDate().getTimeInMillis())); }
 			else
 			{ psMeta.setNull(6, java.sql.Types.DATE); }
 			
-			if (newImage.getTakenDateFile() != null && newImage.getTakenDateFile().getYear() > 1800)
-			{ psMeta.setDate(7,new java.sql.Date(newImage.getTakenDateFile().toGregorianCalendar().getTime().getTime())); }
+			if (newImage.getTakenDateFile() != null && newImage.getTakenDateFile().after(aLongTimeAgo))
+			{ psMeta.setDate(7,new java.sql.Date(newImage.getTakenDateFile().getTimeInMillis())); }
 			else
 			{ psMeta.setNull(7, java.sql.Types.DATE); }
 			
@@ -451,17 +463,17 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 			psMeta.setBigDecimal(14, newImage.getUdfNum3());
 			
 			if (newImage.getUdfDate1() != null)
-			{ psMeta.setDate(15,new java.sql.Date(newImage.getUdfDate1().toGregorianCalendar().getTime().getTime())); }
+			{ psMeta.setDate(15,new java.sql.Date(newImage.getUdfDate1().getTimeInMillis())); }
 			else
 			{ psMeta.setNull(15, java.sql.Types.DATE); }
 			
 			if (newImage.getUdfDate2() != null)
-			{ psMeta.setDate(16,new java.sql.Date(newImage.getUdfDate2().toGregorianCalendar().getTime().getTime())); }
+			{ psMeta.setDate(16,new java.sql.Date(newImage.getUdfDate2().getTimeInMillis())); }
 			else
 			{ psMeta.setNull(16, java.sql.Types.DATE); }
 			
 			if (newImage.getUdfDate3() != null)
-			{ psMeta.setDate(17,new java.sql.Date(newImage.getUdfDate3().toGregorianCalendar().getTime().getTime())); }
+			{ psMeta.setDate(17,new java.sql.Date(newImage.getUdfDate3().getTimeInMillis())); }
 			else
 			{ psMeta.setNull(17, java.sql.Types.DATE); }
 
@@ -568,19 +580,22 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 			psMeta.setInt(9, existingImage.getISO());
 			psMeta.setInt(10, existingImage.getOrientation());
 			
-			if (existingImage.getTakenDate() != null && existingImage.getTakenDate().getYear() > 1800)
-			{ psMeta.setDate(11,new java.sql.Date(existingImage.getTakenDate().toGregorianCalendar().getTime().getTime())); }
+			Calendar aLongTimeAgo = Calendar.getInstance();
+			aLongTimeAgo.set(1800, 1, 1);
+			
+			if (existingImage.getTakenDate() != null && existingImage.getTakenDate().after(aLongTimeAgo))
+			{ psMeta.setDate(11,new java.sql.Date(existingImage.getTakenDate().getTimeInMillis())); }
 			else
 			{ psMeta.setNull(11, java.sql.Types.DATE); }
 			
 			
-			if (existingImage.getTakenDateFile() != null && existingImage.getTakenDateFile().getYear() > 1800)
-			{ psMeta.setDate(12,new java.sql.Date(existingImage.getTakenDateFile().toGregorianCalendar().getTime().getTime())); }
+			if (existingImage.getTakenDateFile() != null && existingImage.getTakenDateFile().after(aLongTimeAgo))
+			{ psMeta.setDate(12,new java.sql.Date(existingImage.getTakenDateFile().getTimeInMillis())); }
 			else
 			{ psMeta.setNull(12, java.sql.Types.DATE); }
 			
-			if (existingImage.getTakenDateMeta() != null && existingImage.getTakenDateMeta().getYear() > 1800)
-			{ psMeta.setDate(13,new java.sql.Date(existingImage.getTakenDateMeta().toGregorianCalendar().getTime().getTime())); }
+			if (existingImage.getTakenDateMeta() != null && existingImage.getTakenDateMeta().after(aLongTimeAgo))
+			{ psMeta.setDate(13,new java.sql.Date(existingImage.getTakenDateMeta().getTimeInMillis())); }
 			else
 			{ psMeta.setNull(13, java.sql.Types.DATE); }
 			
@@ -592,18 +607,18 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 			psMeta.setBigDecimal(19, existingImage.getUdfNum2());
 			psMeta.setBigDecimal(20, existingImage.getUdfNum3());
 			
-			if (existingImage.getUdfDate1() != null && existingImage.getUdfDate1().getYear() > 1800)
-			{ psMeta.setDate(21,new java.sql.Date(existingImage.getUdfDate1().toGregorianCalendar().getTime().getTime())); }
+			if (existingImage.getUdfDate1() != null && existingImage.getUdfDate1().after(aLongTimeAgo))
+			{ psMeta.setDate(21,new java.sql.Date(existingImage.getUdfDate1().getTimeInMillis())); }
 			else
 			{ psMeta.setNull(21, java.sql.Types.DATE); }
 			
-			if (existingImage.getUdfDate2() != null && existingImage.getUdfDate2().getYear() > 1800)
-			{ psMeta.setDate(22,new java.sql.Date(existingImage.getUdfDate2().toGregorianCalendar().getTime().getTime())); }
+			if (existingImage.getUdfDate2() != null && existingImage.getUdfDate2().after(aLongTimeAgo))
+			{ psMeta.setDate(22,new java.sql.Date(existingImage.getUdfDate2().getTimeInMillis())); }
 			else
 			{ psMeta.setNull(22, java.sql.Types.DATE); }
 			
-			if (existingImage.getUdfDate3() != null && existingImage.getUdfDate3().getYear() > 1800)
-			{ psMeta.setDate(23,new java.sql.Date(existingImage.getUdfDate3().toGregorianCalendar().getTime().getTime())); }
+			if (existingImage.getUdfDate3() != null && existingImage.getUdfDate3().after(aLongTimeAgo))
+			{ psMeta.setDate(23,new java.sql.Date(existingImage.getUdfDate3().getTimeInMillis())); }
 			else
 			{ psMeta.setNull(23, java.sql.Types.DATE); }
 			

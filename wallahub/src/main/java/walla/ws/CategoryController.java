@@ -1,8 +1,6 @@
 package walla.ws;
 
 import javax.validation.Valid;
-
-
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
@@ -12,6 +10,7 @@ import org.w3c.dom.*;
 import java.util.Date;
 import java.util.List;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -56,10 +55,7 @@ public class CategoryController {
 
 	private static final Logger meLogger = Logger.getLogger(CategoryController.class);
 
-	//@Autowired
-	//private CustomSessionState sessionState;
-	
-	@Autowired
+	@Resource(name="categoryServicePooled")
 	private CategoryService categoryService;
 	
 	// POST /{profileName}/category
@@ -86,7 +82,7 @@ public class CategoryController {
 			}
 	
 			CustomResponse customResponse = new CustomResponse();
-			long newCategoryId = categoryService.CreateCategory(customSession.getUserId(), newCategory, customResponse);
+			long newCategoryId = categoryService.CreateCategory(customSession.getUserId(), newCategory, customResponse, customSession.getUserAppId());
 	
 			responseCode = customResponse.getResponseCode();
 			return "<CategoryId>" + newCategoryId + "</CategoryId>";
@@ -122,7 +118,7 @@ public class CategoryController {
 				return;
 			}
 	
-			responseCode = categoryService.UpdateCategory(customSession.getUserId(), newCategory, categoryId);
+			responseCode = categoryService.UpdateCategory(customSession.getUserId(), newCategory, categoryId, customSession.getUserAppId());
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
@@ -155,7 +151,7 @@ public class CategoryController {
 				return;
 			}
 	
-			responseCode = categoryService.DeleteCategory(customSession.getUserId(), existingCategory, categoryId);
+			responseCode = categoryService.DeleteCategory(customSession.getUserId(), existingCategory, categoryId, customSession.getUserAppId());
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
@@ -266,7 +262,7 @@ public class CategoryController {
 				return;
 			}
 	
-			responseCode = categoryService.MoveToNewCategory(customSession.getUserId(), categoryId, imageIdList);
+			responseCode = categoryService.MoveToNewCategory(customSession.getUserId(), categoryId, imageIdList, customSession.getUserAppId());
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);

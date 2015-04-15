@@ -14,6 +14,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.Iterator;
@@ -283,16 +284,15 @@ public class TagDataHelperImpl implements TagDataHelper {
 			tag.setDesc(resultset.getString(3));
 			tag.setSystemOwned(resultset.getBoolean(4));
 			
-			GregorianCalendar oldGreg = new GregorianCalendar();
-			oldGreg.setTime(resultset.getTimestamp(5));
-			XMLGregorianCalendar xmlOldGreg = DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg);
+			Calendar lastChangedCalendar = Calendar.getInstance();
+			lastChangedCalendar.setTimeInMillis(resultset.getTimestamp(5).getTime());
 			
-			tag.setLastChanged(xmlOldGreg);
+			tag.setLastChanged(lastChangedCalendar);
 			tag.setVersion(resultset.getInt(6));
 			
 			return tag;
 		}
-		catch (SQLException | DatatypeConfigurationException sqlEx) {
+		catch (SQLException sqlEx) {
 			meLogger.error(sqlEx);
 			return null;
 		}
@@ -338,18 +338,17 @@ public class TagDataHelperImpl implements TagDataHelper {
 			tagImageList.setDesc(resultset.getString(3));
 			tagImageList.setTotalImageCount(resultset.getInt(4));
 			
-			GregorianCalendar oldGreg = new GregorianCalendar();
-			oldGreg.setTime(resultset.getTimestamp(5));
-			XMLGregorianCalendar xmlOldGreg = DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg);
+			Calendar lastChangedCalendar = Calendar.getInstance();
+			lastChangedCalendar.setTimeInMillis(resultset.getTimestamp(5).getTime());
 			
-			tagImageList.setLastChanged(xmlOldGreg);
+			tagImageList.setLastChanged(lastChangedCalendar);
 			tagImageList.setVersion(resultset.getInt(6));
 			tagImageList.setSystemOwned(resultset.getBoolean(7));
 			
 			resultset.close();
 			return tagImageList;
 		}
-		catch (SQLException | DatatypeConfigurationException ex) {
+		catch (SQLException ex) {
 			meLogger.error(ex);
 			return null;
 		} 

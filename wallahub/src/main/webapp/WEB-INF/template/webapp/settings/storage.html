@@ -80,10 +80,144 @@
                         </div>
                     </div>
 
-                    <div class="content-group-box">
-                        <h3 class="content-group-heading">Breakdown</h3>
-                        <div class="content-group-inner">
 
+
+                    <div class="content-group-box" th:unless="${yearChartData == null}">
+                        <h3 class="content-group-heading">Breakdown by year</h3>
+                        <div class="content-group-inner" style="min-height: 240px;">
+							<div style="width: 100%; margin-top: 20px;">
+	                            <div style="width:60%; float:left;" >
+	                                <canvas id="year-chart-area"></canvas>
+	                            </div>
+	                            <div style="width:40%; float: right;">
+		                            <ul class="legend-list">
+		                                <li th:each="imageYearRef : ${accountStorage.ImageYearRef}">
+		                                    <div>
+		                                    	<i class="fa fa-square fa-fw" th:styleappend="'color:' + ${imageYearRef.Colour}" style="margin-right: 5px;float: left;"></i>
+		                                    	<span th:text="${imageYearRef.Year} + ' - ' + ${imageYearRef.SizeGB} + 'GB \ ' + ${imageYearRef.ImageCount} + ' images'">JPEG - 20GB \ 300 images</span>
+		                                    </div>
+		                                </li>
+		                            </ul>
+	                           	</div>
+							</div>
+						</div>
+					</div>
+                            
+                    <div class="content-group-box" th:unless="${formatChartData == null}">
+                        <h3 class="content-group-heading">Breakdown by image format</h3>
+                        <div class="content-group-inner" style="min-height: 240px;">
+                           <div style="width: 100%; margin-top: 20px;">
+	                           <div style="width:60%; float:left;" >
+	                               <canvas id="format-chart-area"></canvas>
+	                           </div>
+	                           <div style="width:40%; float: right;">
+		                            <ul class="legend-list">
+		                                <li th:each="formatRef : ${accountStorage.FormatRef}">
+		                                    <div>
+		                                    	<i class="fa fa-square fa-fw" th:styleappend="'color:' + ${formatRef.Colour}" style="margin-right: 5px;float: left;"></i>
+		                                    	<span th:text="${formatRef.Format} + ' - ' + ${formatRef.SizeGB} + 'GB \ ' + ${formatRef.ImageCount} + ' images'">JPEG - 20GB \ 300 images</span>
+		                                    </div>
+		                                </li>
+		                            </ul>
+	                          	</div>
+							</div>
+	                     </div>
+                    </div>
+                    
+                    <div class="content-group-box" th:unless="${uploadChartData == null}">
+                        <h3 class="content-group-heading">Breakdown by upload source</h3>
+                        <div class="content-group-inner" style="min-height: 240px;">
+                           <div style="width: 100%; margin-top: 20px;" >
+	                            <div style="width:60%; float:left;" >
+	                                <canvas id="upload-chart-area"></canvas>
+	                            </div>
+	                            <div style="width:40%; float: right;">
+		                            <ul class="legend-list">
+		                                <li th:each="uploadSourceRef : ${accountStorage.UploadSourceRef}">
+		                                    <div>
+		                                    	<i class="fa fa-square fa-fw" th:styleappend="'color:' + ${uploadSourceRef.Colour}" style="margin-right: 5px;float: left;"></i>
+		                                    	<span th:text="${uploadSourceRef.Name} + ' - ' + ${uploadSourceRef.SizeGB} + 'GB \ ' + ${uploadSourceRef.ImageCount} + ' images'">JPEG - 20GB \ 300 images</span>
+		                                    </div>
+		                                </li>
+		                            </ul>
+	                           	</div>
+							</div>
+                        </div>
+                    </div>
+            
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+	<div id="yearChartData" th:attr="data-chart=${yearChartData}"></div>
+	<div id="formatChartData" th:attr="data-chart=${formatChartData}"></div>
+	<div id="uploadChartData" th:attr="data-chart=${uploadChartData}"></div>
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+    <script th:attr="src=@{/static/scripts/Chart.js}" src="./static/scripts/Chart.js"></script>
+
+    <script>
+
+    
+        //var doughnutData = [{ value: 300, label: 'Red' },{ value: 50, label: 'Green'}];
+
+        /*
+        window.onload = function () {
+            var ctx = document.getElementById("chart-area").getContext("2d");
+            window.myDoughnut = new Chart(ctx).Doughnut(GetDoughnut(), { responsive: true });
+
+
+        };
+*/
+
+        jQuery(document).ready(
+        	    function ($) {
+        	    	var yearContext = document.getElementById("year-chart-area").getContext("2d");
+        	    	window.myDoughnutYear = new Chart(yearContext).Doughnut(GetYearData(), { responsive: true });
+        	    	
+        	    	var formatContext = document.getElementById("format-chart-area").getContext("2d");
+        	    	window.myDoughnutFormat = new Chart(formatContext).Doughnut(GetFormatData(), { responsive: true, showScale: true });
+        	    	
+        	    	var uploadContext = document.getElementById("upload-chart-area").getContext("2d");
+        	    	window.myDoughnutUpload = new Chart(uploadContext).Doughnut(GetUploadData(), { responsive: true, showScale: true });
+        	    	
+        	    	//alert(window.myDoughnutYear.generateLegend());
+        	    	
+        	    	//$("#legendYear").append(window.myDoughnutYear.generateLegend());
+        	    	//var ellley = window.getElementById("legendYear");
+        	    	//ellley.innerHTML = window.myDoughnutYear.generateLegend();
+        	    });
+        
+        
+        function GetYearData()
+        {
+        	var yearChartData = $("#yearChartData").attr("data-chart");
+        	//alert(yearChartData);
+            return eval(yearChartData);
+        }
+        
+        function GetFormatData()
+        {
+        	var formatChartData = $("#formatChartData").attr("data-chart");
+        	//alert(yearChartData);
+            return eval(formatChartData);
+        }
+
+        function GetUploadData()
+        {
+        	var uploadChartData = $("#uploadChartData").attr("data-chart");
+        	//alert(yearChartData);
+            return eval(uploadChartData);
+        }
+    </script>
+
+
+</body>
+</html>
+
+							<!--
                             <ul class="content-list">
                                 <li th:each="formatRef : ${accountStorage.FormatRef}">
                                     <i class="fa fa-minus fa-fw" style="margin-right: 5px;float: left;"></i>
@@ -105,52 +239,5 @@
                                     <span style="float: left;" th:text="${imageYearRef.Year} + ' - ' + ${imageYearRef.SizeGB} + 'GB \ ' + ${imageYearRef.ImageCount} + ' images'">JPEG - 20GB \ 300 images</span>
                                 </li>
                             </ul>
-
-                            <div style="width:600px; height: 300px;">
-                                <canvas id="chart-area"></canvas>
-                            </div>
-
-                        </div>
-                    </div>
-
-
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script th:attr="src=@{/static/scripts/Chart.js}" src="./static/scripts/Chart.js"></script>
-
-    <script>
-
-        var doughnutData = [
-				{
-				    value: 300,
-				    label: "Red"
-				},
-				{
-				    value: 50,
-				    label: "Green"
-				}
-
-        ];
-
-        
-
-        window.onload = function () {
-            var ctx = document.getElementById("chart-area").getContext("2d");
-            window.myDoughnut = new Chart(ctx).Doughnut(GetDoughnut(), { responsive: true });
-
-
-        };
-
-        function GetDoughnut()
-        {
-            return doughnutData;
-        }
-
-    </script>
-
-
-</body>
-</html>
+							-->
+							

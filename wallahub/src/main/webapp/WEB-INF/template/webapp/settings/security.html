@@ -53,7 +53,7 @@
                     <div class="content-group-box">
                         <h3 class="content-group-heading">Change password</h3>
                         <div class="content-group-inner">
-                        	<form action="#" th:action="@{./security}" th:object="${logon}" method="post">
+                        	<form id="mainForm" action="#" th:action="@{./security}" th:object="${logon}" method="post">
                                 <p>
                                     When choosing your password, please ensure it is at least 8 charactors in length, and includes upper and lower case letters.
                                 </p>
@@ -69,29 +69,34 @@
                                     </dd>
 
                                 </dl>
+                                
                                 <dl class="form">
-                                    <dt>
-                                        <label for="newPassword">New password</label>
-                                    </dt>
-                                    <dd>
-                                        <input id="newPassword" tabindex="1" class="short" maxlength="30" th:field="*{password}"
-                                                required="required" type="password" />
-                                        <p th:if="${#fields.hasErrors('password')}" class="errortext"><i class="fa fa-exclamation"></i><span style="margin-left: 5px;" th:errors="*{password}" class="errortext">Validation error</span></p>   
-                                    </dd>
-                                    
-                                </dl>
-                                <dl class="form">
-                                    <dt>
-                                        <label for="newPasswordConfirm">
-                                            Confirm new password
-                                        </label>
-                                    </dt>
-                                    <dd>
-                                        <input tabindex="2" class="short" maxlength="30"
-                                               id="newPasswordConfirm" required="required"
-                                               type="password" />
-                                    </dd>
-                                </dl>
+		                            <dt>
+		                                <label for="newPassword">New password</label>
+		                            </dt>
+		                            <dd>
+		                                <input tabindex="5" id="newPassword" class="short" required="required" type="password" th:field="*{password}" maxlength="30"  />
+		                                <span style="margin-left: 5px;" id="passwordStrengthText" class="errortext">Password strength</span>
+		
+							             <table width="250px" style="margin-top: 3px;" >
+				                           <tr style="height:10px">
+				                           <td id="tdBad" ></td>
+				                           <td id="tdWeak"></td>
+				                           <td id="tdStrong"></td>
+				                           <td id="tdBest"></td>
+				                           </tr>
+										</table>
+		                            </dd>
+		                        </dl>
+		                        <dl class="form">
+		                            <dt>
+		                                <label for="confirmPassword">Confirm Password</label>
+		                            </dt>
+		                            <dd>
+		                                <input tabindex="6" id="confirmPassword" class="short" required="required" type="password" />
+		                            </dd>
+		                        </dl>
+
                                 <p>
                                     <button tabindex="2" class="button green"><i class="fa fa-check" style="margin-right: 6px;"></i>Update password</button>
                                     <span style="margin-left: 10px;">
@@ -111,6 +116,19 @@
         </div>
 
     </div>
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+	<script th:attr="src=@{/static/scripts/passwordchecking.js}" src="http://localhost:8082/wallahub/static/scripts/src=@{/static/scripts/passwordchecking.js"></script>
+
+	<script>
+    jQuery(document).ready(
+    	    function ($) {
+    	    	$("#passwordStrengthText").hide();
+    	    
+    	        //$('select').selectToAutocomplete();
+    	        
+    	    });
+	</script>
 
 </body>
 </html>

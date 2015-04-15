@@ -14,6 +14,7 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.annotation.Resource;
 import javax.imageio.ImageIO;
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
@@ -61,11 +62,8 @@ import walla.utils.*;
 public class GalleryController {
 
 	private static final Logger meLogger = Logger.getLogger(GalleryController.class);
-
-	//@Autowired
-	//private CustomSessionState sessionState;
 	
-	@Autowired
+	@Resource(name="galleryServicePooled")
 	private GalleryService galleryService;
 	
 	//  PUT /{profileName}/gallery/{galleryName}
@@ -90,7 +88,7 @@ public class GalleryController {
 				return;
 			}
 	
-			responseCode = galleryService.CreateUpdateGallery(customSession.getUserId(), newGallery, galleryName);
+			responseCode = galleryService.CreateUpdateGallery(customSession.getUserId(), newGallery, galleryName, customSession.getUserAppId());
 			if (responseCode == HttpStatus.MOVED_PERMANENTLY.value())
 			{
 				String newLocation = "/" + profileName + "/gallery/" + newGallery.getName();
@@ -125,7 +123,7 @@ public class GalleryController {
 				return;
 			}
 	
-			responseCode = galleryService.DeleteGallery(customSession.getUserId(), existingGallery, galleryName);
+			responseCode = galleryService.DeleteGallery(customSession.getUserId(), existingGallery, galleryName, customSession.getUserAppId());
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
@@ -365,7 +363,7 @@ public class GalleryController {
 	//GET /{profileName}/gallery/{galleryName}/gallerylogon
 	@RequestMapping(value="/{profileName}/gallery/{galleryName}/gallerylogon", method=RequestMethod.GET, produces=MediaType.APPLICATION_XML_VALUE,
 			headers={"Accept-Charset=utf-8"} )
-	public @ResponseBody String GetGalleryLogonToken(
+	public @ResponseBody String GetGalleryPassThroughToken(
 			@PathVariable("galleryName") String galleryName,
 			@PathVariable("profileName") String profileName,
 			HttpServletRequest request, 
@@ -384,7 +382,7 @@ public class GalleryController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			String token = galleryService.GetGalleryLogonToken(galleryName, request, customSession, customResponse);
+			String token = galleryService.GetGalleryPassThroughToken(galleryName, request, customSession, customResponse);
 			responseCode = customResponse.getResponseCode();
 			
 			if (customResponse.getResponseCode() == HttpStatus.OK.value())
@@ -400,7 +398,7 @@ public class GalleryController {
 			meLogger.error(ex);
 			return "";
 		}
-		finally { UserTools.LogWebMethod("GetGalleryLogonToken", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { UserTools.LogWebMethod("GetGalleryPassThroughToken", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
 	}
 	
 }

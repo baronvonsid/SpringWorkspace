@@ -14,6 +14,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.Iterator;
@@ -579,10 +580,11 @@ public class GalleryDataHelperImpl implements GalleryDataHelper {
 			gallery.setStyleId(resultset.getInt(8));
 			gallery.setPresentationId(resultset.getInt(9));
 			gallery.setTotalImageCount(resultset.getInt(10));
-			GregorianCalendar oldGreg = new GregorianCalendar();
-			oldGreg.setTime(resultset.getTimestamp(11));
-			XMLGregorianCalendar xmlOldGreg = DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg);
-			gallery.setLastChanged(xmlOldGreg);
+			
+			Calendar lastChangedCalendar = Calendar.getInstance();
+			lastChangedCalendar.setTimeInMillis(resultset.getTimestamp(11).getTime());
+
+			gallery.setLastChanged(lastChangedCalendar);
 			gallery.setVersion(resultset.getInt(12));
 			gallery.setShowGalleryName(resultset.getBoolean(13));
 			gallery.setShowGalleryDesc(resultset.getBoolean(14));
@@ -595,7 +597,7 @@ public class GalleryDataHelperImpl implements GalleryDataHelper {
 			
 			return gallery;
 		}
-		catch (SQLException | DatatypeConfigurationException sqlEx) {
+		catch (SQLException sqlEx) {
 			meLogger.error(sqlEx);
 			throw new WallaException(sqlEx,HttpStatus.INTERNAL_SERVER_ERROR.value());
 		} 
@@ -1034,18 +1036,17 @@ public class GalleryDataHelperImpl implements GalleryDataHelper {
 			galleryImageList.setSectionImageCount(resultset.getInt(4));
 			galleryImageList.setTotalImageCount(resultset.getInt(5));
 			
-			GregorianCalendar oldGreg = new GregorianCalendar();
-			oldGreg.setTime(resultset.getTimestamp(6));
-			XMLGregorianCalendar xmlOldGreg = DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg);
-			
-			galleryImageList.setLastChanged(xmlOldGreg);
+			Calendar lastChangedCalendar = Calendar.getInstance();
+			lastChangedCalendar.setTimeInMillis(resultset.getTimestamp(6).getTime());
+
+			galleryImageList.setLastChanged(lastChangedCalendar);
 			galleryImageList.setVersion(resultset.getInt(7));
 			galleryImageList.setSystemOwned(resultset.getBoolean(8));
 			
 			resultset.close();
 			return galleryImageList;
 		}
-		catch (SQLException | DatatypeConfigurationException sqlEx) {
+		catch (SQLException sqlEx) {
 			meLogger.error(sqlEx);
 			return null;
 		} 
@@ -1062,7 +1063,6 @@ public class GalleryDataHelperImpl implements GalleryDataHelper {
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
 		PreparedStatement ps = null;
-		Statement ds = null;
 		int returnCount = 0;
 		try {
 			conn = dataSource.getConnection();
@@ -1100,7 +1100,6 @@ public class GalleryDataHelperImpl implements GalleryDataHelper {
 		}
 		finally {
 	        if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
-	        if (ds != null) try { if (!ds.isClosed()) {ds.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
 	        UserTools.LogMethod("UpdateTempSalt", meLogger, startMS, String.valueOf(userId));
 		}

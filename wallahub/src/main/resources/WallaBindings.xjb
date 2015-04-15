@@ -1,0 +1,8 @@
+<bindings xmlns="http://java.sun.com/xml/ns/jaxb" version="2.0" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <globalBindings>
+    <javaType name="java.util.Calendar" xmlType="xs:dateTime"
+      parseMethod="walla.utils.JaxbDateTimeConvert.parseDateTime"
+      printMethod="walla.utils.JaxbDateTimeConvert.printDateTime"      
+    />
+  </globalBindings>
+</bindings>

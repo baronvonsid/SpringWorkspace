@@ -8,6 +8,7 @@ import com.drew.metadata.jpeg.*;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.Iterator;
@@ -41,15 +42,16 @@ public final class ImageUtilityHelper
 {
 	//private static Logger meLogger = null;
 	
-	public static String EnrichImageMetaFromFileData(String imageFilePath, ImageMeta imageMeta, Logger meLogger, long imageId)
+	public static String EnrichImageMetaFromFileData(String imageFilePath, String originalZipFile, ImageMeta imageMeta, Logger meLogger, long imageId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
 		{
 			File imageFile = new File(imageFilePath);
+			File zipFile = new File(originalZipFile);
 			
 			/* Size, Format, Date taken */
-			String response = EnrichMetaFromFile(imageFile, imageMeta, meLogger, imageId);
+			String response = EnrichMetaFromFile(imageFile, zipFile, imageMeta, meLogger, imageId);
 			if (!response.equals("OK"))
 				return response;
 			
@@ -151,7 +153,7 @@ public final class ImageUtilityHelper
 
 	}
 	
-	private static String EnrichMetaFromFile(File currentFile, ImageMeta imageMeta, Logger meLogger, long imageId)
+	private static String EnrichMetaFromFile(File currentFile, File zipFile, ImageMeta imageMeta, Logger meLogger, long imageId)
 	{
 		//Enrich:
 		/* Size, Format, Date taken */
@@ -159,16 +161,20 @@ public final class ImageUtilityHelper
 		try
 		{
 			Path path = currentFile.toPath();
-	
 			BasicFileAttributeView attributeView = Files.getFileAttributeView(path, BasicFileAttributeView.class);
 			BasicFileAttributes attributes = attributeView.readAttributes();
 			
 			imageMeta.setSize(attributes.size());
 
-	        GregorianCalendar gc = new GregorianCalendar();
-	        gc.setTimeInMillis(attributes.lastModifiedTime().toMillis());
-	        XMLGregorianCalendar xmlGc = DatatypeFactory.newInstance().newXMLGregorianCalendar(gc); 
-	        imageMeta.setTakenDateFile(xmlGc);
+			Path zipPath = zipFile.toPath();
+			BasicFileAttributeView zipAttributeView = Files.getFileAttributeView(zipPath, BasicFileAttributeView.class);
+			BasicFileAttributes zipAttributes = zipAttributeView.readAttributes();
+			
+			imageMeta.setCompressedSize(zipAttributes.size());
+			
+			Calendar lastModifiedCalendar = Calendar.getInstance();
+			lastModifiedCalendar.setTimeInMillis(attributes.lastModifiedTime().toMillis());
+			imageMeta.setTakenDateFile(lastModifiedCalendar);
 			
 			/* Supported types 
 			•JPG,JPEG,TIF,TIFF,PSD,PNG,BMP,GIF,CR2,ARW,NEF
@@ -291,11 +297,10 @@ public final class ImageUtilityHelper
 				switch (tag.getTagType())
 				{
 					case ExifIFD0Directory.TAG_DATETIME:
+						Calendar takenDateMetaCalendar = Calendar.getInstance();
+						takenDateMetaCalendar.setTimeInMillis(exifDirectory.getDate(ExifIFD0Directory.TAG_DATETIME).getTime());
+						imageMeta.setTakenDateMeta(takenDateMetaCalendar);
 						
-				        GregorianCalendar gc = new GregorianCalendar();
-				        gc.setTimeInMillis(exifDirectory.getDate(ExifIFD0Directory.TAG_DATETIME).getTime());
-				        XMLGregorianCalendar xmlGc = DatatypeFactory.newInstance().newXMLGregorianCalendar(gc); 
-						imageMeta.setTakenDateMeta(xmlGc);
 						break;
 					case ExifIFD0Directory.TAG_MAKE:
 						imageMeta.setCameraMaker(exifDirectory.getString(ExifIFD0Directory.TAG_MAKE));
@@ -350,10 +355,9 @@ public final class ImageUtilityHelper
 						Date tempDate = exifSubDirectory.getDate(ExifSubIFDDirectory.TAG_DATETIME_ORIGINAL);
 						if (tempDate != null) 
 						{
-					        GregorianCalendar gc = new GregorianCalendar();
-					        gc.setTimeInMillis(tempDate.getTime());
-					        XMLGregorianCalendar xmlGc = DatatypeFactory.newInstance().newXMLGregorianCalendar(gc); 
-							imageMeta.setTakenDateMeta(xmlGc);
+							Calendar takenDateMetaCalendar = Calendar.getInstance();
+							takenDateMetaCalendar.setTimeInMillis(tempDate.getTime());
+							imageMeta.setTakenDateMeta(takenDateMetaCalendar);
 						}
 						break;
 					//case ExifSubIFDDirectory.TAG_TIME_ZONE_OFFSET:

@@ -9,6 +9,7 @@ import walla.db.*;
 import walla.utils.*;
 import walla.ws.*;
 
+import javax.annotation.Resource;
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageWriteParam;
@@ -78,15 +79,32 @@ public class ImageService {
 	@Value( "${path.previewThumbFolder}" ) private String previewThumbFolder;
 	@Value( "${path.previewMainCopyFolder}" ) private String previewMainCopyFolder;
 
-	private GalleryDataHelperImpl galleryDataHelper;	
+	@Resource(name="galleryDataHelper")
+	private GalleryDataHelperImpl galleryDataHelper;
+	
+	@Resource(name="categoryDataHelper")
 	private CategoryDataHelperImpl categoryDataHelper;
+	
+	@Resource(name="tagDataHelper")
 	private TagDataHelperImpl tagDataHelper;
+	
+	@Resource(name="imageDataHelper")
 	private ImageDataHelperImpl imageDataHelper;
+	
+	@Resource(name="utilityDataHelper")
 	private UtilityDataHelperImpl utilityDataHelper;
 	
+	@Resource(name="tagServicePooled")
 	private TagService tagService;
+	
+	@Resource(name="categoryServicePooled")
 	private CategoryService categoryService;
+	
+	@Resource(name="cachedData")
 	private CachedData cachedData;
+	
+	@Resource(name="utilityServicePooled")
+	private UtilityService utilityService;
 	
 	private static final Logger meLogger = Logger.getLogger(ImageService.class);
 	
@@ -95,10 +113,10 @@ public class ImageService {
 	//*************************************************************************************************************
 	public ImageService()
 	{
-		
+		meLogger.debug("ImageService object instantiated.");
 	}
 
-	public int CreateUpdateImageMeta(long userId, ImageMeta imageMeta, long imageId)
+	public int CreateUpdateImageMeta(long userId, ImageMeta imageMeta, long imageId, long userAppId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
@@ -118,13 +136,14 @@ public class ImageService {
 				responseCode = HttpStatus.CREATED.value();
 				
 				//TODO decouple.
-				SetupNewImage(userId, imageId);
+				SetupNewImage(userId, imageId, userAppId);
 			}
 			else if (imageMeta.getStatus().intValue() == 4)
 			{
 				imageDataHelper.UpdateImage(userId, imageMeta);
 				responseCode = HttpStatus.OK.value();
 				
+				utilityService.AddAction(ActionType.UserApp, userAppId, "ImgMetaUpd", "");
 				//TODO Add queued process to update any views\tags
 			}
 			else
@@ -308,7 +327,7 @@ public class ImageService {
 			//Check if gallery list changed
 			if (clientVersionTimestamp != null)
 			{
-				Date lastUpdated = new Date(imageList.getLastChanged().toGregorianCalendar().getTimeInMillis());
+				Date lastUpdated = imageList.getLastChanged().getTime();
 				if (!lastUpdated.after(clientVersionTimestamp))
 				{
 					meLogger.debug("No image list generated because server timestamp (" + lastUpdated.toString() + ") is not later than client timestamp (" + clientVersionTimestamp.toString() + ")");
@@ -694,12 +713,12 @@ public class ImageService {
 		}
 		finally {UserTools.LogMethod("GetAppImageFile", meLogger, startMS, imageRef);}
 	}
-
+	
 	//*************************************************************************************************************
 	//*************************************  Messaging initiated methods ******************************************
 	//*************************************************************************************************************
 	
-	public void SetupNewImage(long userId, long imageId)
+	public void SetupNewImage(long userId, long imageId, long userAppId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -758,7 +777,7 @@ public class ImageService {
     				
 			//Load image meta into memory and enrich properties.
 			//TODO switch to wired class.
-			String response = ImageUtilityHelper.EnrichImageMetaFromFileData(originalUncompressedPath, imageMeta, meLogger, imageId);
+			String response = ImageUtilityHelper.EnrichImageMetaFromFileData(originalUncompressedPath, originalZipFile, imageMeta, meLogger, imageId);
 			if (!response.equals("OK"))
 				throw new WallaException("ImageService", "SetupNewImage", response, 0); 
             
@@ -811,6 +830,7 @@ public class ImageService {
 			//TODO For the category, call CategoryRippleUpdates decoupled		
 			categoryService.CategoryRippleUpdate(userId, imageMeta.getCategoryId());
 			
+			utilityService.AddAction(ActionType.UserApp, userAppId, "ImgAdd", "");
 		}
 		catch (Exception ex) {
 			meLogger.error("Unexpected error when trying to process SetupNewImage",ex);
@@ -1056,45 +1076,5 @@ public class ImageService {
 		*/
 
 	}
-	
-	public void setImageDataHelper(ImageDataHelperImpl imageDataHelper)
-	{
-		this.imageDataHelper = imageDataHelper;
-	}
-	
-	public void setCachedData(CachedData cachedData)
-	{
-		this.cachedData = cachedData;
-	}
-	
-	public void setUtilityDataHelper(UtilityDataHelperImpl utilityDataHelper)
-	{
-		this.utilityDataHelper = utilityDataHelper;
-	}
 
-	public void setGalleryDataHelper(GalleryDataHelperImpl galleryDataHelper)
-	{
-		this.galleryDataHelper = galleryDataHelper;
-	}
-	
-	public void setCategoryDataHelper(CategoryDataHelperImpl categoryDataHelper)
-	{
-		this.categoryDataHelper = categoryDataHelper;
-	}
-	
-	public void setTagDataHelper(TagDataHelperImpl tagDataHelper)
-	{
-		this.tagDataHelper = tagDataHelper;
-	}
-	
-	public void setTagService(TagService tagService)
-	{
-		this.tagService = tagService;
-	}
-	
-	public void setCategoryService(CategoryService categoryService)
-	{
-		this.categoryService = categoryService;
-	}
-	
 }

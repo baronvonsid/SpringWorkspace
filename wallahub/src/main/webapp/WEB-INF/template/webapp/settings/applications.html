@@ -52,57 +52,104 @@
                         <a class="nav-list-item"
                            href="storage">Storage</a>
                     </nav>
-
                 </div>
 
                 <div class="column three-fourths">
-                    <!-- Change Password -->
-                    <div class="content-group-box">
-                        <h3 class="content-group-heading">Web browser {Internet Explorer 10}</h3>
-                        <div class="content-group-inner">
-                            <ul class="content-list">
-                                <li>
-                                    <span style="float: right;">10 Aug 2014</span>
-                                    <i class="fa fa-exclamation fa-fw fa-red"></i>  Failed login. {0} attempts were made.
-                                </li>
-                                <li>
-                                    <span style="float: right;">10 Aug 2014</span>
-                                    <i class="fa fa-minus fa-fw"></i>  Logged in
-                                </li>
-                                <li>
-                                    <span style="float: right;">10 Aug 2014</span>
-                                    <i class="fa fa-minus fa-fw"></i>  Logged in {2} times
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
 
-                    <div class="content-group-box">
-                        <h3 class="content-group-heading">Windows App {Windows 8} {machineName} <i class="fa fa-ban fa-red" style="float:right;"><span style="margin-left:6px;">block</span></i></h3>
-                        <div class="content-group-inner">
-                            <ul class="content-list">
-                                <li>
-                                    <span style="float: right;">10 Aug 2014</span>
-                                    <i class="fa fa-exclamation fa-fw fa-red"></i>  Failed login. {0} attempts were made.
-                                </li>
-                                <li>
-                                    <span style="float: right;">10 Aug 2014</span>
-                                    <i class="fa fa-minus fa-fw"></i>  Logged in
-                                </li>
-                                <li>
-                                    <span style="float: right;">10 Aug 2014</span>
-                                    <i class="fa fa-minus fa-fw"></i>  Logged in {2} times
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
+	                <form id="mainForm" th:action="@{./applications}" th:object="${accountActionSummary}" method="post">
+		                <input type="hidden" name="action" id="action" th:value="*{action}" />
+		                <input type="hidden" name="actionId" id="actionId" th:value="*{actionId}" />
 
+						<p th:if="${message != null}" class="errortext"><i class="fa fa-exclamation"></i><span style="margin-left: 5px;" th:text="${message}" class="errortext">Server message</span></p>
+
+	                    <div class="content-group-box" th:unless="*{#lists.isEmpty(AccountActionRef)}">
+	                        <h3 class="content-group-heading">Account History (30 Days)</h3>
+	                        <div class="content-group-inner">
+	                            <ul class="content-list">
+	                                <li th:each="e : *{AccountActionRef}"> <!-- th:text="${#dates.format(e.ActionDate,'dd MMM yyyy')}" -->
+	                                    <span style="float: right;" th:text="${#dates.format(e.ActionDate,'dd MMM yyyy')}">... date ...</span>
+	                                    <i class="fa fa-minus fa-fw"></i><span style="margin-left: 5px;" th:text="${e.ActionDesc}">Action text</span>
+	                                    <span style="margin-left: 5px;" th:if="${e.NumTimes &gt; 1}" th:text="${'(x ' + e.NumTimes + ')'}"></span>
+	                                </li>
+	                            </ul>
+	                        </div>
+	                    </div>
+
+	                    <div class="content-group-box" th:unless="*{#lists.isEmpty(GalleryActionRef)}">
+	                        <h3 class="content-group-heading">Shared Gallery Views</h3>
+	                        <div class="content-group-inner">
+	                            <ul class="content-list" >
+	                                <li th:each="e : *{GalleryActionRef}">
+	                                    <span style="float: right;" th:text="${'Views - Total:' + e.ViewTotal + ' / 30 days:' + e.ViewMonth}">Views.  Total: 12345 / 30 days: 345</span>
+	                                    <i class="fa fa-minus fa-fw"></i><span style="margin-left: 5px;" th:text="${e.GalleryName}">Gallery name</span>
+	                                </li>
+	                            </ul>
+	                        </div>
+	                    </div>
+					
+	                    <div class="content-group-box" th:unless="*{#lists.isEmpty(UserAppRef)}" th:each="e : *{UserAppRef}">
+	                        <h3 class="content-group-heading">
+	                        	<!--<span style="margin-left:6px; float: right;"><i style="margin-right:5px;" class="fa fa-ban fa-green"></i>block</span>
+	                        	-->
+	                        	<button th:if="${e.Blocked == false}" style="margin-left:6px; float: right;" data-action="block" th:attr="data-id=${e.UserAppId}" class="smallbutton" title="Block this app from accessing your account.">
+	                            	<i style="margin-right:5px;" class="fa fa-ban fa-red"></i>Block
+	                            </button>
+	                        	<span th:if="${e.Blocked == false}" th:text="${e.AppName + ' - ' + e.Platform + ' - ' + e.MachineName}">App - Platform - Machine</span>
+	                        	
+	                        	
+	                        	<button th:if="${e.Blocked == true}" style="margin-left:6px; float: right;" data-action="unblock" th:attr="data-id=${e.UserAppId}" class="smallbutton" title="Enable app to access your account again.">
+	                            	<i style="margin-right:5px;" class="fa fa-ban fa-red"></i>Un-block
+	                            </button>
+	                        	<span th:if="${e.Blocked == true}" style="color: LightGrey" th:text="${e.AppName + ' - ' + e.Platform + ' - ' + e.MachineName}">App - Platform - Machine</span>
+	                        
+	                        </h3>
+	                        <div class="content-group-inner" th:unless="${#lists.isEmpty(e.UserAppActionRef)}">
+	                            <ul class="content-list" >
+	                                <li th:each="act : ${e.UserAppActionRef}">
+	                                    <span style="float: right;" th:text="${#dates.format(act.ActionDate,'dd MMM yyyy')}">... date ...</span>
+	                                    <i class="fa fa-minus fa-fw"></i><span style="margin-left: 5px;" th:text="${act.ActionDesc}">Action text</span>
+	                                    <span style="margin-left: 5px;" th:if="${act.NumTimes &gt; 1}" th:text="${'(x ' + act.NumTimes + ')'}"></span>
+	                                </li>
+	                            </ul>
+	                        </div>
+	                        <div class="content-group-inner" th:unless="${#lists.isEmpty(e.UserAppActionRef) == false}">
+	                            <ul class="content-list" >
+	                                <li>
+	                                    <i class="fa fa-minus fa-fw"></i><span style="margin-left: 5px;">Application is blocked</span>
+	                                </li>
+	                            </ul>
+	                        </div>
+	                    </div>
+
+					</form>
+					
                 </div>
             </div>
         </div>
-
-        <!--<div class="modal-backdrop"></div>-->
     </div>
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+
+    <script>
+    
+    //Suppress bubbling on submit.
+   	$("button[data-action]").one("click", function(event)
+   			{
+   				var actionId = $(event.currentTarget).attr('data-id');
+   				var action = $(event.currentTarget).attr('data-action');
+   				
+   				$("#actionId").val(actionId);
+   				$('#action').val(action);
+   				
+   				//alert($("#actionUserAppId").val());
+   				//alert($('#action').val());
+   				$("#mainForm").one("submit");
+   				
+   			});
+    
+
+    </script>
+
 
 </body>
 </html>

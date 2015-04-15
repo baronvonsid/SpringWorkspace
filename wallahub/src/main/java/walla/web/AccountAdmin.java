@@ -5,6 +5,7 @@ import java.util.GregorianCalendar;
 import java.util.Iterator;
 import java.util.Map;
 
+import javax.annotation.Resource;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -20,6 +21,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -43,10 +45,10 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 	private final String urlPrefix = "/v1/web";
 	
 	
-	@Autowired
+	@Resource(name="accountServicePooled")
 	private AccountService accountService;
 	
-	@Autowired
+	@Resource(name="galleryServicePooled")
 	private GalleryService galleryService;
 	
 	@RequestMapping(value="/start", method=RequestMethod.GET)
@@ -243,6 +245,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 		long startMS = System.currentTimeMillis();
 		String defaultMessage = "Logon could not be processed at this time.";
 		String responseJsp = "webapp/generalerror";
+
 		try
 		{
 			response.addHeader("Cache-Control", "no-cache");
@@ -252,6 +255,8 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			
 			if (referrer != null)
 				model.addAttribute("referrer", referrer);
+			
+			
 			
 			//TODO add remote address to the DB, to check for other sessions, from other IPs coming in.
 			//TODO Check for existing admin session, if so, then redirect to logout.
@@ -283,6 +288,10 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			}
 
 			CustomResponse customResponse = new CustomResponse();
+
+			
+			
+			
 			String key = accountService.GetLogonToken(request, customSession, customResponse);
 			
 			if (customResponse.getResponseCode() == HttpStatus.OK.value())
@@ -387,6 +396,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 	public String SettingsAccountGet(
 			@PathVariable("profileName") String profileName,
 			@RequestParam(value="message", required=false) String message,
+			@RequestParam(value="logonToken", required=false) String token,
 			AccountSettings accountSettings,
 			Model model,
 			HttpServletRequest request,
@@ -403,8 +413,53 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			CustomSessionState customSession = UserTools.GetValidAdminSession(profileName, request, meLogger);
 			if (customSession == null)
 			{
-				responseJsp = RedirectToLogon("Account settings request not authorised.", request);
-				return responseJsp;
+				String tempToken = (token == null) ? "" : token;
+				if (tempToken.length() == 28)
+				{
+					try
+					{
+						customSession =  UserTools.GetInitialAdminSession(request, meLogger);
+					}
+					catch (WallaException wallaEx)
+					{
+						//Unexpected action,  forbidden.
+						Thread.sleep(10000);
+						responseJsp = RedirectToLogon("Account settings request not authorised.", request);
+						return responseJsp;
+					}
+					
+					if (customSession == null)
+					{
+						//Existing session is not valid, so start again.
+						HttpSession tomcatSession = request.getSession(false);
+						if (tomcatSession != null)
+							tomcatSession.invalidate();
+						
+						tomcatSession = request.getSession(true);
+						customSession = new CustomSessionState();
+						tomcatSession.setAttribute("CustomSessionState", customSession);
+					}
+					
+					accountService.AutoLoginAdminUser(tempToken, profileName, request, customSession, customResponse);
+
+					if (customResponse.getResponseCode() == HttpStatus.OK.value())
+					{						
+						Cookie wallaSessionIdCookie = new Cookie("X-Walla-Id", UserTools.GetLatestWallaId(customSession));
+						wallaSessionIdCookie.setPath("/wallahub/");
+						response.addCookie(wallaSessionIdCookie);
+					}
+					else
+					{
+						message = (customResponse.getMessage() == null ? "Account settings request not authorised." : customResponse.getMessage());
+						responseJsp = RedirectToLogon(message, request);
+						return responseJsp;
+					}
+				}
+				else
+				{
+					responseJsp = RedirectToLogon("Account settings request not authorised.", request);
+					return responseJsp;
+				}
 			}
 			
 			if (customSession.getAccount() == null)
@@ -477,7 +532,8 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 						if (accountSettings.getCurrentPassword().length() > 0)
 						{
 							Account account = new Account();
-							account.setId(accountSettings.getId());
+							account.setId(customSession.getUserId());
+							account.setProfileName(customSession.getProfileName());
 							account.setVersion(accountSettings.getVersion());
 							account.setPassword(accountSettings.getCurrentPassword());
 							
@@ -495,13 +551,17 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 							accountService.UpdateAccount(account, customResponse);
 						}
 
+						
 						if (customResponse.getResponseCode() == HttpStatus.OK.value())
 						{
 							responseJsp = "redirect:" + urlPrefix + "/" + customSession.getProfileName() + "/settings/account";
 							model.addAttribute("message", "Account updated.");
+							customSession.setAccount(null);
 						}
 						else
 						{
+							MergeSettingsToAccount(customSession.getAccount(), accountSettings);
+							
 							if (customResponse.getMessage() == null)
 								model.addAttribute("message", "Account settings update failed, there was an error on the server");
 							else
@@ -612,7 +672,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			accountService.ChangePassword(logon, customResponse, customSession);
+			accountService.ChangePassword(logon, request, customResponse, customSession);
 
 			if (customResponse.getResponseCode() == HttpStatus.OK.value())
 			{
@@ -781,7 +841,6 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 		finally { UserTools.LogWebFormMethod("SettingsContactPost", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
-	
 	@RequestMapping(value="/{profileName}/settings/billing", method=RequestMethod.GET)
 	public String SettingsBillingGet(
 			@PathVariable("profileName") String profileName,
@@ -839,8 +898,8 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 	@RequestMapping(value="/{profileName}/settings/applications", method=RequestMethod.GET)
 	public String SettingsApplicationsGet(
 			@PathVariable("profileName") String profileName,
+			//@RequestParam(value="force", required=false) Boolean force,
 			@RequestParam(value="message", required=false) String message,
-			AccountSettings accountSettings,
 			Model model,
 			HttpServletRequest request,
 			HttpServletResponse response)
@@ -860,20 +919,20 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 				return responseJsp;
 			}
 			
-			if (customSession.getAccount() == null)
+			if (customSession.getAccountActionSummary() == null)
 			{
-				Account account = accountService.GetAccountMeta(customSession.getUserId(), customResponse);
+				AccountActionSummary summary = accountService.GetAccountActions(customSession.getUserId(), customResponse);
 				if (customResponse.getResponseCode() != HttpStatus.OK.value())
 				{
 					model.addAttribute("message", defaultMessage);
 					return responseJsp;
 				}
-				customSession.setAccount(account);
+				customSession.setAccountActionSummary(summary);
 			}
 			
-			MergeSettingsToAccount(customSession.getAccount(), accountSettings);
-
-			//TODO actually implement applications.
+			model.addAttribute("accountActionSummary", customSession.getAccountActionSummary());
+			//model.addAttribute("action", "");
+			//model.addAttribute("actionUserAppId", "");
 			
 			if (message != null)
 				model.addAttribute("message", message);
@@ -890,6 +949,79 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 		finally { UserTools.LogWebFormMethod("SettingsApplicationsGet", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
+	@RequestMapping(value="/{profileName}/settings/applications", method=RequestMethod.POST)
+	public String SettingsApplicationsPost(
+			@Valid @ModelAttribute("accountActionSummary") AccountActionSummary accountActionSummary,
+			BindingResult bindingResult,
+			Model model,
+			@PathVariable("profileName") String profileName,
+			HttpServletRequest request,
+			HttpServletResponse response)
+	{
+		long startMS = System.currentTimeMillis();
+		String defaultMessage = "Account applications could not be updated at this time.";
+		String responseJsp = "webapp/generalerror";
+		try
+		{
+			response.addHeader("Cache-Control", "no-cache");
+
+			//AccountActionSummary testOne = summary;
+			Map modelMap = (Map)model.asMap();
+			
+			AccountActionSummary testTwo = (AccountActionSummary)modelMap.get("accountActionSummary");
+			String action = accountActionSummary.getAction(); //(String)modelMap.get("action");
+			long actionUserAppId = accountActionSummary.getActionId(); //(String)modelMap.get("actionUserAppId");
+			//long userAppId = Long.parseLong(actionUserAppId);
+			boolean block = (action.compareTo("block") == 0) ? true : false;
+			
+			if (bindingResult.hasErrors())
+			{
+				responseJsp = "webapp/settings/applications";
+			}
+			else
+			{
+				CustomSessionState customSession = UserTools.GetValidAdminSession(profileName, request, meLogger);
+				if (customSession == null)
+				{
+					responseJsp = RedirectToLogon("Account applications update failed, your session has ended.  Please login again.", request);
+					return responseJsp;
+				}
+				else
+				{
+
+					CustomResponse customResponse = new CustomResponse();
+
+					accountService.UserAppBlockUnblock(customSession.getUserId(), actionUserAppId, block, customResponse);
+
+					if (customResponse.getResponseCode() == HttpStatus.OK.value())
+					{
+						responseJsp = "redirect:" + urlPrefix + "/" + customSession.getProfileName() + "/settings/applications";
+						model.addAttribute("message", "Applications updated.");
+						customSession.setAccountActionSummary(null);
+					}
+					else
+					{
+						if (customResponse.getMessage() == null)
+							model.addAttribute("message", "Applications update failed, there was an error on the server");
+						else
+							model.addAttribute("message", customResponse.getMessage());
+						
+						//MergeSettingsToAccount(customSession.getAccount(), accountSettings);
+						
+						responseJsp = "webapp/settings/applications";
+					}
+				}
+			}
+			return responseJsp;
+		}
+		catch (Exception ex) {
+			meLogger.error(ex);
+			model.addAttribute("message", defaultMessage);
+			return responseJsp;
+		}
+		finally { UserTools.LogWebFormMethod("SettingsApplicationsPost", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+	}
+
 	@RequestMapping(value="/{profileName}/settings/storage", method=RequestMethod.GET)
 	public String SettingsStorageGet(
 			@PathVariable("profileName") String profileName,
@@ -928,6 +1060,19 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			}			
 
 			model.addAttribute("accountStorage", customSession.getAccountStorage());
+			
+			String yearChartData = CreateChartDataStruct(customSession.getAccountStorage(), "YEAR");
+			if (yearChartData != null)
+				model.addAttribute("yearChartData", yearChartData);
+			
+			String formatChartData = CreateChartDataStruct(customSession.getAccountStorage(), "FORMAT");
+			if (formatChartData != null)
+				model.addAttribute("formatChartData", formatChartData);
+			
+			String uploadChartData = CreateChartDataStruct(customSession.getAccountStorage(), "UPLOAD");
+			if (uploadChartData != null)
+				model.addAttribute("uploadChartData", uploadChartData);
+			
 			//MergeStorageObjects(accountStorage, customSession.getAccountStorage());
 
 			if (message != null)
@@ -1134,7 +1279,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 		
 		return "redirect:" + urlPrefix + "/logon?referrer=" 
 			+ UriUtils.encodePath(path,"UTF-8") 
-			+ "&message=" + UserTools.EncodeString(message, request);	
+			+ "&message=" + UserTools.EncodeString(message, request);
 	}
 	
 	private String RedirectToLogonMaintainReferrer(String message, HttpServletRequest request, String referrer) throws UnsupportedEncodingException
@@ -1168,7 +1313,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 		accountSettings.setNewsletter(account.isNewsletter());
 		accountSettings.setAccountMessage(account.getAccountMessage());
 		accountSettings.setAccountTypeName(account.getAccountTypeName());
-		accountSettings.setOpenDate(account.getOpenDate().toGregorianCalendar().getTime());
+		accountSettings.setOpenDate(account.getOpenDate().getTime());
 		accountSettings.setVersion(account.getVersion());
 		accountSettings.setId(account.getId());
 		accountSettings.setAccountMessage(account.getAccountMessage());	
@@ -1191,6 +1336,99 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 		}
 	}
 	
-	
+	private String CreateChartDataStruct(AccountStorage storage, String type)
+	{
+		String response = null;
+		
+		if (type.compareTo("YEAR") == 0 && storage.getImageYearRef().size() > 0)
+		{
+			response = "[";
+			
+			float imageCount = 0;
+			float totalImages = 0;
+			for (int i = 0; i < storage.getImageYearRef().size(); i++)
+				totalImages = totalImages + (float)storage.getImageYearRef().get(i).getImageCount();
+			
+			
+			for (int i = 0; i < storage.getImageYearRef().size(); i++)
+			{
+				AccountStorage.ImageYearRef current = storage.getImageYearRef().get(i);
+				imageCount = imageCount + current.getImageCount();
+				float percent = (float) ((100.0 / totalImages) * imageCount);
+				String colour = UserTools.GetColourVariantHex("#FFB6EB", "#FFA0BB", (float)Math.max(percent, 1.0));
+				String highlight = UserTools.GetColourVariantHex("#FF6388", "#FF5E6D", (float)Math.max(percent, 1.0));
+				
+				current.setColour(colour);
+				//String label = current.getYear() + " (Size: " + current.getSizeGB().toString() + " / Compressed: " + current.getCompressedSizeGB().toString() + ")";
+				String label = current.getYear(); //+ " (Size: " + current.getSizeGB().toString() + ")";
+
+				String line = (i == 0) ? "" : ",";
+				line = line + "{value: " + current.getImageCount() + ",color:'" + colour + "',highlight: '" + highlight + "',label: '" + label + "'}";
+				
+				response = response + line;
+			}
+
+			response = response + "]";
+		}
+		
+		if (type.compareTo("FORMAT") == 0 && storage.getFormatRef().size() > 0)
+		{
+			response = "[";
+			
+			float imageCount = 0;
+			int totalImages = 0;
+			for (int i = 0; i < storage.getFormatRef().size(); i++)
+				totalImages = totalImages + storage.getFormatRef().get(i).getImageCount();
+			
+			for (int i = 0; i < storage.getFormatRef().size(); i++)
+			{
+				AccountStorage.FormatRef current = storage.getFormatRef().get(i);
+				imageCount = imageCount + current.getImageCount();
+				float percent = (float) ((100.0 / totalImages) * imageCount);
+				String colour = UserTools.GetColourVariantHex("#D6EBFF", "#246BB2", (float)Math.max(percent, 1.0));
+				String highlight = UserTools.GetColourVariantHex("#EBD6FF", "#8F6BB2", (float)Math.max(percent, 1.0));
+				
+				current.setColour(colour);
+				String label = current.getFormat(); // + " (Size: " + current.getSizeGB().toString() + ")";
+				
+				String line = (i == 0) ? "" : ",";
+				line = line + "{value: " + current.getImageCount() + ",color:'" + colour + "',highlight: '" + highlight + "',label: '" + label + "'}";
+				
+				response = response + line;
+			}
+
+			response = response + "]";
+		}
+		
+		if (type.compareTo("UPLOAD") == 0 && storage.getUploadSourceRef().size() > 0)
+		{
+			response = "[";
+			
+			float imageCount = 0;
+			int totalImages = 0;
+			for (int i = 0; i < storage.getUploadSourceRef().size(); i++)
+				totalImages = totalImages + storage.getUploadSourceRef().get(i).getImageCount();
+			
+			for (int i = 0; i < storage.getUploadSourceRef().size(); i++)
+			{
+				AccountStorage.UploadSourceRef current = storage.getUploadSourceRef().get(i);
+				imageCount = imageCount + current.getImageCount();
+				float percent = (float) ((100.0 / totalImages) * imageCount);
+				String colour = UserTools.GetColourVariantHex("#D6EBFF", "#246BB2", (float)Math.max(percent, 1.0));
+				String highlight = UserTools.GetColourVariantHex("#EBD6FF", "#8F6BB2", (float)Math.max(percent, 1.0));
+				
+				current.setColour(colour);
+				String label = current.getName(); // + " (Size: " + current.getSizeGB().toString() + ")";
+
+				String line = (i == 0) ? "" : ",";
+				line = line + "{value: " + current.getImageCount() + ",color:'" + colour + "',highlight: '" + highlight + "',label: '" + label + "'}";
+				
+				response = response + line;
+			}
+
+			response = response + "]";
+		}
+		return response;
+	}
 	
 }

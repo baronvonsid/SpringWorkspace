@@ -1,5 +1,6 @@
 package walla.utils;
 
+import java.awt.Color;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -26,7 +27,7 @@ import java.util.zip.ZipOutputStream;
 import walla.datatypes.*;
 import walla.datatypes.auto.Account;
 import walla.datatypes.auto.Gallery;
-import walla.datatypes.java.CustomSessionState;
+import walla.datatypes.java.*;
 
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
@@ -585,4 +586,51 @@ public final class UserTools {
 		return UriUtils.encodeQueryParam(string, enc);
 	}
 	
+	public static String GetColourVariantHex(String startColourHex, String endColourHex, float percentage)
+	{
+		//Start colour should be brighter.
+		
+		Color startColour = Color.decode(startColourHex);
+		Color endColour = Color.decode(endColourHex);
+		
+		float[] startHSBArray = Color.RGBtoHSB(startColour.getRed(), startColour.getGreen(), startColour.getBlue(), null);
+		float[] endHSBArray = Color.RGBtoHSB(endColour.getRed(), endColour.getGreen(), endColour.getBlue(), null);
+		
+		float newHue = startHSBArray[0];
+		float newSat = startHSBArray[1];
+		float newBright = startHSBArray[2];
+		
+		if (startHSBArray[0] > endHSBArray[0])
+			newHue = startHSBArray[0] - ((float) (((startHSBArray[0] - endHSBArray[0]) / 100.0) * percentage));
+		else
+			newHue = startHSBArray[0] + ((float) (((endHSBArray[0] - startHSBArray[0]) / 100.0) * percentage));
+		
+		if (startHSBArray[1] > endHSBArray[1])
+			newSat = startHSBArray[1] - ((float) (((startHSBArray[1] - endHSBArray[1]) / 100.0) * percentage));
+		else
+			newSat = startHSBArray[1] + ((float) (((endHSBArray[1] - startHSBArray[1]) / 100.0) * percentage));
+		
+		if (startHSBArray[2] > endHSBArray[2])
+			newBright = startHSBArray[2] - ((float) (((startHSBArray[2] - endHSBArray[2]) / 100.0) * percentage));
+		else
+			newBright = startHSBArray[2] + ((float) (((endHSBArray[2] - startHSBArray[2]) / 100.0) * percentage));
+
+		Color newColour = Color.getHSBColor(newHue, newSat, newBright);
+		
+		return toHex(newColour.getRed(), newColour.getGreen(), newColour.getBlue());
+	}
+	
+	private static String toHex(int r, int g, int b) 
+	{
+	    return "#" + toBrowserHexValue(r) + toBrowserHexValue(g) + toBrowserHexValue(b);
+	}
+
+	private static String toBrowserHexValue(int number) 
+	{
+	    StringBuilder builder = new StringBuilder(Integer.toHexString(number & 0xff));
+	    while (builder.length() < 2) {
+	      builder.append("0");
+	    }
+	    return builder.toString().toUpperCase();
+	}
 }

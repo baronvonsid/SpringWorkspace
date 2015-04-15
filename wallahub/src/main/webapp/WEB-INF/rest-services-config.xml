@@ -23,8 +23,8 @@
 	
 	<context:component-scan base-package="walla.ws" />
 	<context:component-scan base-package="walla.web" />
-	<context:component-scan base-package="walla.business" />
-	<context:component-scan base-package="walla.db" />
+	<!-- <context:component-scan base-package="walla.business" /> -->
+	<!-- <context:component-scan base-package="walla.db" /> -->
 	
 	<context:property-placeholder location="/WEB-INF/walla.properties" ignore-unresolvable="false" ignore-resource-not-found="false" />
 	
@@ -141,10 +141,13 @@
 	</bean>
 	
 	<bean id="tagServiceTarget" class="walla.business.TagService" scope="prototype">
+		<!-- 
 		<property name="tagDataHelper" ref="tagDataHelper" />
 		<property name="cachedData" ref="cachedData" />
 		<property name="utilityDataHelper" ref="utilityDataHelper" />
 		<property name="galleryService" ref="galleryService" />
+		<property name="utilityService" ref="utilityServicePooled" />
+		-->
 	</bean>
 
 	<bean id="tagPoolTargetSource" class="org.springframework.aop.target.CommonsPoolTargetSource">
@@ -153,21 +156,15 @@
 	  <property name="maxIdle" value="2"/>
 	  <property name="minIdle" value="2"/>
 	</bean>
-	
-	<bean id="tagService" class="org.springframework.aop.framework.ProxyFactoryBean">
+
+	<bean id="tagServicePooled" class="org.springframework.aop.framework.ProxyFactoryBean">
 	  <property name="targetSource" ref="tagPoolTargetSource"/>
 	</bean>
 
 
 
-
 	<bean id="categoryServiceTarget" class="walla.business.CategoryService" scope="prototype">
-		<property name="categoryDataHelper" ref="categoryDataHelper" />
-		<property name="cachedData" ref="cachedData" />
-		<property name="utilityDataHelper" ref="utilityDataHelper" />
-		
-		<property name="imageService" ref="imageService" />
-		<property name="galleryService" ref="galleryService" />
+
 	</bean>
 
 	<bean id="categoryPoolTargetSource" class="org.springframework.aop.target.CommonsPoolTargetSource">
@@ -177,14 +174,12 @@
 	  <property name="minIdle" value="2"/>
 	</bean>
 	
-	<bean id="categoryService" class="org.springframework.aop.framework.ProxyFactoryBean">
+	<bean id="categoryServicePooled" class="org.springframework.aop.framework.ProxyFactoryBean">
 	  <property name="targetSource" ref="categoryPoolTargetSource"/>
 	</bean>
 
 	<bean id="galleryServiceTarget" class="walla.business.GalleryService" scope="prototype">
-		<property name="galleryDataHelper" ref="galleryDataHelper" />
-		<property name="cachedData" ref="cachedData" />
-		<property name="utilityDataHelper" ref="utilityDataHelper" />
+
 	</bean>
 
 	<bean id="galleryPoolTargetSource" class="org.springframework.aop.target.CommonsPoolTargetSource">
@@ -194,7 +189,7 @@
 	  <property name="minIdle" value="2"/>
 	</bean>
 	
-	<bean id="galleryService" class="org.springframework.aop.framework.ProxyFactoryBean">
+	<bean id="galleryServicePooled" class="org.springframework.aop.framework.ProxyFactoryBean">
 	  <property name="targetSource" ref="galleryPoolTargetSource"/>
 	</bean>
 
@@ -203,15 +198,7 @@
 	</bean>
 
 	<bean id="imageServiceTarget" class="walla.business.ImageService" scope="prototype">
-		<property name="galleryDataHelper" ref="galleryDataHelper" />
-		<property name="tagDataHelper" ref="tagDataHelper" />
-		<property name="categoryDataHelper" ref="categoryDataHelper" />
-		<property name="imageDataHelper" ref="imageDataHelper" />
-		<property name="cachedData" ref="cachedData" />
-		<property name="utilityDataHelper" ref="utilityDataHelper" />		
-		
-		<property name="tagService" ref="tagService" />
-		<property name="categoryService" ref="categoryService" />
+
 	</bean>
 
 	<bean id="imagePoolTargetSource" class="org.springframework.aop.target.CommonsPoolTargetSource">
@@ -221,18 +208,13 @@
 	  <property name="minIdle" value="2"/>
 	</bean>
 	
-	<bean id="imageService" class="org.springframework.aop.framework.ProxyFactoryBean">
+	<bean id="imageServicePooled" class="org.springframework.aop.framework.ProxyFactoryBean">
 	  <property name="targetSource" ref="imagePoolTargetSource"/>
 	</bean>
 
 
 	<bean id="accountServiceTarget" class="walla.business.AccountService" scope="prototype">
-		<property name="accountDataHelper" ref="accountDataHelper" />
-		<property name="cachedData" ref="cachedData" />
-		<property name="utilityDataHelper" ref="utilityDataHelper" />
-		<property name="tagService" ref="tagService" />
-		<property name="categoryService" ref="categoryService" />
-		<property name="galleryService" ref="galleryService" />
+
 	</bean>
 
 	<bean id="accountPoolTargetSource" class="org.springframework.aop.target.CommonsPoolTargetSource">
@@ -242,8 +224,24 @@
 	  <property name="minIdle" value="2"/>
 	</bean>
 	
-	<bean id="accountService" class="org.springframework.aop.framework.ProxyFactoryBean">
+	<bean id="accountServicePooled" class="org.springframework.aop.framework.ProxyFactoryBean">
 	  <property name="targetSource" ref="accountPoolTargetSource"/>
 	</bean>
+
+	<bean id="utilityServiceTarget" class="walla.business.UtilityService" scope="prototype">
+
+	</bean>
+
+	<bean id="utilityPoolTargetSource" class="org.springframework.aop.target.CommonsPoolTargetSource">
+	  <property name="targetBeanName" value="utilityServiceTarget"/>
+	  <property name="maxSize" value="2"/>
+	  <property name="maxIdle" value="2"/>
+	  <property name="minIdle" value="2"/>
+	</bean>
+	
+	<bean id="utilityServicePooled" class="org.springframework.aop.framework.ProxyFactoryBean">
+	  <property name="targetSource" ref="utilityPoolTargetSource"/>
+	</bean>
+
 
 </beans> 

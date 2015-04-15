@@ -440,6 +440,156 @@ public class UtilityDataHelperImpl implements UtilityDataHelper{
 		}
 	}
 
+	public void AddAction(UserEvent event) throws WallaException
+	{
+		long startMS = System.currentTimeMillis();
+		String sql = "";
+
+		Connection conn = null;
+		PreparedStatement ps = null;
+		try {			
+			int returnCount = 0;
+
+			conn = dataSource.getConnection();
+			conn.setAutoCommit(false);
+			
+			switch (event.getActionType())
+			{
+				case "Account":
+					sql = "INSERT INTO [ActionAccount] ([UserId],[Action],[ExtraInfo],[ActionDateTime])"
+							+ " VALUES (?,?,?,?)";
+					break;
+				case "UserApp":
+					sql = "INSERT INTO [ActionUserApp] ([UserAppId],[Action],[ExtraInfo],[ActionDateTime])"
+							+ " VALUES (?,?,?,?)";
+					break;
+				case "Gallery":
+					sql = "INSERT INTO [ActionGallery] ([GalleryId],[Action],[ExtraInfo],[ActionDateTime])"
+							+ " VALUES (?,?,?,?)";
+			}
+			
+			//Insert main tag record.
+			ps = conn.prepareStatement(sql);
+			ps.setLong(1, event.getId());
+			ps.setString(2, event.getAction());
+			ps.setString(3, event.getExtraInfo());
+			//ps.setDate(4, new java.sql.Date(event.getActionDate().getTime()));
+			ps.setTimestamp(4, new java.sql.Timestamp(event.getActionDate().getTime()));
+			
+			//Execute insert statement.
+			returnCount = ps.executeUpdate();
+			
+			//Validate new record was successful.
+			if (returnCount != 1)
+			{
+				conn.rollback();
+				String error = "Insert statement didn't return a success count of 1.";
+				meLogger.error(error);
+				throw new WallaException(this.getClass().getName(), "AddAction", error, HttpStatus.INTERNAL_SERVER_ERROR.value()); 				
+			}
+			
+			conn.commit();
+		}
+		catch (SQLException sqlEx) {
+			if (conn != null) { try { conn.rollback(); } catch (SQLException ignoreEx) {} }
+			meLogger.error(sqlEx);
+			throw new WallaException(sqlEx);
+		} 
+		catch (Exception ex) {
+			if (conn != null) { try { conn.rollback(); } catch (SQLException ignoreEx) {} }
+			throw ex;
+		}
+		finally {
+	        if (ps != null) try { ps.close(); } catch (SQLException logOrIgnore) {}
+	        if (conn != null) try { conn.close(); } catch (SQLException logOrIgnore) {}
+	        UserTools.LogMethod("AddAction", meLogger, startMS, String.valueOf(event.getId()) + " " + event.getAction());
+		}
+	}
+	
+	public void AddSecurityAction(SecurityEvent event) throws WallaException
+	{
+		long startMS = System.currentTimeMillis();
+
+		Connection conn = null;
+		PreparedStatement ps = null;
+		try {			
+			int returnCount = 0;
+
+			conn = dataSource.getConnection();
+			conn.setAutoCommit(false);
+			
+			String sql = "INSERT INTO [dbo].[ActionSecurity] ([Action],[ExtraInfo],[ActionDate],[objectProfileName],[objectEmail],[objectKey],[objectGalleryName],"
+				+ "[requestCookie],[requestHeader],[requestRemoteAddress],[requestLocalAddress],[requestMethod],[requestRemoteHost],"
+				+ "[requestRequestURL],[sessionRemoteAddress],[sessionFailedLogonCount],[sessionFailedLogonLast],[sessionProfileName],[sessionUserId],[sessionUserAppId],"
+				+ "[sessionPlatformId],[sessionAppId],[sessionGalleryTempKey],[sessionGalleryName],[sessionCustomSessionIds],[sessionNonceKey])"
+				+ "VALUES (?,?,?, ?,?,?,?, ?,?,?,?,?,?,?, ?,?,?,?,?,?,?,?,?,?,?,?)";
+
+			ps = conn.prepareStatement(sql);
+			ps.setString(1, event.getAction());
+			ps.setString(2, event.getExtraInfo());
+			ps.setTimestamp(3, new java.sql.Timestamp(event.getActionDate().getTime()));
+			
+			ps.setString(4, event.getObjectProfileName());
+			ps.setString(5, event.getObjectEmail());
+			ps.setString(6, event.getObjectKey());
+			ps.setString(7, event.getObjectGalleryName());
+			
+			ps.setString(8, event.getRequestCookie());
+			ps.setString(9, event.getRequestHeader());
+			ps.setString(10, event.getRequestRemoteAddress());
+			ps.setString(11, event.getRequestLocalAddress());
+			ps.setString(12, event.getRequestMethod());
+			ps.setString(13, event.getRequestRemoteHost());
+			ps.setString(14, event.getRequestRequestURL());
+			
+			ps.setString(15, event.getSessionRemoteAddress());
+			ps.setInt(16, event.getSessionFailedLogonCount());
+			
+			if (event.getSessionFailedLogonLast() != null)
+				ps.setTimestamp(17, new java.sql.Timestamp(event.getSessionFailedLogonLast().getTime()));
+			else
+				ps.setNull(17, java.sql.Types.DATE);
+			
+			ps.setString(18, event.getSessionProfileName());
+			ps.setLong(19, event.getSessionUserId());
+			ps.setLong(20, event.getSessionUserAppId());
+			ps.setInt(21, event.getSessionPlatformId());
+			ps.setInt(22, event.getSessionAppId());
+			ps.setString(23, event.getSessionGalleryTempKey());
+			ps.setString(24, event.getSessionGalleryName());
+			ps.setString(25, event.getSessionCustomSessionIds());
+			ps.setString(26, event.getSessionNonceKey());
+			
+			//Execute insert statement.
+			returnCount = ps.executeUpdate();
+			
+			//Validate new record was successful.
+			if (returnCount != 1)
+			{
+				conn.rollback();
+				String error = "Insert statement didn't return a success count of 1.";
+				meLogger.error(error);
+				throw new WallaException(this.getClass().getName(), "AddSecurityAction", error, HttpStatus.INTERNAL_SERVER_ERROR.value()); 				
+			}
+			
+			conn.commit();
+		}
+		catch (SQLException sqlEx) {
+			if (conn != null) { try { conn.rollback(); } catch (SQLException ignoreEx) {} }
+			meLogger.error(sqlEx);
+			throw new WallaException(sqlEx);
+		} 
+		catch (Exception ex) {
+			if (conn != null) { try { conn.rollback(); } catch (SQLException ignoreEx) {} }
+			throw ex;
+		}
+		finally {
+	        if (ps != null) try { ps.close(); } catch (SQLException logOrIgnore) {}
+	        if (conn != null) try { conn.close(); } catch (SQLException logOrIgnore) {}
+	        UserTools.LogMethod("AddSecurityAction", meLogger, startMS, "");
+		}
+	}
+	
 	public UtilityDataHelperImpl() {
 		meLogger.debug("UtilityDataHelperImpl object instantiated.");
 	}

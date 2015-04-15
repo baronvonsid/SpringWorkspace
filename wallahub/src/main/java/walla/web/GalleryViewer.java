@@ -13,6 +13,7 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.annotation.Resource;
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -43,6 +44,7 @@ import org.springframework.beans.factory.annotation.Required;
 import walla.datatypes.java.*;
 import walla.business.*;
 import walla.datatypes.auto.*;
+import walla.db.UtilityDataHelper;
 import walla.utils.*;
 
 	/*
@@ -61,11 +63,18 @@ public class GalleryViewer {
 	//@Autowired
 	//private CustomSessionState sessionState;
 	
-	@Autowired
+	@Resource(name="utilityDataHelper")
+	private UtilityDataHelper utilityDataHelper;
+	
+	@Resource(name="galleryServicePooled")
 	private GalleryService galleryService;
 	 
-	@Autowired
+	@Resource(name="imageServicePooled")
 	private ImageService imageService;
+	
+	@Resource(name="utilityServicePooled")
+	private UtilityService utilityService;
+	
 	
 	//  GET /{profileName}/gallery/{galleryName}
 	@RequestMapping(value = { "/{profileName}/gallery/{galleryName}" }, method = { RequestMethod.GET }, produces=MediaType.APPLICATION_XHTML_XML_VALUE )
@@ -129,6 +138,7 @@ public class GalleryViewer {
 						if (pass)
 						{
 							meLogger.debug("View gallery authorised.  User:" + profileName.toString() + " Gallery:" + galleryName);
+							//utilityService.AddAction(ActionType.Gallery, customSession.getUserId(), "GalViewOK", galleryName);
 						}
 						else
 						{
@@ -186,6 +196,10 @@ public class GalleryViewer {
 			Gallery gallery = galleryService.GetGalleryMeta(customSession.getUserId(), galleryName, customResponse);
 			if (customResponse.getResponseCode() == HttpStatus.OK.value())
 			{
+				//TODO Verify that gallery view is recorded for all views.  ID might not be correct.
+				if (customSession.isGalleryViewer())
+					utilityService.AddAction(ActionType.Gallery, gallery.getId(), "GalViewOK", gallery.getName());
+				
 				String presentationJsp = CombineModelAndGallery(customSession, model, gallery, false);
 				if (presentationJsp != null)
 					responseView = presentationJsp;
@@ -489,105 +503,6 @@ public class GalleryViewer {
 		return presentation.getJspName();
 	}
 	
-	/*
-	private void WriteOutImageList(String profileName, PrintWriter out, Gallery gallery, ImageList imageList, boolean isPreview) throws WallaException
-	{
-	    int lastImage = imageList.getImageCount() + imageList.getImageCursor();
-	    
-		Presentation presentation = galleryService.GetPresentation(gallery.getPresentationId());
-		int imageSize = presentation.getThumbWidth();
-		
-	    out.println("<section id=\"imagesPane\""
-	    		+ " class=\"ImagesPaneStyle\""
-	    		+ " data-section-id=\"" + imageList.getSectionId() + "\"" 
-	    		+ " data-section-image-count=\"" + imageList.getSectionImageCount() + "\""
-	    		+ " data-images-first=\"" + imageList.getImageCursor() + "\""
-	    		+ " data-images-last=\"" + lastImage + "\">");
-
-		if (imageList.getImages() != null)
-		{
-			if (imageList.getImages().getImageRef().size() > 0)
-			{
-				//Construct update SQL statements
-				for (Iterator<ImageList.Images.ImageRef> imageIterater = imageList.getImages().getImageRef().iterator(); imageIterater.hasNext();)
-				{
-					ImageList.Images.ImageRef current = (ImageList.Images.ImageRef)imageIterater.next();
-
-					String name = "";
-					String fullNameDesc = "";
-					String imageUrl = "";
-					String thumbUrl = "";
-					
-					if (gallery.isShowImageName() && gallery.isShowGalleryDesc())
-					{
-						name = current.getName();
-						fullNameDesc = current.getName() + ((current.getDesc().length() > 0) ? ". " + current.getDesc() : "");
-					}
-					else if (gallery.isShowImageName())
-					{
-						name = current.getName();
-						fullNameDesc = current.getName();
-					}
-					else if (gallery.isShowGalleryDesc())
-					{
-						name = current.getDesc();
-						fullNameDesc = current.getDesc();
-					}
-					
-					if (name == null)
-						name = "";
-						
-					if (fullNameDesc == null)
-						fullNameDesc = "";
-					
-					if (isPreview)
-					{
-						imageUrl = "../../../ws/" + profileName + "/imagepreview/" + current.getId() + "/" + 1920 + "/" + 1080 + "/";
-						thumbUrl = "../../../ws/" + profileName + "/imagepreview/" + current.getId() + "/" + imageSize + "/" + imageSize + "/";
-					}
-					else
-					{
-						imageUrl = "../../../ws/" + profileName + "/image/" + current.getId() + "/" + 1920 + "/" + 1080 + "/";
-						thumbUrl = "../../../ws/" + profileName + "/image/" + current.getId() + "/" + imageSize + "/" + imageSize + "/";
-					}
-					
-					StringBuilder output = new StringBuilder();
-					
-					if (gallery.isShowImageName() || gallery.isShowGalleryDesc())
-					{
-						int addHeight = 20;
-						
-						if (gallery.isShowImageName() || gallery.isShowGalleryDesc())
-							addHeight = 40;
-						
-						output.append("<article class=\"ImagesArticleStyle\" style=\"width:" + imageSize + "px;height:" + (imageSize + addHeight) + "px;\" ");
-						output.append("id=\"imageId" + current.getId() + "\" data-image-id=\"" + current.getId() + "\">");
-
-						output.append("<a class=\"image-popup-no-margins\" href=\"" + imageUrl + "\" title=\"" + name + "\">");
-						output.append("<img class=\"thumbStyle\" title=\"" + name + "\" src=\"" + thumbUrl + "\"/></a>");
-						
-						output.append("<div class=\"ImagesArticleStyle\" style=\"width:" + imageSize + "px;height:" + addHeight + "px;\"><span>" + fullNameDesc + "</span></div></article>");
-					}
-					else
-					{
-						output.append("<article class=\"ImagesArticleNoNameStyle\" ");
-						output.append("id=\"imageId" + current.getId() + "\" data-image-id=\"" + current.getId() + "\">");
-
-						output.append("<a class=\"image-popup-no-margins\" href=\"" + imageUrl + "\" title=\"" + name + "\">");
-						output.append("<img class=\"thumbStyle\" title=\"" + name + "\" src=\"" + thumbUrl + "\"/></a>");
-					}
-
-					
-					
-					out.println(output.toString());
-
-				}
-			}
-		}
-		out.println("</section>");
-		out.close();
-	}
-	*/
 	
 	
 	

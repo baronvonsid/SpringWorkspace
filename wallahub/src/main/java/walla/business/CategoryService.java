@@ -1,18 +1,24 @@
 package walla.business;
 
+import java.text.DateFormat;
 import java.util.*;
+
 import walla.datatypes.auto.*;
 import walla.datatypes.java.*;
 import walla.db.*;
 import walla.utils.*;
 
+import javax.annotation.Resource;
 import javax.sql.DataSource;
 import javax.xml.datatype.*;
+
 import org.apache.log4j.Logger;
 import org.springframework.http.HttpStatus;
+
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,11 +28,23 @@ import org.springframework.beans.factory.annotation.Qualifier;
 @Service("CategoryService")
 public class CategoryService {
 
+	@Resource(name="categoryDataHelper")
 	private CategoryDataHelperImpl categoryDataHelper;
+	
+	@Resource(name="utilityDataHelper")
 	private UtilityDataHelperImpl utilityDataHelper;
+	
+	@Resource(name="cachedData")
 	private CachedData cachedData;
+	
+	@Resource(name="imageServicePooled")
 	private ImageService imageService;
+	
+	@Resource(name="galleryServicePooled")
 	private GalleryService galleryService;
+	
+	@Resource(name="utilityServicePooled")
+	private UtilityService utilityService;
 	
 	private static final Logger meLogger = Logger.getLogger(CategoryService.class);
 
@@ -34,7 +52,12 @@ public class CategoryService {
 	//***********************************  Web server synchronous methods *****************************************
 	//*************************************************************************************************************
 	
-	public long CreateCategory(long userId, Category newCategory, CustomResponse customResponse)
+	public CategoryService()
+	{
+		meLogger.debug("CategoryService object instantiated.");
+	}
+	
+	public long CreateCategory(long userId, Category newCategory, CustomResponse customResponse, long userAppId)
 	{
 		long startMS = System.currentTimeMillis();
 		try {
@@ -53,6 +76,8 @@ public class CategoryService {
 			//TODO decouple this method.  Don't think we need.
 			//CategoryRippleUpdate(userId, categoryId);
 			
+			utilityService.AddAction(ActionType.UserApp, userAppId, "CatAdd", "");
+			
 			return categoryId;
 		}
 		catch (WallaException wallaEx) {
@@ -67,7 +92,7 @@ public class CategoryService {
 		finally {UserTools.LogMethod("CreateCategory", meLogger, startMS, String.valueOf(userId));}
 	}
 
-	public int UpdateCategory(long userId, Category newCategory, long categoryId)
+	public int UpdateCategory(long userId, Category newCategory, long categoryId, long userAppId)
 	{
 		long startMS = System.currentTimeMillis();
 		try {
@@ -104,6 +129,8 @@ public class CategoryService {
 				CategoryRippleUpdate(userId, categoryId);
 			}
 
+			utilityService.AddAction(ActionType.UserApp, userAppId, "CatUpd", "");
+			
 			return HttpStatus.OK.value();
 		}
 		catch (WallaException wallaEx) {
@@ -116,7 +143,7 @@ public class CategoryService {
 		finally {UserTools.LogMethod("UpdateCategory", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(categoryId));}
 	}
 	
-	public int DeleteCategory(long userId, Category category, long categoryId)
+	public int DeleteCategory(long userId, Category category, long categoryId, long userAppId)
 	{
 		long startMS = System.currentTimeMillis();
 		try {
@@ -138,6 +165,7 @@ public class CategoryService {
 
 			//TODO decouple this method.
 			CategoryRippleDelete(userId, categoryIds);
+			utilityService.AddAction(ActionType.UserApp, userAppId, "CatDel", "");
 			
 			return HttpStatus.OK.value();
 		}
@@ -193,7 +221,7 @@ public class CategoryService {
 			//Check if category list changed
 			if (clientVersionTimestamp != null)
 			{
-				Date lastUpdated = new Date(categoryImageList.getLastChanged().toGregorianCalendar().getTimeInMillis());
+				Date lastUpdated = categoryImageList.getLastChanged().getTime();
 				if (!lastUpdated.after(clientVersionTimestamp))
 				{
 					meLogger.debug("No category images list generated because server timestamp (" + lastUpdated.toString() + ") is not later than client timestamp (" + clientVersionTimestamp.toString() + ")");
@@ -254,11 +282,9 @@ public class CategoryService {
 			categoryList = categoryDataHelper.GetUserCategoryList(userId);
 			if (categoryList != null)
 			{
-				GregorianCalendar gregory = new GregorianCalendar();
-				gregory.setTime(lastUpdate);
-				XMLGregorianCalendar xmlOldGreg = DatatypeFactory.newInstance().newXMLGregorianCalendar(gregory);
-				
-				categoryList.setLastChanged(xmlOldGreg);
+				Calendar lastUpdateCalendar = Calendar.getInstance();
+				lastUpdateCalendar.setTime(lastUpdate);
+				categoryList.setLastChanged(lastUpdateCalendar);
 			}
 			
 			customResponse.setResponseCode(HttpStatus.OK.value());
@@ -277,7 +303,7 @@ public class CategoryService {
 		finally {UserTools.LogMethod("GetCategoryListForUser", meLogger, startMS, String.valueOf(userId));}
 	}
 
-	public int MoveToNewCategory(long userId, long categoryId, ImageIdList moveList)
+	public int MoveToNewCategory(long userId, long categoryId, ImageIdList moveList, long userAppId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -301,6 +327,8 @@ public class CategoryService {
 			{
 				CategoryRippleUpdate(userId, categoriesAffected[i]);
 			}
+			
+			utilityService.AddAction(ActionType.UserApp, userAppId, "CatMove", "");
 			
 			return HttpStatus.OK.value();
 		}
@@ -474,7 +502,7 @@ public class CategoryService {
 	//*************************************  Plumbing *************************************************************
 	//*************************************************************************************************************
 	
-	
+	/*
 	public void setCategoryDataHelper(CategoryDataHelperImpl categoryDataHelper)
 	{
 		this.categoryDataHelper = categoryDataHelper;
@@ -500,5 +528,11 @@ public class CategoryService {
 	{
 		this.galleryService = galleryService;
 	}
+	
+	public void setUtilityService(UtilityService utilityService)
+	{
+		this.utilityService = utilityService;
+	}
+	*/
 	
 }

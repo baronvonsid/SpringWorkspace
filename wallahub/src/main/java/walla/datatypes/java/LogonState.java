@@ -9,6 +9,7 @@ public class LogonState {
 	private int failedLogonCount = 0;
 	private Date failedLogonLast = null;
 	private String salt = "";
+	private String tempSalt = "";
 	private String passwordHash = "";
 	
 	public long getUserId()
@@ -59,6 +60,16 @@ public class LogonState {
 	public void setSalt(String value)
 	{
 		this.salt = value;
+	}
+	
+	public String getTempSalt()
+	{
+		return this.tempSalt;
+	}
+	
+	public void setTempSalt(String value)
+	{
+		this.tempSalt = value;
 	}
 	
 	public String getPasswordHash()

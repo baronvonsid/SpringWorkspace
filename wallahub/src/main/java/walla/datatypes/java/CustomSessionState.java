@@ -29,6 +29,7 @@ public class CustomSessionState {
 	
 	private Account account = null;
 	private AccountStorage accountStorage = null;
+	private AccountActionSummary accountActions = null;
 	
 	public String getProfileName()
 	{
@@ -222,5 +223,15 @@ public class CustomSessionState {
 	public void setAccountStorage(AccountStorage value)
 	{
 		this.accountStorage = value;
+	}
+	
+	public AccountActionSummary getAccountActionSummary()
+	{
+		return this.accountActions;
+	}
+	
+	public void setAccountActionSummary(AccountActionSummary value)
+	{
+		this.accountActions = value;
 	}
 }

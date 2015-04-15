@@ -272,16 +272,15 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 			category.setDesc(resultset.getString(4));
 			category.setSystemOwned(resultset.getBoolean(5));
 
-			GregorianCalendar oldGreg = new GregorianCalendar();
-			oldGreg.setTime(resultset.getTimestamp(6));
-			XMLGregorianCalendar xmlOldGreg = DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg);
-			
-			category.setLastChanged(xmlOldGreg);
+			Calendar lastChangedCalendar = Calendar.getInstance();
+			lastChangedCalendar.setTimeInMillis(resultset.getTimestamp(6).getTime());
+
+			category.setLastChanged(lastChangedCalendar);
 			category.setVersion(resultset.getInt(7));
 			
 			return category;
 		}
-		catch (SQLException | DatatypeConfigurationException ex) {
+		catch (SQLException ex) {
 			meLogger.error(ex);
 			return null;
 		} 
@@ -320,11 +319,10 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 				categoryImageList.setDesc(resultset.getString(3));
 				categoryImageList.setTotalImageCount(resultset.getInt(4));
 				
-				GregorianCalendar oldGreg = new GregorianCalendar();
-				oldGreg.setTime(resultset.getTimestamp(5));
-				XMLGregorianCalendar xmlOldGreg = DatatypeFactory.newInstance().newXMLGregorianCalendar(oldGreg);
-				
-				categoryImageList.setLastChanged(xmlOldGreg);
+				Calendar lastChangedCalendar = Calendar.getInstance();
+				lastChangedCalendar.setTimeInMillis(resultset.getTimestamp(5).getTime());
+
+				categoryImageList.setLastChanged(lastChangedCalendar);
 				categoryImageList.setVersion(resultset.getInt(6));
 				categoryImageList.setSystemOwned(resultset.getBoolean(7));
 			}
@@ -332,7 +330,7 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 			resultset.close();
 			return categoryImageList;
 		}
-		catch (SQLException | DatatypeConfigurationException ex) {
+		catch (SQLException ex) {
 			meLogger.error(ex);
 			return null;
 		}
