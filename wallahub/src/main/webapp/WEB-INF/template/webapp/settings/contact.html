@@ -55,17 +55,17 @@
 	                    <div class="content-group-box">
 	                        <h3 class="content-group-heading"><i class="fa fa-envelope-o" style="margin-right: 6px;"></i>Email accounts</h3>
 	                        <div class="content-group-inner">
-	                        <form id="mainForm" name="mainForm" action="#" th:action="@{./contact}" th:object="${accountSettings}" method="post">
+	                        <form id="mainForm" name="mainForm" action="#" th:action="@{./contact}" th:object="${account}" method="post">
 			                    <input type="hidden" name="Id" th:field="*{Id}" />
-			                    <input type="hidden" name="profileName" th:field="*{profileName}" />
-			                    <input type="hidden" name="action" th:field="*{action}" />
-			                    <input type="hidden" name="actionEmail" th:field="*{actionEmail}" />
-	                        
+			                    <!--  <input type="hidden" name="profileName" th:field="*{profileName}" /> -->
+			                    <input type="hidden" name="action" id="action" th:value="${action}" />
+			                    <input type="hidden" name="actionEmail" id="actionEmail" th:value="${actionEmail}" />
+	                        <!-- th:field="*{action}" -->
 	                            <p>
 	                                You should setup an alternative email address.  This can be used to re-validate your credentials, if your primary email account is compromised.
 	                            </p>
 	
-	                            <ul class="content-list" id="settings-emails" th:each="e : *{Emails}">
+	                            <ul class="content-list" id="settings-emails" th:each="e : *{Emails.EmailRef}">
 	                            	<li class="clearfix biglistitem">
 	                            		<span th:if="${e.principle == true}" class="emaillabel green">Primary</span>
 	                            		<span th:if="${e.secondary == true}" class="emaillabel green">Alternate</span>

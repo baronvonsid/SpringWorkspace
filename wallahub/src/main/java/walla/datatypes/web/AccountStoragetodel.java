@@ -114,7 +114,7 @@ public class AccountStoragetodel {
 	public void setTimezone(String value)
 	{ this.timezone = value; }
 	
-	public boolean isNewsletter()
+	public boolean getNewsletter()
 	{ return this.newsletter; }
 	
 	public void setNewsletter(Boolean value)
@@ -190,7 +190,7 @@ public class AccountStoragetodel {
 	        this.address = value;
 	    }
 	
-	    public Boolean isPrinciple() {
+	    public Boolean getPrinciple() {
 	        return principle;
 	    }
 	
@@ -198,7 +198,7 @@ public class AccountStoragetodel {
 	        this.principle = value;
 	    }
 	
-	    public Boolean isSecondary() {
+	    public Boolean getSecondary() {
 	        return secondary;
 	    }
 	
@@ -206,7 +206,7 @@ public class AccountStoragetodel {
 	        this.secondary = value;
 	    }
 	
-	    public Boolean isVerified() {
+	    public Boolean getVerified() {
 	        return verified;
 	    }
 	

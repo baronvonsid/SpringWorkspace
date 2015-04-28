@@ -83,7 +83,7 @@ public class AccountService {
 	//Account close requested
 	//Account close completed
 
-	public void CreateAccount(Account account, CustomResponse customResponse, CustomSessionState customSession)
+	public void CreateAccount(Account account, CustomResponse customResponse, CustomSessionState customSession, String requestId)
 	{
 		String principleEmail = "";
 		String secondaryEmail = "";
@@ -101,10 +101,10 @@ public class AccountService {
 					for (Iterator<Account.Emails.EmailRef> emailIterater = account.getEmails().getEmailRef().iterator(); emailIterater.hasNext();)
 					{
 						Account.Emails.EmailRef emailRef = (Account.Emails.EmailRef)emailIterater.next();
-						if (emailRef.isPrinciple())
+						if (emailRef.getPrinciple())
 							principleEmail = (emailRef.getAddress() == null) ? "" : emailRef.getAddress();
 						
-						if (emailRef.isSecondary())
+						if (emailRef.getSecondary())
 							secondaryEmail = (emailRef.getAddress() == null) ? "" : emailRef.getAddress();
 					}
 				}
@@ -144,7 +144,7 @@ public class AccountService {
 			}
 			
 			sql = "SELECT COUNT(1) FROM [User] WHERE UPPER([ProfileName]) = UPPER(?) AND [status] IN (1,2,3,4)";
-			int nameCount = (int)utilityDataHelper.GetValueParamString(sql, account.getProfileName());
+			int nameCount = (int)utilityDataHelper.GetValueParamString(sql, account.getProfileName(), requestId);
 			
 			if (nameCount > 0)
 			{
@@ -163,7 +163,7 @@ public class AccountService {
 			String salt = SecurityTools.GenerateSalt();
 			String passwordHash = SecurityTools.GetHashedPassword(account.getPassword(), salt, 160, 1000);
 			
-			long newUserId = accountDataHelper.CreateAccount(account, passwordHash, salt);
+			long newUserId = accountDataHelper.CreateAccount(account, passwordHash, salt, requestId);
 			if (newUserId == 0)
 			{
 				meLogger.warn("User could not be created.");
@@ -183,13 +183,13 @@ public class AccountService {
 				customSession.setProfileName(account.getProfileName());
 				customSession.setUserId(newUserId);
 			}
-			accountDataHelper.UpdateLogonState(newUserId, 0, null);
+			accountDataHelper.UpdateLogonState(newUserId, 0, null, requestId);
 			
 			//TODO decouple.
-			accountDataHelper.AddEmail(newUserId, principleEmail, true, false);
+			accountDataHelper.AddEmail(newUserId, principleEmail, true, false, requestId);
 			
 			if (secondaryEmail.length() > 0)
-				accountDataHelper.AddEmail(newUserId, secondaryEmail, false, true);
+				accountDataHelper.AddEmail(newUserId, secondaryEmail, false, true, requestId);
 			
 			meLogger.info("New user has been created.  Email: " + principleEmail + " UserId:" + newUserId);
 			utilityService.AddAction(ActionType.Account, newUserId, "AcctNew", "");
@@ -203,17 +203,17 @@ public class AccountService {
 			meLogger.error(ex);
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
-		finally { UserTools.LogMethod("CreateAccount", meLogger, startMS, principleEmail); }
+		finally { utilityService.LogMethod("AccountService","CreateAccount", startMS, requestId, principleEmail); }
 	}
 	
-	public void UpdateAccount(Account account, CustomResponse customResponse)
+	public void UpdateAccount(Account account, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
 		{
 			/*Get timezone from country*/
 			
-			accountDataHelper.UpdateAccount(account);
+			accountDataHelper.UpdateAccount(account, requestId);
 			customResponse.setResponseCode(HttpStatus.OK.value());
 			
 			utilityService.AddAction(ActionType.Account,account.getId(), "AcctEdit", "");
@@ -225,15 +225,15 @@ public class AccountService {
 			meLogger.error(ex);
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
-		finally { UserTools.LogMethod("UpdateAccount", meLogger, startMS, "" + account.getId()); }
+		finally { utilityService.LogMethod("AccountService","UpdateAccount", startMS, requestId, "" + account.getId()); }
 	}
 
-	public void CloseAccount(Account account, CustomResponse customResponse, CustomSessionState customSession)
+	public void CloseAccount(Account account, CustomResponse customResponse, CustomSessionState customSession, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
 		{
-			LogonState userStateDb = accountDataHelper.GetLogonState(account.getProfileName());
+			LogonState userStateDb = accountDataHelper.GetLogonState(account.getProfileName(), requestId);
 			if (userStateDb == null)
 			{
 				String message = "Logon state could not be retrieved from the database.  ProfileName: " + account.getProfileName();
@@ -258,7 +258,7 @@ public class AccountService {
 
 			//TODO Send an email for manual image deletions.
 			
-			accountDataHelper.UpdateAccountStatus(account.getId(), AccountStatus.Closing);
+			accountDataHelper.UpdateAccountStatus(account.getId(), AccountStatus.Closing, requestId);
 			customResponse.setResponseCode(HttpStatus.OK.value());
 			
 			utilityService.AddAction(ActionType.Account, account.getId(), "AcctClose", "");
@@ -270,15 +270,15 @@ public class AccountService {
 			meLogger.error(ex);
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
-		finally { UserTools.LogMethod("CloseAccount", meLogger, startMS, account.getProfileName()); }
+		finally { utilityService.LogMethod("AccountService","CloseAccount", startMS, requestId, account.getProfileName()); }
 	}
 	
-	public Account GetAccountMeta(long userId, CustomResponse customResponse)
+	public Account GetAccountMeta(long userId, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
 		{
-			Account account = accountDataHelper.GetAccountMeta(userId);
+			Account account = accountDataHelper.GetAccountMeta(userId, requestId);
 			if (account == null)
 			{
 				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
@@ -292,10 +292,10 @@ public class AccountService {
 					account.setAccountMessage("Account is being setup, you must validate your email address and bank details to complete the account opening.");
 				break;
 				case 3:
-					String frozenReason = accountDataHelper.ShouldAccountBeLive(userId);
+					String frozenReason = accountDataHelper.ShouldAccountBeLive(userId, requestId);
 					
 					if (frozenReason.compareTo("OK") == 0)
-						accountDataHelper.UpdateAccountStatus(userId, AccountStatus.Live);
+						accountDataHelper.UpdateAccountStatus(userId, AccountStatus.Live, requestId);
 					else
 						account.setAccountMessage("Account is currently frozen because:" + frozenReason + "  Which means that no new images can be uploaded.");
 						
@@ -330,15 +330,15 @@ public class AccountService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return null;
 		}
-		finally { UserTools.LogMethod("GetAccountMeta", meLogger, startMS, String.valueOf(userId)); }
+		finally { utilityService.LogMethod("AccountService","GetAccountMeta", startMS, requestId, ""); }
 	}
 	
-	public AccountStorage GetAccountStorage(long userId, CustomResponse customResponse)
+	public AccountStorage GetAccountStorage(long userId, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
 		{
-			AccountStorage accountStorage = accountDataHelper.GetAccountStorage(userId);
+			AccountStorage accountStorage = accountDataHelper.GetAccountStorage(userId, requestId);
 			if (accountStorage == null)
 			{
 				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
@@ -356,15 +356,15 @@ public class AccountService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return null;
 		}
-		finally { UserTools.LogMethod("GetAccountStorage", meLogger, startMS, String.valueOf(userId)); }
+		finally { utilityService.LogMethod("AccountService","GetAccountStorage", startMS, requestId, ""); }
 	}
 	
-	public AccountActionSummary GetAccountActions(long userId, CustomResponse customResponse)
+	public AccountActionSummary GetAccountActions(long userId, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
 		{
-			AccountActionSummary summary = accountDataHelper.GetAccountActions(userId);
+			AccountActionSummary summary = accountDataHelper.GetAccountActions(userId, requestId);
 			if (summary == null)
 			{
 				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
@@ -379,10 +379,10 @@ public class AccountService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return null;
 		}
-		finally { UserTools.LogMethod("GetAccountActions", meLogger, startMS, String.valueOf(userId)); }
+		finally { utilityService.LogMethod("AccountService","GetAccountActions", startMS, requestId, ""); }
 	}
 	
-	public void EmailConfirm(String profileName, String requestValidationString, CustomResponse customResponse)
+	public void EmailConfirm(String profileName, String requestValidationString, CustomResponse customResponse, String requestId)
 	{
 		//Return email address if correctly validated.
 		long startMS = System.currentTimeMillis();
@@ -398,9 +398,9 @@ public class AccountService {
 				return;
 			}
 			
-			long userId = (long)utilityDataHelper.GetValueParamString("SELECT [UserId] FROM [User] WHERE ProfileName = ?", profileName);
+			long userId = (long)utilityDataHelper.GetValueParamString("SELECT [UserId] FROM [User] WHERE ProfileName = ?", profileName, requestId);
 			
-			if (!accountDataHelper.ValidateEmailConfirm(userId, requestValidationString, customResponse))
+			if (!accountDataHelper.ValidateEmailConfirm(userId, requestValidationString, customResponse, requestId))
 			{
 				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
 				Thread.sleep(2000);
@@ -410,10 +410,10 @@ public class AccountService {
 			//Email is OK, so verify and check if the account should now be set as live.
 			String email = customResponse.getMessage();
 
-			accountDataHelper.UpdateEmail(userId, email, EmailAction.Verified, "");
+			accountDataHelper.UpdateEmail(userId, email, EmailAction.Verified, "", requestId);
 			
 			//TODO decouple.
-			CheckUpdateAccountStatus(userId);
+			CheckUpdateAccountStatus(userId, requestId);
 			
 			customResponse.setResponseCode(HttpStatus.OK.value());
 			customResponse.setMessage("Email: " + email + " was validated.");
@@ -429,19 +429,19 @@ public class AccountService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			customResponse.setMessage("Email address could not be validated, due to an unexpected system error.");
 		}
-		finally { UserTools.LogMethod("EmailConfirm", meLogger, startMS, profileName); }
+		finally { utilityService.LogMethod("AccountService","EmailConfirm", startMS, requestId, profileName); }
 	}
 
-	public void VerifyEmailRequest(long userId, String email, CustomResponse customResponse)
+	public void VerifyEmailRequest(long userId, String email, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
 		{
 			String validationString = UserTools.GetComplexString();
-			accountDataHelper.UpdateEmail(userId, email, EmailAction.SetupValidation, validationString.substring(0,32));
+			accountDataHelper.UpdateEmail(userId, email, EmailAction.SetupValidation, validationString.substring(0,32), requestId);
 			
 			//TODO decouple
-			SendVerifyEmail(userId, email, validationString);
+			SendVerifyEmail(userId, email, validationString, requestId);
 			
 			customResponse.setResponseCode(HttpStatus.OK.value());
 		}
@@ -452,19 +452,19 @@ public class AccountService {
 			meLogger.error(ex);
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
-		finally { UserTools.LogMethod("UpdateEmailAction", meLogger, startMS, String.valueOf(userId) + " " + email); }
+		finally { utilityService.LogMethod("AccountService","UpdateEmailAction", startMS, requestId, email); }
 	}
 	
-	public void UpdateEmailAction(long userId, String email, EmailAction action, CustomResponse customResponse)
+	public void UpdateEmailAction(long userId, String email, EmailAction action, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
 		{
-			accountDataHelper.UpdateEmail(userId, email, action, "");
+			accountDataHelper.UpdateEmail(userId, email, action, "", requestId);
 			
 			//TODO decouple.
 			if (action == EmailAction.Verified)
-				CheckUpdateAccountStatus(userId);
+				CheckUpdateAccountStatus(userId, requestId);
 			
 			
 			customResponse.setResponseCode(HttpStatus.OK.value());
@@ -476,23 +476,23 @@ public class AccountService {
 			meLogger.error(ex);
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
-		finally { UserTools.LogMethod("UpdateEmailAction", meLogger, startMS, String.valueOf(userId) + " " + email); }
+		finally { utilityService.LogMethod("AccountService","UpdateEmailAction", startMS, requestId, email); }
 	}
 
-	public void AddEmail(long userId, String email, CustomResponse customResponse)
+	public void AddEmail(long userId, String email, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
 		{
-			if (!accountDataHelper.EmailIsUnique(userId, email))
+			if (!accountDataHelper.EmailIsUnique(userId, email, requestId))
 			{
 				customResponse.setResponseCode(HttpStatus.CONFLICT.value());
 				customResponse.setMessage("Email address is not unique.");
 				return;
 			}
 			
-			accountDataHelper.AddEmail(userId, email, false, false);
-			VerifyEmailRequest(userId, email, customResponse);
+			accountDataHelper.AddEmail(userId, email, false, false, requestId);
+			VerifyEmailRequest(userId, email, customResponse, requestId);
 		}
 		catch (WallaException wallaEx) {
 			customResponse.setResponseCode(wallaEx.getCustomStatus());
@@ -501,10 +501,10 @@ public class AccountService {
 			meLogger.error(ex);
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
-		finally { UserTools.LogMethod("AddEmail", meLogger, startMS, String.valueOf(userId) + " " + email); }
+		finally { utilityService.LogMethod("AccountService","AddEmail", startMS, requestId, email); }
 	}
 
-	public long CreateUserApp(long userId, int appId, int platformId, UserApp proposedUserApp, CustomResponse customResponse)
+	public long CreateUserApp(long userId, int appId, int platformId, UserApp proposedUserApp, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try {
@@ -517,7 +517,7 @@ public class AccountService {
 				return 0;
 			}
 			
-			long userAppId = accountDataHelper.FindExistingUserApp(userId, appId, platformId, proposedUserApp.getMachineName());
+			long userAppId = accountDataHelper.FindExistingUserApp(userId, appId, platformId, proposedUserApp.getMachineName(), requestId);
 			if (userAppId > 0)
 			{
 				customResponse.setResponseCode(HttpStatus.OK.value());
@@ -525,9 +525,9 @@ public class AccountService {
 			}
 			
 			UserApp newUserApp = new UserApp();
-			userAppId = utilityDataHelper.GetNewId("UserAppId");
+			userAppId = utilityDataHelper.GetNewId("UserAppId", requestId);
 
-			App app = cachedData.GetApp(appId, "");
+			App app = cachedData.GetApp(appId, "", requestId);
 			newUserApp.setId(userAppId);
 			newUserApp.setAppId(appId);
 			newUserApp.setPlatformId(platformId);
@@ -540,18 +540,18 @@ public class AccountService {
 			newUserApp.setMachineName(proposedUserApp.getMachineName());
 
 			//Create or find new userapp tag (system owned).
-			newUserApp.setTagId(tagService.CreateOrFindUserAppTag(userId, platformId, proposedUserApp.getMachineName()));
+			newUserApp.setTagId(tagService.CreateOrFindUserAppTag(userId, platformId, proposedUserApp.getMachineName(), requestId));
 			
 			//Create new auto upload category. 
-			newUserApp.setUserAppCategoryId(categoryService.CreateOrFindUserAppCategory(userId, platformId, newUserApp.getMachineName()));
+			newUserApp.setUserAppCategoryId(categoryService.CreateOrFindUserAppCategory(userId, platformId, newUserApp.getMachineName(), requestId));
 			
 			//Default user category
-			newUserApp.setUserDefaultCategoryId(categoryService.FindDefaultUserCategory(userId));
+			newUserApp.setUserDefaultCategoryId(categoryService.FindDefaultUserCategory(userId, requestId));
 			
 			//Get default gallery.
-			newUserApp.setGalleryId(galleryService.GetDefaultGallery(userId, appId));
+			newUserApp.setGalleryId(galleryService.GetDefaultGallery(userId, appId, requestId));
 			
-			if (proposedUserApp.isAutoUpload())
+			if (proposedUserApp.getAutoUpload())
 				newUserApp.setAutoUpload(true);
 			
 			if (proposedUserApp.getAutoUploadFolder() != null && !proposedUserApp.getAutoUploadFolder().isEmpty())
@@ -560,7 +560,7 @@ public class AccountService {
 			if (proposedUserApp.getMainCopyFolder() != null && !proposedUserApp.getMainCopyFolder().isEmpty())
 				newUserApp.setMainCopyFolder(proposedUserApp.getMainCopyFolder());
 			
-			accountDataHelper.CreateUserApp(userId, newUserApp);
+			accountDataHelper.CreateUserApp(userId, newUserApp, requestId);
 
 			utilityService.AddAction(ActionType.UserApp, userAppId, "UserAppNew", "");
 			
@@ -576,15 +576,15 @@ public class AccountService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return 0;
 		}
-		finally { UserTools.LogMethod("CreateUserApp", meLogger, startMS, String.valueOf(userId)); }
+		finally { utilityService.LogMethod("AccountService","CreateUserApp", startMS, requestId, ""); }
 	}
 
-	public void UpdateUserApp(long userId, int appId, int platformId, UserApp updatedUserApp, CustomResponse customResponse)
+	public void UpdateUserApp(long userId, int appId, int platformId, UserApp updatedUserApp, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
 		{
-			UserApp userApp = accountDataHelper.GetUserApp(userId, updatedUserApp.getId());
+			UserApp userApp = accountDataHelper.GetUserApp(userId, updatedUserApp.getId(), requestId);
 			if (userApp == null)
 			{
 				meLogger.warn("UpdateUserApp didn't return a valid UserApp object");
@@ -613,13 +613,13 @@ public class AccountService {
 			if (!userApp.getMachineName().equalsIgnoreCase(updatedUserApp.getMachineName()))
 			{
 				//Create or find new userapp tag (system owned).
-				updatedUserApp.setTagId(tagService.CreateOrFindUserAppTag(userId, platformId, userApp.getMachineName()));
+				updatedUserApp.setTagId(tagService.CreateOrFindUserAppTag(userId, platformId, userApp.getMachineName(), requestId));
 				
 				//Create new auto upload category. 
-				updatedUserApp.setUserAppCategoryId(categoryService.CreateOrFindUserAppCategory(userId, platformId, userApp.getMachineName()));
+				updatedUserApp.setUserAppCategoryId(categoryService.CreateOrFindUserAppCategory(userId, platformId, userApp.getMachineName(), requestId));
 			}
 			
-			accountDataHelper.UpdateUserApp(userId, updatedUserApp);
+			accountDataHelper.UpdateUserApp(userId, updatedUserApp, requestId);
 
 			utilityService.AddAction(ActionType.UserApp, updatedUserApp.getId(), "UserAppUpd", "");
 			customResponse.setResponseCode(HttpStatus.OK.value());
@@ -631,14 +631,14 @@ public class AccountService {
 			meLogger.error(ex);
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
-		finally { UserTools.LogMethod("UpdateUserApp", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(updatedUserApp.getId())); }
+		finally { utilityService.LogMethod("AccountService","UpdateUserApp", startMS, requestId, String.valueOf(updatedUserApp.getId())); }
 	}
 	
-	public UserApp GetUserApp(long userId, int appId, int platformId, long userAppId, CustomResponse customResponse)
+	public UserApp GetUserApp(long userId, int appId, int platformId, long userAppId, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try {
-			UserApp userApp = accountDataHelper.GetUserApp(userId, userAppId);
+			UserApp userApp = accountDataHelper.GetUserApp(userId, userAppId, requestId);
 			if (userApp == null)
 			{
 				String error = "GetUserApp didn't return a valid UserApp object using id: " + userAppId;
@@ -655,15 +655,15 @@ public class AccountService {
 				meLogger.info("Platforms don't match, create a new platform. UserAppId:" + userAppId + " PlatformId:" + platformId);
 				
 				UserApp newUserApp = new UserApp();
-				newUserApp.setAutoUpload(userApp.isAutoUpload());
+				newUserApp.setAutoUpload(userApp.getAutoUpload());
 				newUserApp.setAutoUploadFolder(userApp.getAutoUploadFolder());
 				newUserApp.setThumbCacheSizeMB(userApp.getThumbCacheSizeMB());
 				newUserApp.setMainCopyFolder(userApp.getMainCopyFolder());
 				newUserApp.setMainCopyCacheSizeMB(userApp.getMainCopyCacheSizeMB());
 				
-				long newUserAppId = CreateUserApp(userId, appId, platformId, newUserApp, customResponse);
+				long newUserAppId = CreateUserApp(userId, appId, platformId, newUserApp, customResponse, requestId);
 				
-				userApp = accountDataHelper.GetUserApp(userId, newUserAppId);
+				userApp = accountDataHelper.GetUserApp(userId, newUserAppId, requestId);
 				if (userApp == null)
 				{
 					meLogger.warn("GetUserApp didn't return the new UserApp object: " + newUserAppId);
@@ -673,7 +673,7 @@ public class AccountService {
 			}
 			else
 			{
-				utilityDataHelper.ExecuteSql("UPDATE [UserApp] SET LastUsed = dbo.GetDateNoMS() WHERE UserAppId = " + userApp.getId());
+				utilityDataHelper.ExecuteSql("UPDATE [UserApp] SET LastUsed = dbo.GetDateNoMS() WHERE UserAppId = " + userApp.getId(), requestId);
 			}
 			
 			customResponse.setResponseCode(HttpStatus.OK.value());
@@ -688,15 +688,15 @@ public class AccountService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return null;
 		}
-		finally { UserTools.LogMethod("GetUserApp", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(userAppId)); }
+		finally { utilityService.LogMethod("AccountService","GetUserApp", startMS, requestId, String.valueOf(userAppId)); }
 	}
 	
-	public void UserAppBlockUnblock(long userId, long userAppId, boolean block, CustomResponse customResponse)
+	public void UserAppBlockUnblock(long userId, long userAppId, boolean block, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
 		{
-			UserApp userApp = accountDataHelper.GetUserApp(userId, userAppId);
+			UserApp userApp = accountDataHelper.GetUserApp(userId, userAppId, requestId);
 			if (userApp == null)
 			{
 				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
@@ -704,14 +704,14 @@ public class AccountService {
 				return;
 			}
 			
-			if (userApp.isBlocked() == block)
+			if (userApp.getBlocked() == block)
 			{
 				customResponse.setResponseCode(HttpStatus.CONFLICT.value());
 				customResponse.setMessage("Application update requested is not valid");
 				return;
 			}
 			
-			accountDataHelper.UserAppBlockUnblock(userId, userAppId, block);
+			accountDataHelper.UserAppBlockUnblock(userId, userAppId, block, requestId);
 			customResponse.setResponseCode(HttpStatus.OK.value());
 		}
 		catch (WallaException wallaEx) {
@@ -721,10 +721,10 @@ public class AccountService {
 			meLogger.error(ex);
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
-		finally { UserTools.LogMethod("UserAppBlockUnblock", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(userAppId)); }
+		finally { utilityService.LogMethod("AccountService","UserAppBlockUnblock", startMS, requestId, String.valueOf(userAppId)); }
 	}	
 	
-	public boolean CheckProfileNameIsUnique(String profileName, CustomResponse customResponse)
+	public boolean CheckProfileNameIsUnique(String profileName, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		boolean isUnique = false;
@@ -738,7 +738,7 @@ public class AccountService {
 			}
 			
 			String sql = "SELECT COUNT(1) FROM [User] WHERE UPPER([ProfileName]) = UPPER(?) AND [status] IN (1,2,3,4)";
-			int nameCount = (int)utilityDataHelper.GetValueParamString(sql, profileName);
+			int nameCount = (int)utilityDataHelper.GetValueParamString(sql, profileName, requestId);
 			if (nameCount == 0)
 				isUnique = true;
 			
@@ -750,10 +750,10 @@ public class AccountService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return false;
 		}
-		finally { UserTools.LogMethod("CheckProfileNameIsUnique", meLogger, startMS, profileName); }
+		finally { utilityService.LogMethod("AccountService","CheckProfileNameIsUnique", startMS, requestId, profileName); }
 	}
 
-	public int GetPlatformId(ClientApp clientApp, CustomResponse customResponse)
+	public int GetPlatformId(ClientApp clientApp, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -770,7 +770,7 @@ public class AccountService {
 				return 0;
 			}
 			
-			Platform platform = cachedData.GetPlatform(0, OS, machine, major, minor);
+			Platform platform = cachedData.GetPlatform(0, OS, machine, major, minor, requestId);
 			if (platform == null)
 			{
 				meLogger.info("Platform not found. OS:" + OS + " machine:" + machine);
@@ -786,10 +786,10 @@ public class AccountService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return 0;
 		}
-		finally { UserTools.LogMethod("GetPlatformId", meLogger, startMS, ""); }
+		finally { utilityService.LogMethod("AccountService","GetPlatformId", startMS, requestId, ""); }
 	}
 	
-	public int VerifyApp(ClientApp clientApp, CustomResponse customResponse)
+	public int VerifyApp(ClientApp clientApp, CustomResponse customResponse, String requestId)
 	{
 		//Check for key existing in Walla	
 		//If not, then send back not found message
@@ -806,7 +806,7 @@ public class AccountService {
 				return 0;
 			}
 			
-			App app = cachedData.GetApp(0, clientApp.getWSKey());
+			App app = cachedData.GetApp(0, clientApp.getWSKey(), requestId);
 			if (app == null)
 			{
 				meLogger.info("App not found.  Key:" + clientApp.getWSKey());
@@ -829,10 +829,10 @@ public class AccountService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return 0;
 		}
-		finally { UserTools.LogMethod("VerifyApp", meLogger, startMS, ""); }
+		finally { utilityService.LogMethod("AccountService","VerifyApp", startMS, requestId, ""); }
 	}
 
-	public String GetNewUserToken(HttpServletRequest request, CustomSessionState customSession, CustomResponse customResponse)
+	public String GetNewUserToken(HttpServletRequest request, CustomSessionState customSession, CustomResponse customResponse, String requestId)
 	{
 		//Only reads user data from DB, any state is held in the session object.
 		long startMS = System.currentTimeMillis();
@@ -865,10 +865,10 @@ public class AccountService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return "";
 		}
-		finally { UserTools.LogMethod("GetNewUserToken", meLogger, startMS, ""); }
+		finally { utilityService.LogMethod("AccountService","GetNewUserToken", startMS, requestId, ""); }
 	}
 	
-	public String GetLogonToken(HttpServletRequest request, CustomSessionState customSession, CustomResponse customResponse)
+	public String GetLogonToken(HttpServletRequest request, CustomSessionState customSession, CustomResponse customResponse, String requestId)
 	{
 		//Only reads user data from DB, any state is held in the session object.
 		long startMS = System.currentTimeMillis();
@@ -970,10 +970,10 @@ public class AccountService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return "";
 		}
-		finally { UserTools.LogMethod("GetLogonToken", meLogger, startMS, ""); }
+		finally { utilityService.LogMethod("AccountService","GetLogonToken", startMS, requestId, ""); }
 	}
 
-	public void LogonCheck(Logon logon, HttpServletRequest request, CustomSessionState customSession, CustomResponse customResponse)
+	public void LogonCheck(Logon logon, HttpServletRequest request, CustomSessionState customSession, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		String profileName = "";
@@ -1053,7 +1053,7 @@ public class AccountService {
 		    	return;
 			}
 			
-			LogonState userStateDb = accountDataHelper.GetLogonState(profileName);
+			LogonState userStateDb = accountDataHelper.GetLogonState(profileName, requestId);
 			if (userStateDb == null)
 			{
 		    	message = "Logon state could not be retrieved from the database.  ProfileName: " + profileName;
@@ -1092,7 +1092,7 @@ public class AccountService {
 					customSession.setProfileName(userStateDb.getProfileName());
 					customSession.setUserId(userStateDb.getUserId());
 				}
-				accountDataHelper.UpdateLogonState(userStateDb.getUserId(), 0, null);
+				accountDataHelper.UpdateLogonState(userStateDb.getUserId(), 0, null, requestId);
 				utilityService.AddActionSecurityAccount("LoginOK", logon.getProfileName(), logon, request, customSession);
 				meLogger.debug("Logon successfull for User: " + logon.getProfileName());
 				customResponse.setResponseCode(HttpStatus.OK.value());
@@ -1107,7 +1107,7 @@ public class AccountService {
 					customSession.setAuthenticated(false);
 				}
 				
-				accountDataHelper.UpdateLogonState(userStateDb.getUserId(), failCount, new Date());
+				accountDataHelper.UpdateLogonState(userStateDb.getUserId(), failCount, new Date(), requestId);
 				message = "Password didn't match, logon failed.";
 				meLogger.warn(message);
 				utilityService.AddActionSecurityAccount("LoginKO", "Password didn't match, logon failed.", logon, request, customSession);
@@ -1134,11 +1134,11 @@ public class AccountService {
 			meLogger.error(ex);
 			return;
 		}
-		finally { UserTools.LogMethod("LogonCheck", meLogger, startMS, profileName); }
+		finally { utilityService.LogMethod("AccountService","LogonCheck", startMS, requestId, profileName); }
 	}
 
 	public String GetAdminPassThroughToken(HttpServletRequest request, 
-			CustomSessionState customSession, CustomResponse customResponse)
+			CustomSessionState customSession, CustomResponse customResponse, String requestId)
 	{
 		//Only reads user data from DB, any state are held in the session object.
 		long startMS = System.currentTimeMillis();
@@ -1155,7 +1155,7 @@ public class AccountService {
 			// Length 28
 			String token = SecurityTools.GetHashedPassword(keyFactors, tempSalt, 160, 1000);
 			
-			accountDataHelper.UpdateTempSalt(customSession.getUserId(), tempSalt);
+			accountDataHelper.UpdateTempSalt(customSession.getUserId(), tempSalt, requestId);
 			
 			customResponse.setResponseCode(HttpStatus.OK.value());
 			
@@ -1169,11 +1169,11 @@ public class AccountService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return "";
 		}
-		finally { UserTools.LogMethod("GetAdminPassThroughToken", meLogger, startMS, "ProfileName: " + profileName); }
+		finally { utilityService.LogMethod("AccountService","GetAdminPassThroughToken", startMS, requestId, "ProfileName: " + profileName); }
 	}
 	
 	public void AutoLoginAdminUser(String logonToken, String profileName, HttpServletRequest request, 
-			CustomSessionState customSession, CustomResponse customResponse)
+			CustomSessionState customSession, CustomResponse customResponse, String requestId)
 	{
 		//Only reads user data from DB, any state are held in the session object.
 		long startMS = System.currentTimeMillis();
@@ -1237,7 +1237,7 @@ public class AccountService {
 			    }
 			}
 			
-			LogonState logonState = accountDataHelper.GetLogonState(profileName);
+			LogonState logonState = accountDataHelper.GetLogonState(profileName, requestId);
 			if (logonState == null)
 			{
 				message = "Logon state could not be retrieved from the database.  ProfileName: " + profileName;
@@ -1306,7 +1306,7 @@ public class AccountService {
 					customSession.setRemoteAddress(request.getRemoteAddr());
 				}
 				
-				accountDataHelper.UpdateLogonState(logonState.getUserId(), 0, null);
+				accountDataHelper.UpdateLogonState(logonState.getUserId(), 0, null, requestId);
 				meLogger.debug("Admin logon successfull for User: " + customSession.getProfileName());
 				customResponse.setResponseCode(HttpStatus.OK.value());
 				utilityService.AddActionSecurityAccount("AutoLogOK", customSession.getProfileName(), null, request, customSession);
@@ -1321,7 +1321,7 @@ public class AccountService {
 					customSession.setAuthenticated(false);
 				}
 				
-				accountDataHelper.UpdateLogonState(logonState.getUserId(), failCount, new Date());
+				accountDataHelper.UpdateLogonState(logonState.getUserId(), failCount, new Date(), requestId);
 				message = "Pass through token didn't match, logon failed.  Profile: " + customSession.getProfileName() + " token: " + logonToken;
 				meLogger.warn(message);
 				utilityService.AddActionSecurityAccount("AutoLogKO", logonToken, null, request, customSession);
@@ -1345,10 +1345,10 @@ public class AccountService {
 			utilityService.AddActionSecurityAccount("LoginErr", "", null, request, customSession);
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogMethod("AutoLoginAdminUser", meLogger, startMS, "ProfileName: " + profileName); }
+		finally { utilityService.LogMethod("AccountService","AutoLoginAdminUser", startMS, requestId, profileName); }
 	}
 	
-	public void ChangePassword(Logon logon, HttpServletRequest request, CustomResponse customResponse, CustomSessionState customSession)
+	public void ChangePassword(Logon logon, HttpServletRequest request, CustomResponse customResponse, CustomSessionState customSession, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		String message = "";
@@ -1386,7 +1386,7 @@ public class AccountService {
 				return;
 			}
 			
-			LogonState userStateDb = accountDataHelper.GetLogonState(logon.getProfileName());
+			LogonState userStateDb = accountDataHelper.GetLogonState(logon.getProfileName(), requestId);
 			if (userStateDb == null)
 			{
 				message = "Logon state could not be retrieved from the database.  ProfileName: " + logon.getProfileName();
@@ -1411,7 +1411,7 @@ public class AccountService {
 					customSession.setFailedLogonLast(new Date());
 				}
 				
-				accountDataHelper.UpdateLogonState(userStateDb.getUserId(), failCount, new Date());
+				accountDataHelper.UpdateLogonState(userStateDb.getUserId(), failCount, new Date(), requestId);
 
 				//Check for number of recent failures.  More than 5? then 10 seconds delay.
 				if (customSession.getFailedLogonCount() > 5)
@@ -1433,7 +1433,7 @@ public class AccountService {
 					customSession.setFailedLogonLast(null);
 				}
 				
-				accountDataHelper.UpdatePassword(userStateDb.getUserId(), newPasswordHash, salt);
+				accountDataHelper.UpdatePassword(userStateDb.getUserId(), newPasswordHash, salt, requestId);
 				meLogger.debug("Change password successfull for User: " + logon.getProfileName());
 				
 				utilityService.AddAction(ActionType.Account, userStateDb.getUserId(), "PassUpdOK", "");
@@ -1446,7 +1446,7 @@ public class AccountService {
 			meLogger.error(ex);
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
-		finally { UserTools.LogMethod("ChangePassword", meLogger, startMS, logon.getProfileName()); }
+		finally { utilityService.LogMethod("AccountService","ChangePassword", startMS, requestId, logon.getProfileName()); }
 	}
 	
 	//*************************************************************************************************************
@@ -1454,14 +1454,14 @@ public class AccountService {
 	//*************************************************************************************************************
 	
 
-	public void CheckUpdateAccountStatus(long userId) 
+	public void CheckUpdateAccountStatus(long userId, String requestId) 
 	{
 		try
 		{
-			if (accountDataHelper.ShouldAccountBeLive(userId).compareTo("OK") == 0)
+			if (accountDataHelper.ShouldAccountBeLive(userId, requestId).compareTo("OK") == 0)
 			{
 				//Account should be switched to live from either init or frozen.
-				accountDataHelper.UpdateAccountStatus(userId, AccountStatus.Live);
+				accountDataHelper.UpdateAccountStatus(userId, AccountStatus.Live, requestId);
 			}
 		}
 		catch (WallaException wallaEx) {
@@ -1472,7 +1472,7 @@ public class AccountService {
 		}
 	}
 	
-	public void SendVerifyEmail(long userId, String email, String validationString) 
+	public void SendVerifyEmail(long userId, String email, String validationString, String requestId) 
 	{
 		try
 		{

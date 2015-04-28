@@ -53,11 +53,12 @@
                 </div>
 
                 <div class="column three-fourths">
-                    <form action="#" id="mainAccountForm" th:action="@{./account}" th:object="${accountSettings}" method="post">
+                    <form action="#" id="mainAccountForm" th:action="@{./account}" th:object="${account}" method="post">
 						<input type="hidden" name="Id" th:field="*{Id}" />
 						<input type="hidden" name="Version" th:field="*{Version}" />
-                    	<input type="hidden" name="CurrentPassword" id="CurrentPassword" th:field="*{CurrentPassword}" />
-                    
+                    	<input type="hidden" name="Password" id="Password" th:field="*{Password}" />
+                    	<input type="hidden" name="action" id="action" th:value="${action}" />
+                    	
 	                    <div class="content-group-box">
 	                        <h3 class="content-group-heading">Profile:<span style="margin-left: 5px;" th:text="*{profileName}"></span></h3>
 	                        <div class="content-group-inner">
@@ -73,8 +74,8 @@
 	                                    </dt>
 	                                    <dd>
 	                                        <input tabindex="1"
-	                                               id="description" name="description" type="text" maxlength="200" th:field="*{description}" />
-	                                        <p th:if="${#fields.hasErrors('description')}" class="errortext"><i class="fa fa-exclamation"></i><span style="margin-left: 5px;" th:errors="*{description}" class="errortext">Validation error</span></p>
+	                                               id="desc" name="desc" type="text" maxlength="200" th:field="*{desc}" />
+	                                        <p th:if="${#fields.hasErrors('desc')}" class="errortext"><i class="fa fa-exclamation"></i><span style="margin-left: 5px;" th:errors="*{desc}" class="errortext">Validation error</span></p>
 	                                    </dd>
 	                                </dl>
 	
@@ -345,10 +346,10 @@
 	                                </dl>
 	
 									<p><strong>Timezone:</strong><span style="margin-left: 5px;" th:text="*{timezone}"></span></p>
-	
+	<!-- id="newsletter" name="newsletter" -->
 	                                <label>
 	                                    <input tabindex="4"
-	                                           id="mainNewsletter" type="checkbox" style="margin-right:5px;" th:field="*{newsletter}" />Subscribe to newsletter
+	                                            type="checkbox" style="margin-right:5px;" th:field="*{newsletter}" />Subscribe to newsletter
 	                                </label>
 	                                <p>
 	                                    <button tabindex="5" class="button green" type="submit"><i class="fa fa-check" style="margin-right: 6px;"></i>Update profile</button>
@@ -413,24 +414,17 @@
 
 
     <script>
-        jQuery(document).ready(
-        function ($) 
-        {
-           
-            $('a[rel*=facebox]').facebox();
-            $('select').selectToAutocomplete();
-        });
-    </script>
+    jQuery(document).ready(
+    function ($) 
+    {
+       
+        $('a[rel*=facebox]').facebox();
+        $('select').selectToAutocomplete();
+    });
 
-<!-- $("#cmdCloseAccount").prop('disabled','true'); 
- $.facebox.settings.closeImage = '/static/images/closelabel.png';
-            $.facebox.settings.loadingImage = '/static/images/loading.gif';
--->
-
-	<script>
 	function UpdatePassword(element)
 	{
-		$("#CurrentPassword").val(element.value);
+		$("#Password").val(element.value);
 	}
 
 

@@ -66,6 +66,9 @@ public class GalleryController {
 	@Resource(name="galleryServicePooled")
 	private GalleryService galleryService;
 	
+	@Resource(name="utilityServicePooled")
+	private UtilityService utilityService;
+	
 	//  PUT /{profileName}/gallery/{galleryName}
 	@RequestMapping(value = { "/{profileName}/gallery/{galleryName}" }, method = { RequestMethod.PUT }, produces=MediaType.APPLICATION_XML_VALUE,
 			consumes = MediaType.APPLICATION_XML_VALUE, headers={"Accept-Charset=utf-8"} )
@@ -77,6 +80,7 @@ public class GalleryController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -88,7 +92,7 @@ public class GalleryController {
 				return;
 			}
 	
-			responseCode = galleryService.CreateUpdateGallery(customSession.getUserId(), newGallery, galleryName, customSession.getUserAppId());
+			responseCode = galleryService.CreateUpdateGallery(customSession.getUserId(), newGallery, galleryName, customSession.getUserAppId(), requestId);
 			if (responseCode == HttpStatus.MOVED_PERMANENTLY.value())
 			{
 				String newLocation = "/" + profileName + "/gallery/" + newGallery.getName();
@@ -98,7 +102,7 @@ public class GalleryController {
 		catch (Exception ex) {
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogWebMethod("CreateUpdateGallery", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("GalleryController","CreateUpdateGallery", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	//  DELETE /{profileName}/gallery/{galleryName}
@@ -112,6 +116,7 @@ public class GalleryController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -123,12 +128,12 @@ public class GalleryController {
 				return;
 			}
 	
-			responseCode = galleryService.DeleteGallery(customSession.getUserId(), existingGallery, galleryName, customSession.getUserAppId());
+			responseCode = galleryService.DeleteGallery(customSession.getUserId(), existingGallery, galleryName, customSession.getUserAppId(), requestId);
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogWebMethod("DeleteGallery", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("GalleryController","DeleteGallery", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	//  GET - /{profileName}/gallery/{galleryName}
@@ -142,6 +147,7 @@ public class GalleryController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -154,7 +160,7 @@ public class GalleryController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			Gallery responseGallery = galleryService.GetGalleryMeta(customSession.getUserId(), galleryName, customResponse);
+			Gallery responseGallery = galleryService.GetGalleryMeta(customSession.getUserId(), galleryName, customResponse, requestId);
 			
 			responseCode = customResponse.getResponseCode();
 			return responseGallery;
@@ -163,7 +169,7 @@ public class GalleryController {
 			meLogger.error(ex);
 			return null;
 		}
-		finally { UserTools.LogWebMethod("GetGalleryMeta", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("GalleryController","GetGalleryMeta", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 
 	//  GET /{profileName}/galleries
@@ -176,6 +182,7 @@ public class GalleryController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		Date clientVersionTimestamp = null;
 		try
@@ -194,7 +201,7 @@ public class GalleryController {
 				clientVersionTimestamp = new Date(headerDateLong);
 			
 			CustomResponse customResponse = new CustomResponse();
-			GalleryList galleryList = galleryService.GetGalleryListForUser(customSession.getUserId(), clientVersionTimestamp, customResponse);
+			GalleryList galleryList = galleryService.GetGalleryListForUser(customSession.getUserId(), clientVersionTimestamp, customResponse, requestId);
 			responseCode = customResponse.getResponseCode();
 			
 			return galleryList;
@@ -203,7 +210,7 @@ public class GalleryController {
 			meLogger.error(ex);
 			return null;
 		}
-		finally { UserTools.LogWebMethod("GetGalleryList", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("GalleryController","GetGalleryList", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 
 	//  GET - /{profileName}/gallery/galleryoptions
@@ -215,6 +222,7 @@ public class GalleryController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		Date clientVersionTimestamp = null;
 		try
@@ -232,7 +240,7 @@ public class GalleryController {
 				clientVersionTimestamp = new Date(headerDateLong);
 
 			CustomResponse customResponse = new CustomResponse();
-			GalleryOptions galleryOptions = galleryService.GetGalleryOptions(customSession.getUserId(), clientVersionTimestamp, customResponse);
+			GalleryOptions galleryOptions = galleryService.GetGalleryOptions(customSession.getUserId(), clientVersionTimestamp, customResponse, requestId);
 	
 			responseCode = customResponse.getResponseCode();
 
@@ -242,7 +250,7 @@ public class GalleryController {
 			meLogger.error(ex);
 			return null;
 		}
-		finally { UserTools.LogWebMethod("GetGalleryOptions", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("GalleryController","GetGalleryOptions", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	//  GET - /{profileName}/gallery/gallerysections
@@ -256,6 +264,7 @@ public class GalleryController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -268,7 +277,7 @@ public class GalleryController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			Gallery responseGallery = galleryService.GetGallerySections(customSession.getUserId(), requestGallery, customResponse);
+			Gallery responseGallery = galleryService.GetGallerySections(customSession.getUserId(), requestGallery, customResponse, requestId);
 			
 			responseCode = customResponse.getResponseCode();
 			return responseGallery;
@@ -277,7 +286,7 @@ public class GalleryController {
 			meLogger.error(ex);
 			return null;
 		}
-		finally { UserTools.LogWebMethod("GetGallerySections", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("GalleryController","GetGallerySections", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 
 	//  POST /{profileName}/gallery/preview
@@ -290,6 +299,7 @@ public class GalleryController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -357,7 +367,7 @@ public class GalleryController {
 			meLogger.error(ex);
 			return null;
 		}
-		finally { UserTools.LogWebMethod("PostGalleryPreview", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("GalleryController","PostGalleryPreview", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 
 	//GET /{profileName}/gallery/{galleryName}/gallerylogon
@@ -370,6 +380,7 @@ public class GalleryController {
 			HttpServletResponse response)
 	{	
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -382,7 +393,7 @@ public class GalleryController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			String token = galleryService.GetGalleryPassThroughToken(galleryName, request, customSession, customResponse);
+			String token = galleryService.GetGalleryPassThroughToken(galleryName, request, customSession, customResponse, requestId);
 			responseCode = customResponse.getResponseCode();
 			
 			if (customResponse.getResponseCode() == HttpStatus.OK.value())
@@ -398,7 +409,7 @@ public class GalleryController {
 			meLogger.error(ex);
 			return "";
 		}
-		finally { UserTools.LogWebMethod("GetGalleryPassThroughToken", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("GalleryController","GetGalleryPassThroughToken", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 }

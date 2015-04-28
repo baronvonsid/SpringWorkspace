@@ -116,7 +116,7 @@ public class ImageService {
 		meLogger.debug("ImageService object instantiated.");
 	}
 
-	public int CreateUpdateImageMeta(long userId, ImageMeta imageMeta, long imageId, long userAppId)
+	public int CreateUpdateImageMeta(long userId, ImageMeta imageMeta, long imageId, long userAppId, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
@@ -132,15 +132,15 @@ public class ImageService {
 			if (imageMeta.getStatus().intValue() == 1)
 			{
 				//TODO change to queued process.
-				imageDataHelper.CreateImage(userId, imageMeta);
+				imageDataHelper.CreateImage(userId, imageMeta, requestId);
 				responseCode = HttpStatus.CREATED.value();
 				
 				//TODO decouple.
-				SetupNewImage(userId, imageId, userAppId);
+				SetupNewImage(userId, imageId, userAppId, requestId);
 			}
 			else if (imageMeta.getStatus().intValue() == 4)
 			{
-				imageDataHelper.UpdateImage(userId, imageMeta);
+				imageDataHelper.UpdateImage(userId, imageMeta, requestId);
 				responseCode = HttpStatus.OK.value();
 				
 				utilityService.AddAction(ActionType.UserApp, userAppId, "ImgMetaUpd", "");
@@ -161,16 +161,16 @@ public class ImageService {
 			meLogger.error(ex);
 			return HttpStatus.INTERNAL_SERVER_ERROR.value();
 		}
-		finally {UserTools.LogMethod("CreateUpdateImageMeta", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(imageId));}
+		finally {utilityService.LogMethod("ImageService","CreateUpdateImageMeta", startMS, requestId, String.valueOf(imageId));}
 	}
 
-	public ImageMeta GetImageMeta(long userId, long imageId, CustomResponse customResponse)
+	public ImageMeta GetImageMeta(long userId, long imageId, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
 		{
 			//Get tag list for response.
-			ImageMeta imageMeta = imageDataHelper.GetImageMeta(userId, imageId);
+			ImageMeta imageMeta = imageDataHelper.GetImageMeta(userId, imageId, requestId);
 			if (imageMeta == null)
 			{
 				meLogger.warn("GetImageMeta didn't return a valid Image object");
@@ -192,19 +192,19 @@ public class ImageService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return null;
 		}
-		finally {UserTools.LogMethod("GetImageMeta", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(imageId));}
+		finally {utilityService.LogMethod("ImageService","GetImageMeta", startMS, requestId, String.valueOf(imageId));}
 	}
 	
-	public int DeleteImages(long userId, ImageList imagesToDelete)
+	public int DeleteImages(long userId, ImageList imagesToDelete, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
 		{
 			//Mark images as inactive.
-			imageDataHelper.MarkImagesAsInactive(userId, imagesToDelete);
+			imageDataHelper.MarkImagesAsInactive(userId, imagesToDelete, requestId);
 			
 			//TODO Decouple method call
-			ImageDeletePermanent(userId, imagesToDelete);
+			ImageDeletePermanent(userId, imagesToDelete, requestId);
 
 			return HttpStatus.OK.value();
 		}
@@ -215,15 +215,15 @@ public class ImageService {
 			meLogger.error(ex);
 			return HttpStatus.INTERNAL_SERVER_ERROR.value();
 		}
-		finally {UserTools.LogMethod("DeleteImages", meLogger, startMS, String.valueOf(userId));}
+		finally {utilityService.LogMethod("ImageService","DeleteImages", startMS, requestId, "");}
 	}
 
-	public UploadStatusList GetUploadStatusList(long userId, ImageIdList imageIdToCheck, List<Long> filesReceived, CustomResponse customResponse) throws WallaException
+	public UploadStatusList GetUploadStatusList(long userId, ImageIdList imageIdToCheck, List<Long> filesReceived, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
 		{
-			UploadStatusList currentUploadList = imageDataHelper.GetCurrentUploads(userId, imageIdToCheck);
+			UploadStatusList currentUploadList = imageDataHelper.GetCurrentUploads(userId, imageIdToCheck, requestId);
 			if (currentUploadList == null)
 			{
 				meLogger.warn("Current uploads could not be retrieved from the database.");
@@ -262,14 +262,14 @@ public class ImageService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return null;
 		}
-		finally {UserTools.LogMethod("GetUploadStatusList", meLogger, startMS, String.valueOf(userId));}
+		finally {utilityService.LogMethod("ImageService","GetUploadStatusList", startMS, requestId, "");}
 	}
 
-	public long GetImageId(long userId)
+	public long GetImageId(String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try {
-			long newImageId = utilityDataHelper.GetNewId("ImageId");
+			long newImageId = utilityDataHelper.GetNewId("ImageId", requestId);
 
 			return newImageId;
 		}
@@ -280,10 +280,10 @@ public class ImageService {
 			meLogger.error(ex);
 			return HttpStatus.INTERNAL_SERVER_ERROR.value();
 		}
-		finally {UserTools.LogMethod("GetImageId", meLogger, startMS, String.valueOf(userId));}
+		finally {utilityService.LogMethod("ImageService","GetImageId", startMS, requestId, "");}
 	}
 	
-	public ImageList GetImageList(long userId, String type, String identity, long sectionId, int imageCursor, int size, Date clientVersionTimestamp, CustomResponse customResponse)
+	public ImageList GetImageList(long userId, String type, String identity, long sectionId, int imageCursor, int size, Date clientVersionTimestamp, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		//identity - For Category, this must be the category Id, for tags and galleries, this is the name.
@@ -293,13 +293,13 @@ public class ImageService {
 			switch (type.toUpperCase())
 			{
 				case "TAG":
-					imageList = tagDataHelper.GetTagImageListMeta(userId, identity);
+					imageList = tagDataHelper.GetTagImageListMeta(userId, identity, requestId);
 					break;
 				case "CATEGORY":
 					try
 					{
 						long categoryId = Long.parseLong(identity);
-						imageList = categoryDataHelper.GetCategoryImageListMeta(userId, categoryId);
+						imageList = categoryDataHelper.GetCategoryImageListMeta(userId, categoryId, requestId);
 					}
 					catch (NumberFormatException ex)
 					{
@@ -309,7 +309,7 @@ public class ImageService {
 					}
 					break;
 				case "GALLERY":
-					imageList = galleryDataHelper.GetGalleryImageListMeta(userId, identity, sectionId);
+					imageList = galleryDataHelper.GetGalleryImageListMeta(userId, identity, sectionId, requestId);
 					break;
 				default:
 					String error = "GetImageList process failed, an invalid image list type was supplied:" + type;
@@ -341,17 +341,23 @@ public class ImageService {
 				switch (type.toUpperCase())
 				{
 					case "TAG":
-						tagDataHelper.GetTagImages(userId, imageCursor, size, imageList);
+						tagDataHelper.GetTagImages(userId, imageCursor, size, imageList, requestId);
 						break;
 					case "CATEGORY":
-						categoryDataHelper.GetCategoryImages(userId,imageCursor, size, imageList);
+						categoryDataHelper.GetCategoryImages(userId,imageCursor, size, imageList, requestId);
 						break;
 					case "GALLERY":
-						galleryDataHelper.GetGalleryImages(userId, imageCursor, size, imageList);
+						galleryDataHelper.GetGalleryImages(userId, imageCursor, size, imageList, requestId);
 						break;
 				}
 			}
-			
+			else
+			{
+				imageList.setImageCursor(imageCursor);
+				imageList.setImageCount(0);
+				imageList.setImages(new ImageList.Images());
+			}
+				
 			customResponse.setResponseCode(HttpStatus.OK.value());
 			
 			return imageList;
@@ -365,11 +371,11 @@ public class ImageService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return null;
 		}
-		finally {UserTools.LogMethod("GetImageList", meLogger, startMS, "UserId:" + userId + " Type:" + type + " Name:" + identity.toString());}
+		finally {utilityService.LogMethod("ImageService","GetImageList", startMS, requestId, "Type:" + type + " Name:" + identity.toString());}
 	}
 	
 	//TODO build out properly.
-	public ImageList GetPreviewImageList(long sectionId, int size)
+	public ImageList GetPreviewImageList(long sectionId, int size, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -401,15 +407,15 @@ public class ImageService {
 			
 			return imagesList;
 		}
-		finally {UserTools.LogMethod("GetPreviewImageList", meLogger, startMS, String.valueOf(sectionId) + " " + String.valueOf(size));}
+		finally {utilityService.LogMethod("ImageService","GetPreviewImageList", startMS, requestId, String.valueOf(sectionId) + " " + String.valueOf(size));}
 	}
 
-	public File GetOriginalImageFile(long userId, long imageId, CustomResponse customResponse)
+	public File GetOriginalImageFile(long userId, long imageId, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
 		{
-			String path = GetOriginalUncompressed(userId, imageId, false);
+			String path = GetOriginalUncompressed(userId, imageId, false, requestId);
 			if (path.isEmpty())
 			{
 				customResponse.setMessage("Original image file could not be retreived.  ImageId:" + imageId);
@@ -424,10 +430,10 @@ public class ImageService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return null;
 		}
-		finally {UserTools.LogMethod("GetOriginalImageFile", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(imageId));}
+		finally {utilityService.LogMethod("ImageService","GetOriginalImageFile", startMS, requestId, String.valueOf(imageId));}
 	}
 	
-	private String GetOriginalUncompressed(long userId, long imageId, boolean isPreview) throws WallaException, IOException
+	private String GetOriginalUncompressed(long userId, long imageId, boolean isPreview, String requestId) throws WallaException, IOException
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -437,14 +443,14 @@ public class ImageService {
 				return "";
 			
 			Path originalUncompressedPath = Paths.get(appWorkingFolder,"ZipTemp", userId + "" + imageId);
-			UserTools.DecompressFromZip(path, originalUncompressedPath.toString(), meLogger);
+			UserTools.DecompressFromZip(path, originalUncompressedPath.toString(), meLogger, utilityService, requestId);
 
 			return originalUncompressedPath.toString();
 		}
-		finally {UserTools.LogMethod("GetOriginalUncompressed", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(imageId));}
+		finally {utilityService.LogMethod("ImageService","GetOriginalUncompressed", startMS, requestId, String.valueOf(imageId));}
 	}
 	
-	public byte[] GetScaledImageFile(long userId, long imageId, int width, int height, boolean isPreview, CustomResponse customResponse)
+	public byte[] GetScaledImageFile(long userId, long imageId, int width, int height, boolean isPreview, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		byte[] bytes = null;
@@ -527,7 +533,7 @@ public class ImageService {
 						{
 							//Master file not present, so create a new one.
 							//String originalFilePath = GetFilePathIfExists(originalFolder, previewOriginalFolder, userId, "", imageId, isPreview);
-							String originalFilePath = GetOriginalUncompressed(userId, imageId, isPreview);
+							String originalFilePath = GetOriginalUncompressed(userId, imageId, isPreview, requestId);
 							if (originalFilePath.isEmpty())
 							{
 								meLogger.warn("GetImageFile didn't find a valid original Image object to process");
@@ -536,9 +542,9 @@ public class ImageService {
 							}
 							
 							destFile = GetFilePath(mainCopyFolder, previewMainCopyFolder, userId, "", imageId, "jpg", isPreview);
-							ResizeAndSaveFile(userId, imageId, originalFilePath, destFile, 1920, 1920, true);
+							ResizeAndSaveFile(userId, imageId, originalFilePath, destFile, 1920, 1920, true, requestId);
 							
-							UserTools.DeleteFile(originalFilePath, meLogger);
+							UserTools.DeleteFile(originalFilePath, utilityService, requestId);
 							masterImageFilePath = destFile;
 						}
 
@@ -546,7 +552,7 @@ public class ImageService {
 						int newHeight = Integer.valueOf(folder.substring(folder.indexOf("x")+1));
 						
 						destFile = GetFilePath(thumbFolder, previewThumbFolder, userId, newWidth + "x" + newHeight, imageId, "jpg", isPreview);
-						ResizeAndSaveFile(userId, imageId, masterImageFilePath, destFile, newWidth, newHeight, false);
+						ResizeAndSaveFile(userId, imageId, masterImageFilePath, destFile, newWidth, newHeight, false, requestId);
 						
 						imageFilePath = GetFilePathIfExists(thumbFolder, previewThumbFolder, userId, folder, imageId, isPreview);
 					}
@@ -589,7 +595,7 @@ public class ImageService {
 					{
 						//Master file not present, so create a new one.
 						//String originalFilePath = GetFilePathIfExists(originalFolder, previewOriginalFolder, userId, "", imageId, isPreview);
-						String originalFilePath = GetOriginalUncompressed(userId, imageId, isPreview);
+						String originalFilePath = GetOriginalUncompressed(userId, imageId, isPreview, requestId);
 						if (originalFilePath.isEmpty())
 						{
 							String error = "GetImageFile didn't find a valid original Image object to process. UserId:" + userId + " ImageId:" + imageId;
@@ -597,8 +603,8 @@ public class ImageService {
 						}
 						
 						destFile = GetFilePath(mainCopyFolder, previewMainCopyFolder, userId, "", imageId, "jpg", isPreview);
-						ResizeAndSaveFile(userId, imageId, originalFilePath, destFile, 1920, 1920, true);
-						UserTools.DeleteFile(originalFilePath, meLogger);
+						ResizeAndSaveFile(userId, imageId, originalFilePath, destFile, 1920, 1920, true, requestId);
+						UserTools.DeleteFile(originalFilePath, utilityService, requestId);
 						
 						imageFilePath = destFile;
 					}
@@ -644,10 +650,10 @@ public class ImageService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return null;
 		}
-		finally {UserTools.LogMethod("GetScaledImageFile", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(imageId));}
+		finally {utilityService.LogMethod("ImageService","GetScaledImageFile", startMS, requestId, String.valueOf(imageId));}
 	}
 	
-	public byte[] GetMainCopyImageFile(long userId, long imageId, boolean isPreview, CustomResponse customResponse)
+	public byte[] GetMainCopyImageFile(long userId, long imageId, boolean isPreview, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -658,7 +664,7 @@ public class ImageService {
 			{
 				//Master file not present, so create a new one.
 				//String sourceFolder = GetFilePathIfExists(originalFolder, previewOriginalFolder, userId, "", imageId, isPreview);
-				String originalFilePath = GetOriginalUncompressed(userId, imageId, isPreview);
+				String originalFilePath = GetOriginalUncompressed(userId, imageId, isPreview, requestId);
 				if (originalFilePath.isEmpty())
 				{
 					meLogger.warn("GetImageFile didn't find a valid original Image object to process");
@@ -668,9 +674,9 @@ public class ImageService {
 				
 				String destFile = GetFilePath(mainCopyFolder, previewMainCopyFolder, userId, "", imageId, "jpg", isPreview);
 				
-				ResizeAndSaveFile(userId, imageId, originalFilePath, destFile, 1920, 1920, true);
+				ResizeAndSaveFile(userId, imageId, originalFilePath, destFile, 1920, 1920, true, requestId);
 				
-				UserTools.DeleteFile(originalFilePath, meLogger);
+				UserTools.DeleteFile(originalFilePath, utilityService, requestId);
 				imageFilePath = GetFilePathIfExists(mainCopyFolder, previewMainCopyFolder, userId, "", imageId, isPreview);
 			}
 			
@@ -683,10 +689,10 @@ public class ImageService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return null;
 		}
-		finally {UserTools.LogMethod("GetMainCopyImageFile", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(imageId));}
+		finally {utilityService.LogMethod("ImageService","GetMainCopyImageFile", startMS, requestId, String.valueOf(imageId));}
 	}
 	
-	public byte[] GetAppImageFile(String imageRef, int width, int height, CustomResponse customResponse)
+	public byte[] GetAppImageFile(String imageRef, int width, int height, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -711,14 +717,14 @@ public class ImageService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return null;
 		}
-		finally {UserTools.LogMethod("GetAppImageFile", meLogger, startMS, imageRef);}
+		finally {utilityService.LogMethod("ImageService","GetAppImageFile", startMS, requestId, imageRef);}
 	}
 	
 	//*************************************************************************************************************
 	//*************************************  Messaging initiated methods ******************************************
 	//*************************************************************************************************************
 	
-	public void SetupNewImage(long userId, long imageId, long userAppId)
+	public void SetupNewImage(long userId, long imageId, long userAppId, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -726,7 +732,7 @@ public class ImageService {
 			ProcessStarter.setGlobalSearchPath(graphicsMagickPath);
 
 			//Update image to being processed.
-			imageDataHelper.UpdateImageStatus(userId, imageId, 3, false, "");
+			imageDataHelper.UpdateImageStatus(userId, imageId, 3, false, "", requestId);
 			
 			File uploadedFile = Paths.get(appWorkingFolder, "Que", String.valueOf(imageId) + "-" + Long.toString(userId) + ".zip").toFile();
 			if (!uploadedFile.exists())
@@ -735,7 +741,7 @@ public class ImageService {
 				throw new WallaException("ImageService", "SetupNewImage", error, HttpStatus.INTERNAL_SERVER_ERROR.value()); 
 			}
 
-			ImageMeta imageMeta = imageDataHelper.GetImageMeta(userId, imageId);
+			ImageMeta imageMeta = imageDataHelper.GetImageMeta(userId, imageId, requestId);
 			if (imageMeta == null)
 			{
 				String error = "SetupNewImage didn't return a valid Image object. UserId:" + userId + " ImageId:" + imageId;
@@ -757,16 +763,16 @@ public class ImageService {
 			//UserTools.Copyfile(uploadedFile.getPath().toString(), originalZipFile, meLogger);
 			
 			String originalUncompressedPath = GetFilePath(thumbFolder, previewThumbFolder, userId, "ziptemp", imageId, imageMeta.getFormat(), false);
-			UserTools.DecompressFromZip(uploadedFile.getPath().toString(), originalUncompressedPath, meLogger);
+			UserTools.DecompressFromZip(uploadedFile.getPath().toString(), originalUncompressedPath, meLogger, utilityService, requestId);
 			
 			
 			//Archive original image
 			String originalZipFile = GetFilePath(originalFolder, previewOriginalFolder, userId, "", imageId, "zip", false);
-    		ImageUtilityHelper.SaveOriginal(userId, originalUncompressedPath, originalZipFile, meLogger);
+    		ImageUtilityHelper.SaveOriginal(userId, originalUncompressedPath, originalZipFile, utilityService, requestId);
     		
     		//Make one initial copy, to drive subsequent resizing and also to orient correctly.
 			String mainImagePath = GetFilePath(mainCopyFolder, previewMainCopyFolder, userId, "", imageId, "jpg", false); 
-			ResizeAndSaveFile(userId, imageId, originalUncompressedPath, mainImagePath, 1920, 1920, true);
+			ResizeAndSaveFile(userId, imageId, originalUncompressedPath, mainImagePath, 1920, 1920, true, requestId);
 
 			//String mainImagePath = GetFilePathIfExists(userId, "MainCopy", imageId, false);
 			//if (mainImagePath.isEmpty())
@@ -777,13 +783,13 @@ public class ImageService {
     				
 			//Load image meta into memory and enrich properties.
 			//TODO switch to wired class.
-			String response = ImageUtilityHelper.EnrichImageMetaFromFileData(originalUncompressedPath, originalZipFile, imageMeta, meLogger, imageId);
+			String response = ImageUtilityHelper.EnrichImageMetaFromFileData(originalUncompressedPath, originalZipFile, imageMeta, meLogger, imageId, utilityService, requestId);
 			if (!response.equals("OK"))
 				throw new WallaException("ImageService", "SetupNewImage", response, 0); 
             
-			ImageUtilityHelper.SwitchHeightWidth(mainImagePath, imageMeta, meLogger);
+			ImageUtilityHelper.SwitchHeightWidth(mainImagePath, imageMeta, utilityService, requestId);
     		
-			imageDataHelper.UpdateImage(userId, imageMeta);
+			imageDataHelper.UpdateImage(userId, imageMeta, requestId);
     		
         	/*
 	       	 PC 1600x900 - 1.77, 1024x768 - 1.33
@@ -793,23 +799,23 @@ public class ImageService {
 	       	 */
 			
 			String destFile = GetFilePath(thumbFolder, previewThumbFolder, userId, "75x75", imageId, "jpg", false);
-			ResizeAndSaveFile(userId, imageId, mainImagePath, destFile, 75, 75, false);
+			ResizeAndSaveFile(userId, imageId, mainImagePath, destFile, 75, 75, false, requestId);
 
 			destFile = GetFilePath(thumbFolder, previewThumbFolder, userId, "150x150", imageId, "jpg", false);
-			ResizeAndSaveFile(userId, imageId, mainImagePath, destFile, 150, 150, false);
+			ResizeAndSaveFile(userId, imageId, mainImagePath, destFile, 150, 150, false, requestId);
 			
 			destFile = GetFilePath(thumbFolder, previewThumbFolder, userId, "300x300", imageId, "jpg", false);
-			ResizeAndSaveFile(userId, imageId, mainImagePath, destFile, 300, 300, false);
+			ResizeAndSaveFile(userId, imageId, mainImagePath, destFile, 300, 300, false, requestId);
 			
 			destFile = GetFilePath(thumbFolder, previewThumbFolder, userId, "800x800", imageId, "jpg", false);
-			ResizeAndSaveFile(userId, imageId, mainImagePath, destFile, 800, 800, false);
+			ResizeAndSaveFile(userId, imageId, mainImagePath, destFile, 800, 800, false, requestId);
 
             //TODO Delete original uploaded image.
-			UserTools.DeleteFile(uploadedFile.getPath(), meLogger);
-			UserTools.DeleteFile(originalUncompressedPath.toString(), meLogger);
+			UserTools.DeleteFile(uploadedFile.getPath(), utilityService, requestId);
+			UserTools.DeleteFile(originalUncompressedPath.toString(), utilityService, requestId);
 			
 			
-			imageDataHelper.UpdateImageStatus(userId, imageId, 4, false, "");
+			imageDataHelper.UpdateImageStatus(userId, imageId, 4, false, "", requestId);
 			
 			//For Each Tag associated, call TagRippleUpdates decoupled
 			if (imageMeta.getTags() != null)
@@ -819,55 +825,55 @@ public class ImageService {
 					for(ImageMeta.Tags.TagRef tagRef : imageMeta.getTags().getTagRef())
 					{
 						//TODO decouple this method.
-						tagService.TagRippleUpdate(userId, tagRef.getId());
+						tagService.TagRippleUpdate(userId, tagRef.getId(), requestId);
 					}
 				}
 			}
 			
 			//TODO decouple
-			tagService.ReGenDynamicTags(userId);
+			tagService.ReGenDynamicTags(userId, requestId);
 			
 			//TODO For the category, call CategoryRippleUpdates decoupled		
-			categoryService.CategoryRippleUpdate(userId, imageMeta.getCategoryId());
+			categoryService.CategoryRippleUpdate(userId, imageMeta.getCategoryId(), requestId);
 			
 			utilityService.AddAction(ActionType.UserApp, userAppId, "ImgAdd", "");
 		}
 		catch (Exception ex) {
 			meLogger.error("Unexpected error when trying to process SetupNewImage",ex);
 			
-			try {MoveImageToErrorFolder(userId, imageId);} catch (Exception logOrIgnore) {}
-			try {imageDataHelper.UpdateImageStatus(userId, imageId, -1, true, ex.getMessage());} catch (Exception logOrIgnore) {}
+			try {MoveImageToErrorFolder(userId, imageId, requestId);} catch (Exception logOrIgnore) {}
+			try {imageDataHelper.UpdateImageStatus(userId, imageId, -1, true, ex.getMessage(), requestId);} catch (Exception logOrIgnore) {}
 		}
-		finally {UserTools.LogMethod("SetupNewImage", meLogger, startMS, String.valueOf(userId));}
+		finally {utilityService.LogMethod("ImageService","SetupNewImage", startMS, requestId, String.valueOf(imageId));}
 	}
 
-	public void DeleteAllImagesCategory(long userId, long[] categoryIds)
+	public void DeleteAllImagesCategory(long userId, long[] categoryIds, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
 		{
 			//Select all images in the deleted categories.
-			ImageList imagesToDelete = imageDataHelper.GetActiveImagesInCategories(userId, categoryIds);
+			ImageList imagesToDelete = imageDataHelper.GetActiveImagesInCategories(userId, categoryIds, requestId);
 			if (imagesToDelete == null)
 			{
 				meLogger.warn("No images were found to delete.");
 			}
 			
-			DeleteImages(userId, imagesToDelete);
+			DeleteImages(userId, imagesToDelete, requestId);
 		}
 		catch (Exception ex) {
 			meLogger.error("Image deletion for a category failed with an error", ex);
 		}
-		finally {UserTools.LogMethod("DeleteAllImagesCategory", meLogger, startMS, String.valueOf(userId));}
+		finally {utilityService.LogMethod("ImageService","DeleteAllImagesCategory", startMS, requestId, "");}
 	}
 	
-	public void ImageDeletePermanent(long userId, ImageList imagesToDelete)
+	public void ImageDeletePermanent(long userId, ImageList imagesToDelete, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
 		{
 			//Distinct tag list, a valid tagimage record
-			long[] tags = imageDataHelper.GetTagsLinkedToImages(userId, imagesToDelete);
+			long[] tags = imageDataHelper.GetTagsLinkedToImages(userId, imagesToDelete, requestId);
 			if (tags == null)
 			{
 				meLogger.warn("Tags linked to images could not be retrieved from the database");
@@ -877,11 +883,11 @@ public class ImageService {
 			for (int i = 0; i < tags.length; i++)
 			{
 				//TODO decouple this method.
-				tagService.TagRippleUpdate(userId, tags[i]);
+				tagService.TagRippleUpdate(userId, tags[i], requestId);
 			}
 
 			//Distinct list of categories - check if category still Active.
-			long[] categories = imageDataHelper.GetCategoriesLinkedToImages(userId, imagesToDelete);
+			long[] categories = imageDataHelper.GetCategoriesLinkedToImages(userId, imagesToDelete, requestId);
 			if (categories == null)
 			{
 				meLogger.warn("Categories linked to images could not be retrieved from the database");
@@ -891,10 +897,10 @@ public class ImageService {
 			for (int i = 0; i < categories.length; i++)
 			{
 				//TODO decouple this method.
-				categoryService.CategoryRippleUpdate(userId, categories[i]);
+				categoryService.CategoryRippleUpdate(userId, categories[i], requestId);
 			}
 
-			tagService.ReGenDynamicTags(userId);
+			tagService.ReGenDynamicTags(userId, requestId);
 			
 			//Clear up physical files.
 			//Remove all temporary files stored.
@@ -906,7 +912,7 @@ public class ImageService {
 		catch (Exception ex) {
 			meLogger.error("Image deletion failed with an error", ex);
 		}
-		finally {UserTools.LogMethod("ImageDeletePermanent", meLogger, startMS, String.valueOf(userId));}
+		finally {utilityService.LogMethod("ImageService","ImageDeletePermanent", startMS, requestId, "");}
 	}
 	
 	//***********************************************************************************************************************
@@ -969,7 +975,7 @@ public class ImageService {
 		return Paths.get(folderPath.toString(), String.valueOf(imageId) + "." + extension).toString();
 	}
 	
-	private void ResizeAndSaveFile(long userId, long imageId, String sourceImagePath, String destinationImagePath, int width, int height, boolean isMain) throws IOException, InterruptedException, IM4JavaException
+	private void ResizeAndSaveFile(long userId, long imageId, String sourceImagePath, String destinationImagePath, int width, int height, boolean isMain, String requestId) throws IOException, InterruptedException, IM4JavaException
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -978,7 +984,7 @@ public class ImageService {
 			{
 				String tempFile = GetFilePath(thumbFolder, previewThumbFolder, userId, "ziptemp", imageId, "jpg", false);
 				
-				ImageUtilityHelper.SaveMainImage(userId, imageId, sourceImagePath, destinationImagePath, tempFile, width, height, meLogger);
+				ImageUtilityHelper.SaveMainImage(userId, imageId, sourceImagePath, destinationImagePath, tempFile, width, height, utilityService, requestId);
 				//Check if switch is needed.
 	
 				//if (ImageUtilityHelper.CheckForPortrait(destinationImagePath, meLogger))
@@ -990,13 +996,13 @@ public class ImageService {
 			}
 			else
 			{
-				ImageUtilityHelper.SaveReducedSizeImages(userId, imageId, sourceImagePath, destinationImagePath, width, height, meLogger);
+				ImageUtilityHelper.SaveReducedSizeImages(userId, imageId, sourceImagePath, destinationImagePath, width, height, utilityService, requestId);
 			}
 		}
-		finally {UserTools.LogMethod("ResizeAndSaveFile", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(imageId));}
+		finally {utilityService.LogMethod("ImageService","ResizeAndSaveFile", startMS, requestId, String.valueOf(imageId));}
 	}
 
-	private void MoveImageToErrorFolder(long userId, long imageId)
+	private void MoveImageToErrorFolder(long userId, long imageId, String requestId)
 	{
 		Path sourceFile = Paths.get(appWorkingFolder, "Que", String.valueOf(imageId) + "-" + Long.toString(userId) + ".zip");
 		Path destinationFile = Paths.get(appWorkingFolder, "Error", String.valueOf(imageId) + "-" + Long.toString(userId) + ".zip");
@@ -1004,7 +1010,7 @@ public class ImageService {
 		File source = sourceFile.toFile();
 		if (source.exists())
 		{
-			UserTools.MoveFile(sourceFile.toString(), destinationFile.toString(), meLogger);
+			UserTools.MoveFile(sourceFile.toString(), destinationFile.toString(), utilityService, requestId);
 		}
 	}
 	

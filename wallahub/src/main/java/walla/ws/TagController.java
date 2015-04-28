@@ -56,6 +56,9 @@ public class TagController {
 	@Resource(name="tagServicePooled")
 	private TagService tagService;
 	
+	@Resource(name="utilityServicePooled")
+	private UtilityService utilityService;
+	
 	//  PUT /{profileName}/tag/{tagName}
 	@RequestMapping(value = { "/{profileName}/tag/{tagName}" }, method = { RequestMethod.PUT }, produces=MediaType.APPLICATION_XML_VALUE,
 			consumes = MediaType.APPLICATION_XML_VALUE, headers={"Accept-Charset=utf-8"} )
@@ -68,6 +71,7 @@ public class TagController {
 	{
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		try
 		{
 			response.addHeader("Cache-Control", "no-cache");
@@ -104,7 +108,7 @@ public class TagController {
 				return;
 			}
 	
-			responseCode = tagService.CreateUpdateTag(customSession.getUserId(), newTag, tagName, customSession.getUserAppId());
+			responseCode = tagService.CreateUpdateTag(customSession.getUserId(), newTag, tagName, customSession.getUserAppId(), requestId);
 			if (responseCode == HttpStatus.MOVED_PERMANENTLY.value())
 			{
 				String newLocation = "/" + profileName + "/tag/" + newTag.getName();
@@ -117,7 +121,7 @@ public class TagController {
 		catch (Exception ex) {
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogWebMethod("CreateUpdateTag", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("TagController","CreateUpdateTag", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	//  DELETE /{profileName}/tag/{tagName}
@@ -132,6 +136,7 @@ public class TagController {
 	{
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		try
 		{
 			response.addHeader("Cache-Control", "no-cache");
@@ -143,12 +148,12 @@ public class TagController {
 				return;
 			}
 	
-			responseCode = tagService.DeleteTag(customSession.getUserId(), existingTag, tagName, customSession.getUserAppId());
+			responseCode = tagService.DeleteTag(customSession.getUserId(), existingTag, tagName, customSession.getUserAppId(), requestId);
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogWebMethod("DeleteTag", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("TagController","DeleteTag", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	//  GET - /{profileName}/tag/{tagName}
@@ -163,6 +168,7 @@ public class TagController {
 	{
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		try
 		{
 			response.addHeader("Cache-Control", "no-cache");
@@ -175,7 +181,7 @@ public class TagController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			Tag responseTag = tagService.GetTagMeta(customSession.getUserId(), tagName, customResponse);
+			Tag responseTag = tagService.GetTagMeta(customSession.getUserId(), tagName, customResponse, requestId);
 			responseCode = customResponse.getResponseCode();
 			return responseTag;
 		}
@@ -183,7 +189,7 @@ public class TagController {
 			meLogger.error(ex);
 			return null;
 		}
-		finally { UserTools.LogWebMethod("GetTagMeta", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("TagController","GetTagMeta", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 
 	//  GET /{profileName}/tags
@@ -198,6 +204,7 @@ public class TagController {
 		Date clientVersionTimestamp = null;
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		try
 		{
 			response.addHeader("Cache-Control", "no-cache");
@@ -216,7 +223,7 @@ public class TagController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			TagList tagList = tagService.GetTagListForUser(customSession.getUserId(), clientVersionTimestamp, customResponse);
+			TagList tagList = tagService.GetTagListForUser(customSession.getUserId(), clientVersionTimestamp, customResponse, requestId);
 			responseCode = customResponse.getResponseCode();
 
 			return tagList;
@@ -225,7 +232,7 @@ public class TagController {
 			meLogger.error(ex);
 			return null;
 		}
-		finally { UserTools.LogWebMethod("TagList", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("TagController","TagList", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	// PUT /{profileName}/tag/{tagName}/images
@@ -241,6 +248,7 @@ public class TagController {
 	{
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		try
 		{
 			response.addHeader("Cache-Control", "no-cache");
@@ -252,12 +260,12 @@ public class TagController {
 				return;
 			}
 	
-			responseCode = tagService.AddRemoveTagImages(customSession.getUserId(), tagName, moveList, true, customSession.getUserAppId());
+			responseCode = tagService.AddRemoveTagImages(customSession.getUserId(), tagName, moveList, true, customSession.getUserAppId(), requestId);
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogWebMethod("AddImagesToTag", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("TagController","AddImagesToTag", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	// PUT /{profileName}/tag/{tagName}/images
@@ -273,6 +281,7 @@ public class TagController {
 	{
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		try
 		{
 			response.addHeader("Cache-Control", "no-cache");
@@ -284,11 +293,11 @@ public class TagController {
 				return;
 			}
 	
-			responseCode = tagService.AddRemoveTagImages(customSession.getUserId(), tagName, moveList, false, customSession.getUserAppId());
+			responseCode = tagService.AddRemoveTagImages(customSession.getUserId(), tagName, moveList, false, customSession.getUserAppId(), requestId);
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogWebMethod("RemoveImagesFromTag", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("TagController","RemoveImagesFromTag", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 }

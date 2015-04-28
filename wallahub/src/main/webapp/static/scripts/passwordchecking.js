@@ -19,7 +19,7 @@
     		return;
     	}
     	
-    	if (!best.test($("#newPassword").val()) && !strong.test($("#newPassword").val()) )
+    	if (!best.test($("#newPassword").val()) && !strong.test($("#newPassword").val()) && !weak.test($("#newPassword").val()) )
     	{
     		alert( "Password does not meet minimum complexity rules." );
     		event.preventDefault();
@@ -103,14 +103,16 @@
 		}
 	});
     
+    
 	function CloseAccountSubmit()
 	{
-		var currentPassword = $("#CurrentPassword").val();
+		var currentPassword = $("#Password").val();
 		if (currentPassword.length < 6)
 		{
 			alert("You must enter your password to continue closing this fotowalla account.");
 			return;
 		}
 		
+		$("#action").val("CloseAccount");
 		$("#mainAccountForm").submit();
 	}

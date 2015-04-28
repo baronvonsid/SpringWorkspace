@@ -51,6 +51,9 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 	@Resource(name="galleryServicePooled")
 	private GalleryService galleryService;
 	
+	@Resource(name="utilityServicePooled")
+	private UtilityService utilityService;
+	
 	@RequestMapping(value="/start", method=RequestMethod.GET)
 	public String StartGet(
 			HttpServletResponse response)
@@ -75,8 +78,9 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 	{
 		String defaultMessage = "Logout encountered an unexpected issue.";
 		String responseJsp = "webapp/generalerror";
-		
+
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -95,7 +99,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			model.addAttribute("message", defaultMessage);
 			return responseJsp;
 		}
-		finally { UserTools.LogWebMethod("LogoutGet", meLogger, startMS, request, responseCode); response.setStatus(HttpStatus.OK.value()); }
+		finally { utilityService.LogWebMethod("AccountAdmin", "LogoutGet", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
 	@RequestMapping(value="/newaccount", method=RequestMethod.GET)
@@ -107,6 +111,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		String defaultMessage = "Profile could be setup at this time.";
 		String responseJsp = "webapp/generalerror";
 		try
@@ -127,7 +132,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			String key = accountService.GetNewUserToken(request, customSession, customResponse);
+			String key = accountService.GetNewUserToken(request, customSession, customResponse, requestId);
 
 			if (customResponse.getResponseCode() == HttpStatus.OK.value())
 			{
@@ -147,7 +152,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			model.addAttribute("message", defaultMessage);
 			return responseJsp;
 		}
-		finally { UserTools.LogWebFormMethod("NewAccountGet", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+		finally { utilityService.LogWebMethod("AccountAdmin", "NewAccountGet", startMS, request, requestId, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
 	@RequestMapping(value="/newaccount", method=RequestMethod.POST)
@@ -160,6 +165,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 	{
 		//int responseCode = HttpStatus.OK.value();
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		String responseJsp = "webapp/generalerror";
 		try
 		{
@@ -192,7 +198,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 				if (customSession != null)
 				{
 					CustomResponse customResponse = new CustomResponse();
-					accountService.CreateAccount(account, customResponse, customSession);
+					accountService.CreateAccount(account, customResponse, customSession, requestId);
 					if (customResponse.getResponseCode() == HttpStatus.CREATED.value())
 					{
 						Cookie wallaSessionIdCookie = new Cookie("X-Walla-Id", UserTools.GetLatestWallaId(customSession));
@@ -203,7 +209,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 					}
 					else if (customResponse.getResponseCode() == HttpStatus.BAD_REQUEST.value())
 					{			
-						String key = accountService.GetNewUserToken(request, customSession, customResponse);
+						String key = accountService.GetNewUserToken(request, customSession, customResponse, requestId);
 
 						if (customResponse.getResponseCode() == HttpStatus.OK.value())
 						{
@@ -229,7 +235,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			model.addAttribute("message", "Unexpected error, no account could be setup at this time.");
 			return responseJsp;
 		}
-		finally { UserTools.LogWebFormMethod("NewAccountPost", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+		finally { utilityService.LogWebMethod("AccountAdmin", "NewAccountPost", startMS, request, requestId, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
 	@RequestMapping(value="/logon", method=RequestMethod.GET)
@@ -243,6 +249,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		String defaultMessage = "Logon could not be processed at this time.";
 		String responseJsp = "webapp/generalerror";
 
@@ -292,7 +299,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			
 			
 			
-			String key = accountService.GetLogonToken(request, customSession, customResponse);
+			String key = accountService.GetLogonToken(request, customSession, customResponse, requestId);
 			
 			if (customResponse.getResponseCode() == HttpStatus.OK.value())
 			{
@@ -317,7 +324,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			model.addAttribute("message", defaultMessage);
 			return responseJsp;
 		}
-		finally { UserTools.LogWebFormMethod("LogonGet", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+		finally { utilityService.LogWebMethod("AccountAdmin", "LogonGet", startMS, request, requestId, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
 	@RequestMapping(value="/logon", method=RequestMethod.POST)
@@ -330,6 +337,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		String defaultMessage = "Logon could not be processed at this time.";
 		String responseJsp = "webapp/generalerror";
 		try
@@ -363,7 +371,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			CustomResponse customResponse = new CustomResponse();
 			
 
-			accountService.LogonCheck(logon, request, customSession, customResponse);
+			accountService.LogonCheck(logon, request, customSession, customResponse, requestId);
 			
 			if (customResponse.getResponseCode() == HttpStatus.OK.value())
 			{
@@ -389,7 +397,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			model.addAttribute("message", defaultMessage);
 			return responseJsp;
 		}
-		finally { UserTools.LogWebFormMethod("LogonPost", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+		finally { utilityService.LogWebMethod("AccountAdmin", "LogonPost", startMS, request, requestId, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
 	@RequestMapping(value="/{profileName}/settings/account", method=RequestMethod.GET)
@@ -397,12 +405,12 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			@PathVariable("profileName") String profileName,
 			@RequestParam(value="message", required=false) String message,
 			@RequestParam(value="logonToken", required=false) String token,
-			AccountSettings accountSettings,
 			Model model,
 			HttpServletRequest request,
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		String defaultMessage = "Account settings could not be retrieved at this time.";
 		String responseJsp = "webapp/generalerror";
 		try
@@ -440,7 +448,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 						tomcatSession.setAttribute("CustomSessionState", customSession);
 					}
 					
-					accountService.AutoLoginAdminUser(tempToken, profileName, request, customSession, customResponse);
+					accountService.AutoLoginAdminUser(tempToken, profileName, request, customSession, customResponse, requestId);
 
 					if (customResponse.getResponseCode() == HttpStatus.OK.value())
 					{						
@@ -464,7 +472,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			
 			if (customSession.getAccount() == null)
 			{
-				Account account = accountService.GetAccountMeta(customSession.getUserId(), customResponse);
+				Account account = accountService.GetAccountMeta(customSession.getUserId(), customResponse, requestId);
 				if (customResponse.getResponseCode() != HttpStatus.OK.value())
 				{
 					model.addAttribute("message", defaultMessage);
@@ -473,11 +481,12 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 				customSession.setAccount(account);
 			}
 			
-			MergeSettingsToAccount(customSession.getAccount(), accountSettings);
+			//MergeSettingsToAccount(customSession.getAccount(), accountSettings);
 
 			if (message != null)
 				model.addAttribute("message", message);
 			
+			model.addAttribute("account", customSession.getAccount());
 			responseJsp = "webapp/settings/account";
 			
 			return responseJsp;
@@ -487,12 +496,13 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			model.addAttribute("message", defaultMessage);
 			return responseJsp;
 		}
-		finally { UserTools.LogWebFormMethod("SettingsAccountGet", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+		finally { utilityService.LogWebMethod("AccountAdmin", "SettingsAccountGet", startMS, request, requestId, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
 	@RequestMapping(value="/{profileName}/settings/account", method=RequestMethod.POST)
 	public String SettingsAccountPost(
-			@Valid AccountSettings accountSettings,
+			@Valid Account account,
+			@ModelAttribute("action") String action,
 			BindingResult bindingResult,
 			Model model,
 			@PathVariable("profileName") String profileName,
@@ -500,6 +510,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		String defaultMessage = "Account summary could not be updated at this time.";
 		String responseJsp = "webapp/generalerror";
 		try
@@ -520,8 +531,8 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 				}
 				else
 				{
-					if (!customSession.getProfileName().equalsIgnoreCase(accountSettings.getProfileName())
-							|| customSession.getUserId() != accountSettings.getId())
+					if (!customSession.getProfileName().equalsIgnoreCase(account.getProfileName())
+							|| customSession.getUserId() != account.getId())
 					{
 						responseJsp = RedirectToLogon("Account settings update failed, an invalid action was requested.  Your session has been closed.", request);
 						return responseJsp;
@@ -529,26 +540,30 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 					else
 					{
 						CustomResponse customResponse = new CustomResponse();
-						if (accountSettings.getCurrentPassword().length() > 0)
+						if (action.compareTo("CloseAccount") == 0)
 						{
+							/*
 							Account account = new Account();
 							account.setId(customSession.getUserId());
 							account.setProfileName(customSession.getProfileName());
 							account.setVersion(accountSettings.getVersion());
 							account.setPassword(accountSettings.getCurrentPassword());
+							*/
 							
-							accountService.CloseAccount(account, customResponse, customSession);
+							accountService.CloseAccount(account, customResponse, customSession, requestId);
 						}
 						else
 						{
+							/*
 							Account account = new Account();
 							account.setId(accountSettings.getId());
 							account.setVersion(accountSettings.getVersion());
 							account.setDesc(accountSettings.getDescription());
 							account.setCountry(accountSettings.getCountry());
-							account.setNewsletter(accountSettings.isNewsletter());
+							account.setNewsletter(accountSettings.getNewsletter());
+							*/
 							
-							accountService.UpdateAccount(account, customResponse);
+							accountService.UpdateAccount(account, customResponse, requestId);
 						}
 
 						
@@ -560,13 +575,14 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 						}
 						else
 						{
-							MergeSettingsToAccount(customSession.getAccount(), accountSettings);
+							//MergeSettingsToAccount(customSession.getAccount(), accountSettings);
 							
 							if (customResponse.getMessage() == null)
 								model.addAttribute("message", "Account settings update failed, there was an error on the server");
 							else
 								model.addAttribute("message", customResponse.getMessage());
 							
+							model.addAttribute("account", customSession.getAccount());
 							responseJsp = "webapp/settings/account";
 						}
 					}
@@ -579,7 +595,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			model.addAttribute("message", defaultMessage);
 			return responseJsp;
 		}
-		finally { UserTools.LogWebFormMethod("SettingsAccountPost", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+		finally { utilityService.LogWebMethod("AccountAdmin", "SettingsAccountPost", startMS, request, requestId, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
 	@RequestMapping(value="/{profileName}/settings/security", method=RequestMethod.GET)
@@ -592,6 +608,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		String defaultMessage = "Security settings could not be retrieved at this time.";
 		String responseJsp = "webapp/generalerror";
 		try
@@ -608,7 +625,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			
 			if (customSession.getAccount() == null)
 			{
-				Account account = accountService.GetAccountMeta(customSession.getUserId(), customResponse);
+				Account account = accountService.GetAccountMeta(customSession.getUserId(), customResponse, requestId);
 				if (customResponse.getResponseCode() != HttpStatus.OK.value())
 				{
 					model.addAttribute("message", defaultMessage);
@@ -633,7 +650,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			model.addAttribute("message", defaultMessage);
 			return responseJsp;
 		}
-		finally { UserTools.LogWebFormMethod("SettingsSecurityGet", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+		finally { utilityService.LogWebMethod("AccountAdmin", "SettingsSecurityGet", startMS, request, requestId, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
 	@RequestMapping(value="/{profileName}/settings/security", method=RequestMethod.POST)
@@ -646,6 +663,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		String defaultMessage = "Security settings could not be updated at this time.";
 		String responseJsp = "webapp/generalerror";
 		try
@@ -672,7 +690,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			accountService.ChangePassword(logon, request, customResponse, customSession);
+			accountService.ChangePassword(logon, request, customResponse, customSession, requestId);
 
 			if (customResponse.getResponseCode() == HttpStatus.OK.value())
 			{
@@ -698,19 +716,19 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			model.addAttribute("message", defaultMessage);
 			return responseJsp;
 		}
-		finally { UserTools.LogWebFormMethod("SettingsSecurityPost", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+		finally { utilityService.LogWebMethod("AccountAdmin", "SettingsSecurityPost", startMS, request, requestId, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}	
 
 	@RequestMapping(value="/{profileName}/settings/contact", method=RequestMethod.GET)
 	public String SettingsContactGet(
 			@PathVariable("profileName") String profileName,
 			@RequestParam(value="message", required=false) String message,
-			AccountSettings accountSettings,
 			Model model,
 			HttpServletRequest request,
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		String defaultMessage = "Contact settings could not be retrieved at this time.";
 		String responseJsp = "webapp/generalerror";
 		try
@@ -727,7 +745,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			
 			if (customSession.getAccount() == null)
 			{
-				Account account = accountService.GetAccountMeta(customSession.getUserId(), customResponse);
+				Account account = accountService.GetAccountMeta(customSession.getUserId(), customResponse, requestId);
 				if (customResponse.getResponseCode() != HttpStatus.OK.value())
 				{
 					model.addAttribute("message", defaultMessage);
@@ -735,12 +753,12 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 				}
 				customSession.setAccount(account);
 			}
-			
-			MergeSettingsToAccount(customSession.getAccount(), accountSettings);
 
 			if (message != null)
 				model.addAttribute("message", message);
-				
+
+			model.addAttribute("account", customSession.getAccount());
+
 			responseJsp = "webapp/settings/contact";
 			return responseJsp;
 		}
@@ -749,19 +767,22 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			model.addAttribute("message", defaultMessage);
 			return responseJsp;
 		}
-		finally { UserTools.LogWebFormMethod("SettingsContactGet", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+		finally { utilityService.LogWebMethod("AccountAdmin", "SettingsContactGet", startMS, request, requestId, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
 	@RequestMapping(value="/{profileName}/settings/contact", method=RequestMethod.POST)
 	public String SettingsContactPost(
-			@Valid AccountSettings accountSettings,
+			@Valid Account account,
+			@ModelAttribute("action") String action,
+			@ModelAttribute("actionEmail") String actionEmail,
+			@PathVariable("profileName") String profileName,
 			BindingResult bindingResult,
 			Model model,
-			@PathVariable("profileName") String profileName,
 			HttpServletRequest request,
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		String defaultMessage = "Account contacts could not be updated at this time.";
 		String responseJsp = "webapp/generalerror";
 		try
@@ -782,8 +803,8 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 				}
 				else
 				{
-					if (!customSession.getProfileName().equalsIgnoreCase(accountSettings.getProfileName())
-							|| customSession.getUserId() != accountSettings.getId())
+					if (!customSession.getProfileName().equalsIgnoreCase(account.getProfileName())
+							|| customSession.getUserId() != account.getId())
 					{
 						responseJsp = RedirectToLogon("Account settings update failed, an invalid action was requested.  Your session has been closed.", request);
 						return responseJsp;
@@ -791,30 +812,34 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 					else
 					{
 						CustomResponse customResponse = new CustomResponse();
-						switch (accountSettings.getAction())
+						switch (action)
 						{
 							case "AddEmail":
-								accountService.AddEmail(customSession.getUserId(), accountSettings.getActionEmail(), customResponse);
+								accountService.AddEmail(customSession.getUserId(), actionEmail, customResponse, requestId);
 								break;
 								
 							case "SetPrinciple":
-								accountService.UpdateEmailAction(customSession.getUserId(), accountSettings.getActionEmail(), EmailAction.Principle, customResponse);
+								accountService.UpdateEmailAction(customSession.getUserId(), actionEmail, EmailAction.Principle, customResponse, requestId);
 								break;
 
 							case "ResendEmail":
-								accountService.VerifyEmailRequest(customSession.getUserId(), accountSettings.getActionEmail(), customResponse);
+								accountService.VerifyEmailRequest(customSession.getUserId(), actionEmail, customResponse, requestId);
 								break;
 								
 							case "DeleteEmail":
-								accountService.UpdateEmailAction(customSession.getUserId(), accountSettings.getActionEmail(), EmailAction.Delete, customResponse);
+								accountService.UpdateEmailAction(customSession.getUserId(), actionEmail, EmailAction.Delete, customResponse, requestId);
 								break;								
 						}
 
+						
+						
 						if (customResponse.getResponseCode() == HttpStatus.OK.value())
 						{
 							responseJsp = "redirect:" + urlPrefix + "/" + customSession.getProfileName() + "/settings/contact";
 							model.addAttribute("message", "Contact updated.");
 							customSession.setAccount(null);
+							
+							
 						}
 						else
 						{
@@ -823,8 +848,8 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 							else
 								model.addAttribute("message", customResponse.getMessage());
 							
-							MergeSettingsToAccount(customSession.getAccount(), accountSettings);
-							
+							//MergeSettingsToAccount(customSession.getAccount(), accountSettings);
+							model.addAttribute("account", customSession.getAccount());
 							responseJsp = "webapp/settings/contact";
 						}
 					}
@@ -838,7 +863,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			model.addAttribute("message", defaultMessage);
 			return responseJsp;
 		}
-		finally { UserTools.LogWebFormMethod("SettingsContactPost", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+		finally { utilityService.LogWebMethod("AccountAdmin", "SettingsContactPost", startMS, request, requestId, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
 	@RequestMapping(value="/{profileName}/settings/billing", method=RequestMethod.GET)
@@ -851,6 +876,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		String defaultMessage = "Billing settings could not be retrieved at this time.";
 		String responseJsp = "webapp/generalerror";
 		try
@@ -867,7 +893,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			
 			if (customSession.getAccount() == null)
 			{
-				Account account = accountService.GetAccountMeta(customSession.getUserId(), customResponse);
+				Account account = accountService.GetAccountMeta(customSession.getUserId(), customResponse, requestId);
 				if (customResponse.getResponseCode() != HttpStatus.OK.value())
 				{
 					model.addAttribute("message", defaultMessage);
@@ -892,7 +918,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			model.addAttribute("message", defaultMessage);
 			return responseJsp;
 		}
-		finally { UserTools.LogWebFormMethod("SettingsBillingGet", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+		finally { utilityService.LogWebMethod("AccountAdmin", "SettingsBillingGet", startMS, request, requestId, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
 	@RequestMapping(value="/{profileName}/settings/applications", method=RequestMethod.GET)
@@ -905,6 +931,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		String defaultMessage = "Application settings could not be retrieved at this time.";
 		String responseJsp = "webapp/generalerror";
 		try
@@ -921,7 +948,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			
 			if (customSession.getAccountActionSummary() == null)
 			{
-				AccountActionSummary summary = accountService.GetAccountActions(customSession.getUserId(), customResponse);
+				AccountActionSummary summary = accountService.GetAccountActions(customSession.getUserId(), customResponse, requestId);
 				if (customResponse.getResponseCode() != HttpStatus.OK.value())
 				{
 					model.addAttribute("message", defaultMessage);
@@ -946,7 +973,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			model.addAttribute("message", defaultMessage);
 			return responseJsp;
 		}
-		finally { UserTools.LogWebFormMethod("SettingsApplicationsGet", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+		finally { utilityService.LogWebMethod("AccountAdmin", "SettingsApplicationsGet", startMS, request, requestId, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
 	@RequestMapping(value="/{profileName}/settings/applications", method=RequestMethod.POST)
@@ -959,6 +986,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		String defaultMessage = "Account applications could not be updated at this time.";
 		String responseJsp = "webapp/generalerror";
 		try
@@ -991,7 +1019,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 
 					CustomResponse customResponse = new CustomResponse();
 
-					accountService.UserAppBlockUnblock(customSession.getUserId(), actionUserAppId, block, customResponse);
+					accountService.UserAppBlockUnblock(customSession.getUserId(), actionUserAppId, block, customResponse, requestId);
 
 					if (customResponse.getResponseCode() == HttpStatus.OK.value())
 					{
@@ -1019,7 +1047,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			model.addAttribute("message", defaultMessage);
 			return responseJsp;
 		}
-		finally { UserTools.LogWebFormMethod("SettingsApplicationsPost", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+		finally { utilityService.LogWebMethod("AccountAdmin", "SettingsApplicationsPost", startMS, request, requestId, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 
 	@RequestMapping(value="/{profileName}/settings/storage", method=RequestMethod.GET)
@@ -1033,6 +1061,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		String defaultMessage = "Storage settings could not be retrieved at this time.";
 		String responseJsp = "webapp/generalerror";
 		try
@@ -1050,7 +1079,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			
 			if (customSession.getAccountStorage() == null) // || force)
 			{
-				AccountStorage storage = accountService.GetAccountStorage(customSession.getUserId(), customResponse);
+				AccountStorage storage = accountService.GetAccountStorage(customSession.getUserId(), customResponse, requestId);
 				if (customResponse.getResponseCode() != HttpStatus.OK.value())
 				{
 					model.addAttribute("message", defaultMessage);
@@ -1087,7 +1116,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			model.addAttribute("message", defaultMessage);
 			return responseJsp;
 		}
-		finally { UserTools.LogWebFormMethod("SettingsStorageGet", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+		finally { utilityService.LogWebMethod("AccountAdmin", "SettingsStorageGet", startMS, request, requestId, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
 	@RequestMapping(value="/{profileName}/gallery/{galleryName}/logon", method=RequestMethod.GET)
@@ -1102,6 +1131,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		String defaultMessage = "Gallery logon could not be processed at this time.  Please try later.";
 		String responseJsp = "webapp/generalerror";
 		try
@@ -1143,7 +1173,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			String key = galleryService.GetGalleryUserLogonToken(profileName, galleryName, request, customSession, customResponse);
+			String key = galleryService.GetGalleryUserLogonToken(profileName, galleryName, request, customSession, customResponse, requestId);
 			if (customResponse.getResponseCode() == HttpStatus.OK.value())
 			{
 				galleryLogon.setProfileName(profileName);
@@ -1170,7 +1200,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			model.addAttribute("message", defaultMessage);
 			return responseJsp;
 		}
-		finally { UserTools.LogWebFormMethod("GalleryLogonGet", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+		finally { utilityService.LogWebMethod("AccountAdmin", "GalleryLogonGet", startMS, request, requestId, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
 	@RequestMapping(value="/{profileName}/gallery/{galleryName}/logon", method=RequestMethod.POST)
@@ -1185,6 +1215,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		String defaultMessage = "Gallery logon could not be processed at this time.";
 		String responseJsp = "webapp/generalerror";
 		String message = "";
@@ -1239,7 +1270,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 				}
 				
 				
-				if (galleryService.LoginGalleryUser(galleryLogon, request, customSession))
+				if (galleryService.LoginGalleryUser(galleryLogon, request, customSession, requestId))
 				{
 					meLogger.debug("Gallery login authorised.  User:" + customSession.getProfileName() + " Gallery:" + customSession.getGalleryName());
 					
@@ -1269,7 +1300,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			model.addAttribute("message", defaultMessage);
 			return responseJsp;
 		}
-		finally { UserTools.LogWebFormMethod("GalleryLogonPost", meLogger, startMS, request, responseJsp); response.setStatus(HttpStatus.OK.value()); }
+		finally { utilityService.LogWebMethod("AccountAdmin", "GalleryLogonPost", startMS, request, requestId, responseJsp); response.setStatus(HttpStatus.OK.value()); }
 	}
 	
 	private String RedirectToLogon(String message, HttpServletRequest request) throws UnsupportedEncodingException
@@ -1310,7 +1341,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 		accountSettings.setDescription(account.getDesc());
 		accountSettings.setCountry(account.getCountry());
 		accountSettings.setTimezone(account.getTimezone());
-		accountSettings.setNewsletter(account.isNewsletter());
+		accountSettings.setNewsletter(account.getNewsletter());
 		accountSettings.setAccountMessage(account.getAccountMessage());
 		accountSettings.setAccountTypeName(account.getAccountTypeName());
 		accountSettings.setOpenDate(account.getOpenDate().getTime());
@@ -1327,9 +1358,9 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 				
 				AccountSettings.EmailRef emailRef = new AccountSettings.EmailRef();
 				emailRef.setAddress(current.getAddress());
-				emailRef.setPrinciple(current.isPrinciple());
-				emailRef.setSecondary(current.isSecondary());
-				emailRef.setVerified(current.isVerified());
+				emailRef.setPrinciple(current.getPrinciple());
+				emailRef.setSecondary(current.getSecondary());
+				emailRef.setVerified(current.getVerified());
 				
 				accountSettings.getEmails().add(emailRef);
 			}

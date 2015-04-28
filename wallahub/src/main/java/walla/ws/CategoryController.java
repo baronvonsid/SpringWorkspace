@@ -58,6 +58,9 @@ public class CategoryController {
 	@Resource(name="categoryServicePooled")
 	private CategoryService categoryService;
 	
+	@Resource(name="utilityServicePooled")
+	private UtilityService utilityService;
+	
 	// POST /{profileName}/category
 	//no client cache, no server cache
 	@RequestMapping(value = { "/{profileName}/category" }, method = { RequestMethod.POST }, produces=MediaType.APPLICATION_XML_VALUE,
@@ -69,6 +72,7 @@ public class CategoryController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -82,7 +86,7 @@ public class CategoryController {
 			}
 	
 			CustomResponse customResponse = new CustomResponse();
-			long newCategoryId = categoryService.CreateCategory(customSession.getUserId(), newCategory, customResponse, customSession.getUserAppId());
+			long newCategoryId = categoryService.CreateCategory(customSession.getUserId(), newCategory, customResponse, customSession.getUserAppId(), requestId);
 	
 			responseCode = customResponse.getResponseCode();
 			return "<CategoryId>" + newCategoryId + "</CategoryId>";
@@ -91,7 +95,7 @@ public class CategoryController {
 			meLogger.error(ex);
 			return null;
 		}
-		finally { UserTools.LogWebMethod("CreateCategory", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("CategoryController","CreateCategory", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	// PUT /{profileName}/category/{categoryId}
@@ -106,6 +110,7 @@ public class CategoryController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -118,13 +123,13 @@ public class CategoryController {
 				return;
 			}
 	
-			responseCode = categoryService.UpdateCategory(customSession.getUserId(), newCategory, categoryId, customSession.getUserAppId());
+			responseCode = categoryService.UpdateCategory(customSession.getUserId(), newCategory, categoryId, customSession.getUserAppId(), requestId);
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
 			return;
 		}
-		finally { UserTools.LogWebMethod("UpdateCategory", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("CategoryController","UpdateCategory", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	// DELETE /{profileName}/category/{categoryId}
@@ -139,6 +144,7 @@ public class CategoryController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -151,13 +157,13 @@ public class CategoryController {
 				return;
 			}
 	
-			responseCode = categoryService.DeleteCategory(customSession.getUserId(), existingCategory, categoryId, customSession.getUserAppId());
+			responseCode = categoryService.DeleteCategory(customSession.getUserId(), existingCategory, categoryId, customSession.getUserAppId(), requestId);
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
 			return;
 		}
-		finally { UserTools.LogWebMethod("DeleteCategory", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("CategoryController","DeleteCategory", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	//  GET - /{profileName}/category/{categoryId}
@@ -171,6 +177,7 @@ public class CategoryController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -184,7 +191,7 @@ public class CategoryController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			Category responseCategory = categoryService.GetCategoryMeta(customSession.getUserId(), categoryId, customResponse);
+			Category responseCategory = categoryService.GetCategoryMeta(customSession.getUserId(), categoryId, customResponse, requestId);
 			responseCode = customResponse.getResponseCode();
 			
 			return responseCategory;
@@ -193,7 +200,7 @@ public class CategoryController {
 			meLogger.error(ex);
 			return null;
 		}
-		finally { UserTools.LogWebMethod("GetCategoryMeta", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("CategoryController","GetCategoryMeta", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	//  GET /{profileName}/categories
@@ -206,6 +213,7 @@ public class CategoryController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		Date clientVersionTimestamp = null;
 		try
@@ -226,7 +234,7 @@ public class CategoryController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			CategoryList categoryList = categoryService.GetCategoryListForUser(customSession.getUserId(), clientVersionTimestamp, customResponse);
+			CategoryList categoryList = categoryService.GetCategoryListForUser(customSession.getUserId(), clientVersionTimestamp, customResponse, requestId);
 			responseCode = customResponse.getResponseCode();
 			
 			return categoryList;
@@ -235,7 +243,7 @@ public class CategoryController {
 			meLogger.error(ex);
 			return null;
 		}
-		finally { UserTools.LogWebMethod("GetCategoryList", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("CategoryController","GetCategoryList", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	// PUT {profileName}/category/{categoryId}/images
@@ -250,6 +258,7 @@ public class CategoryController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -262,12 +271,12 @@ public class CategoryController {
 				return;
 			}
 	
-			responseCode = categoryService.MoveToNewCategory(customSession.getUserId(), categoryId, imageIdList, customSession.getUserAppId());
+			responseCode = categoryService.MoveToNewCategory(customSession.getUserId(), categoryId, imageIdList, customSession.getUserAppId(), requestId);
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogWebMethod("MoveToNewCategory", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("CategoryController","MoveToNewCategory", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 
 }

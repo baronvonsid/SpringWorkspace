@@ -1,5 +1,6 @@
 package walla.db;
 
+import walla.business.UtilityService;
 import walla.datatypes.auto.*;
 import walla.datatypes.java.*;
 import walla.utils.UserTools;
@@ -9,6 +10,8 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+
+import javax.annotation.Resource;
 
 import org.apache.log4j.Logger;
 import org.springframework.http.HttpStatus;
@@ -25,6 +28,9 @@ public class CachedData {
 	private UtilityDataHelperImpl utilityDataHelper;
 	private static final Logger meLogger = Logger.getLogger(CachedData.class);
 	
+	@Resource(name="utilityServicePooled")
+	private UtilityService utilityService;
+	
 	public CachedData() {
 		//Date cacheUpdateTime = new Date();
 		Calendar cal = Calendar.getInstance();
@@ -34,7 +40,7 @@ public class CachedData {
 		if (meLogger.isDebugEnabled()) { meLogger.debug("CachedData object instantiated with the timestamp:" + cacheUpdateTime.toGMTString()); }
 	}
 
-	private synchronized void CheckAndUpdateCache() throws WallaException
+	private synchronized void CheckAndUpdateCache(String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -45,19 +51,19 @@ public class CachedData {
 			if (cacheUpdateTime.before(cal.getTime()))
 			{
 				//Cache is out of date, so retrieve the latest.
-				platforms = utilityDataHelper.GetPlatformList();
+				platforms = utilityDataHelper.GetPlatformList(requestId);
 				if (platforms == null || platforms.size() < 1)
 					meLogger.error("No platforms could be retrieved from the database");
 				
-				apps = utilityDataHelper.GetAppList();
+				apps = utilityDataHelper.GetAppList(requestId);
 				if (apps == null || apps.size() < 1)
 					meLogger.error("No apps could be retrieved from the database");
 				
-				styles = utilityDataHelper.GetStyleList();
+				styles = utilityDataHelper.GetStyleList(requestId);
 				if (styles == null || styles.size() < 1)
 					meLogger.error("No styles could be retrieved from the database");
 				
-				presentations = utilityDataHelper.GetPresentationList();
+				presentations = utilityDataHelper.GetPresentationList(requestId);
 				if (presentations == null || presentations.size() < 1)
 					meLogger.error("No presentations could be retrieved from the database");
 				
@@ -67,15 +73,15 @@ public class CachedData {
 				if (meLogger.isDebugEnabled()) { meLogger.debug("Cache has now been refreshed.  New timestamp:" + cacheUpdateTime.toGMTString()); }
 			}
 		}
-		finally { UserTools.LogMethod("CheckAndUpdateCache", meLogger, startMS, ""); }
+		finally { utilityService.LogMethod("CachedData","CheckAndUpdateCache", startMS, requestId, ""); }
 	}
 	
-	public Platform GetPlatform(int platformId, String OSType, String machineType, int majorVersion, int minorVersion) throws WallaException
+	public Platform GetPlatform(int platformId, String OSType, String machineType, int majorVersion, int minorVersion, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		try
 		{
-			CheckAndUpdateCache();
+			CheckAndUpdateCache(requestId);
 			
 			//find platform object and return.
 			for (Iterator<Platform> platformIterater = platforms.iterator(); platformIterater.hasNext();)
@@ -102,15 +108,15 @@ public class CachedData {
 			
 			return null;
 		}
-		finally { UserTools.LogMethod("GetPlatform", meLogger, startMS, "PlatformId:" + platformId + " OSType:" + OSType + " Machine:" + machineType + " Version:" + majorVersion + "." + minorVersion); }
+		finally { utilityService.LogMethod("CachedData","GetPlatform", startMS, requestId, "PlatformId:" + platformId + " OSType:" + OSType + " Machine:" + machineType + " Version:" + majorVersion + "." + minorVersion); }
 	}
 	
-	public App GetApp(int appId, String key) throws WallaException
+	public App GetApp(int appId, String key, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		try
 		{
-			CheckAndUpdateCache();
+			CheckAndUpdateCache(requestId);
 			
 			//find platform object and return.
 			for (Iterator<App> appIterater = apps.iterator(); appIterater.hasNext();)
@@ -135,26 +141,26 @@ public class CachedData {
 			
 			return null;
 		}
-		finally { UserTools.LogMethod("GetApp", meLogger, startMS, "AppId:" + appId + " Key:" + key); }
+		finally { utilityService.LogMethod("CachedData","GetApp", startMS, requestId, "AppId:" + appId + " Key:" + key); }
 	}
 	
-	public List<Style> GetStyleList() throws WallaException
+	public List<Style> GetStyleList(String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		try
 		{
-			CheckAndUpdateCache();
+			CheckAndUpdateCache(requestId);
 			return styles;
 		}
-		finally { UserTools.LogMethod("GetStyleList", meLogger, startMS, ""); }
+		finally { utilityService.LogMethod("CachedData","GetStyleList", startMS, requestId, ""); }
 	}
 	
-	public Style GetStyle(int styleId) throws WallaException
+	public Style GetStyle(int styleId, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		try
 		{
-			CheckAndUpdateCache();
+			CheckAndUpdateCache(requestId);
 			
 			for (Iterator<Style> iterater = styles.iterator(); iterater.hasNext();)
 			{
@@ -168,26 +174,26 @@ public class CachedData {
 			
 			return null;
 		}
-		finally { UserTools.LogMethod("GetApp", meLogger, startMS, ""); }
+		finally { utilityService.LogMethod("CachedData","GetApp", startMS, requestId, ""); }
 	}
 	
-	public List<Presentation> GetPresentationList() throws WallaException
+	public List<Presentation> GetPresentationList(String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		try
 		{
-			CheckAndUpdateCache();
+			CheckAndUpdateCache(requestId);
 			return presentations;
 		}
-		finally { UserTools.LogMethod("GetPresentationList", meLogger, startMS, ""); }
+		finally { utilityService.LogMethod("CachedData","GetPresentationList", startMS, requestId, ""); }
 	}
 	
-	public Presentation GetPresentation(int presentationId) throws WallaException
+	public Presentation GetPresentation(int presentationId, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		try
 		{
-			CheckAndUpdateCache();
+			CheckAndUpdateCache(requestId);
 			
 			for (Iterator<Presentation> iterater = presentations.iterator(); iterater.hasNext();)
 			{
@@ -201,7 +207,7 @@ public class CachedData {
 			
 			return null;
 		}
-		finally { UserTools.LogMethod("GetPresentation", meLogger, startMS, String.valueOf(presentationId)); }
+		finally { utilityService.LogMethod("CachedData","GetPresentation", startMS, requestId, String.valueOf(presentationId)); }
 	}
 	
 	public void setUtilityDataHelper(UtilityDataHelperImpl utilityDataHelper)

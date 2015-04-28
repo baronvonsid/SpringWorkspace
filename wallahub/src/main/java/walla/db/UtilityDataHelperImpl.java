@@ -1,5 +1,6 @@
 package walla.db;
 
+import javax.annotation.Resource;
 import javax.sql.DataSource;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;
@@ -20,6 +21,7 @@ import java.util.List;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Repository;
 
+import walla.business.UtilityService;
 import walla.datatypes.auto.*;
 import walla.datatypes.java.*;
 import walla.utils.*;
@@ -33,7 +35,10 @@ public class UtilityDataHelperImpl implements UtilityDataHelper{
 	
 	private static final Logger meLogger = Logger.getLogger(UtilityDataHelperImpl.class);
 
-	public List<Platform> GetPlatformList() throws WallaException
+	@Resource(name="utilityServicePooled")
+	private UtilityService utilityService;
+	
+	public List<Platform> GetPlatformList(String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -75,11 +80,11 @@ public class UtilityDataHelperImpl implements UtilityDataHelper{
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 	        if (sQuery != null) try { if (!sQuery.isClosed()) {sQuery.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetPlatformList", meLogger, startMS, "");
+	        utilityService.LogMethod("UtilityDataHelperImpl","GetPlatformList", startMS, requestId, "");
 		}
 	}
 
-	public List<App> GetAppList() throws WallaException
+	public List<App> GetAppList(String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -123,11 +128,11 @@ public class UtilityDataHelperImpl implements UtilityDataHelper{
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 	        if (sQuery != null) try { if (!sQuery.isClosed()) {sQuery.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetAppList", meLogger, startMS, "");
+	        utilityService.LogMethod("UtilityDataHelperImpl","GetAppList", startMS, requestId, "");
 		}
 	}
 	
-	public List<Style> GetStyleList() throws WallaException
+	public List<Style> GetStyleList(String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -166,11 +171,11 @@ public class UtilityDataHelperImpl implements UtilityDataHelper{
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 	        if (sQuery != null) try { if (!sQuery.isClosed()) {sQuery.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetStyleList", meLogger, startMS, "");
+	        utilityService.LogMethod("UtilityDataHelperImpl","GetStyleList", startMS, requestId, "");
 		}
 	}
 	
-	public List<Presentation> GetPresentationList() throws WallaException
+	public List<Presentation> GetPresentationList(String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -225,11 +230,11 @@ public class UtilityDataHelperImpl implements UtilityDataHelper{
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 	        if (sQuery != null) try { if (!sQuery.isClosed()) {sQuery.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetPresentationList", meLogger, startMS, "");
+	        utilityService.LogMethod("UtilityDataHelperImpl","GetPresentationList", startMS, requestId, "");
 		}
 	}
 
-	public long GetNewId(String idType) throws WallaException
+	public long GetNewId(String idType, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -264,11 +269,11 @@ public class UtilityDataHelperImpl implements UtilityDataHelper{
 		finally {
 	        if (idSproc != null) try { idSproc.close(); } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { conn.close(); } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetNewId", meLogger, startMS, idType);
+	        utilityService.LogMethod("UtilityDataHelperImpl","GetNewId", startMS, requestId, idType);
 		}
 	}
 
-	public int GetInt(String sql) throws WallaException
+	public int GetInt(String sql, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -298,11 +303,11 @@ public class UtilityDataHelperImpl implements UtilityDataHelper{
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetInt", meLogger, startMS, sql);
+	        utilityService.LogMethod("UtilityDataHelperImpl","GetInt", startMS, requestId, sql);
 		}
 	}
 	
-	public long GetLong(String sql) throws WallaException
+	public long GetLong(String sql, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -333,11 +338,11 @@ public class UtilityDataHelperImpl implements UtilityDataHelper{
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetLong", meLogger, startMS, sql);
+	        utilityService.LogMethod("UtilityDataHelperImpl","GetLong", startMS, requestId, sql);
 		}
 	}
 		
-	public String GetString(String sql) throws WallaException
+	public String GetString(String sql, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -367,11 +372,11 @@ public class UtilityDataHelperImpl implements UtilityDataHelper{
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetString", meLogger, startMS, sql);
+	        utilityService.LogMethod("UtilityDataHelperImpl","GetString", startMS, requestId, sql);
 		}
 	}
 	
-	public Object GetValueParamString(String sql, String param) throws WallaException
+	public Object GetValueParamString(String sql, String param, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -402,11 +407,11 @@ public class UtilityDataHelperImpl implements UtilityDataHelper{
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetStringParamString", meLogger, startMS, sql);
+	        utilityService.LogMethod("UtilityDataHelperImpl","GetStringParamString", startMS, requestId, sql);
 		}
 	}
 	
-	public int ExecuteSql(String sql) throws WallaException
+	public int ExecuteSql(String sql, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -436,7 +441,7 @@ public class UtilityDataHelperImpl implements UtilityDataHelper{
 		finally {
 			if (ds != null) try { if (!ds.isClosed()) {ds.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("ExecuteSql", meLogger, startMS, sql);
+	        utilityService.LogMethod("UtilityDataHelperImpl","ExecuteSql", startMS, requestId, sql);
 		}
 	}
 
@@ -502,7 +507,6 @@ public class UtilityDataHelperImpl implements UtilityDataHelper{
 		finally {
 	        if (ps != null) try { ps.close(); } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { conn.close(); } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("AddAction", meLogger, startMS, String.valueOf(event.getId()) + " " + event.getAction());
 		}
 	}
 	
@@ -586,7 +590,81 @@ public class UtilityDataHelperImpl implements UtilityDataHelper{
 		finally {
 	        if (ps != null) try { ps.close(); } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { conn.close(); } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("AddSecurityAction", meLogger, startMS, "");
+		}
+	}
+	
+	public void LogMethodCall(LogMethodDetail detail) throws WallaException
+	{
+		long startMS = System.currentTimeMillis();
+		String sql = "";
+
+		Connection conn = null;
+		PreparedStatement ps = null;
+		try {			
+			int returnCount = 0;
+
+			conn = dataSource.getConnection();
+			conn.setAutoCommit(false);
+			
+			switch (detail.getLogMethodType())
+			{
+				case "Internal":
+					sql = "INSERT INTO [LogMethod] ([RequestId],[Object],[Method],[Duration],[StartTime],[Params])"
+							+ " VALUES (?, ?, ?, ?, ?, ?)";
+					break;
+				case "Web":
+					sql = "INSERT INTO [LogWebMethod] ([RequestId],[Object],[Method],[Duration],[StartTime],[Params],[Response],[UserId], [Session], [RequestPath])"
+							+ " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+					break;
+				case "Message":
+					sql = "";
+			}
+			
+			ps = conn.prepareStatement(sql);
+			ps.setString(1, detail.getRequestId());
+			ps.setString(2, detail.getObject());
+			ps.setString(3,  detail.getMethod());
+			ps.setLong(4, detail.getDuration());
+			ps.setTimestamp(5, new java.sql.Timestamp(detail.getStartDate().getTime()));
+			ps.setString(6, detail.getParams());
+			
+			switch (detail.getLogMethodType())
+			{
+				case "Web":
+					ps.setString(7, detail.getResponse());
+					ps.setLong(8, detail.getUserId());
+					ps.setString(9, detail.getSession());
+					ps.setString(10, detail.getRequestPath());
+					break;
+				case "Message":
+					sql = "";
+			}
+			
+			//Execute insert statement.
+			returnCount = ps.executeUpdate();
+			
+			//Validate new record was successful.
+			if (returnCount != 1)
+			{
+				conn.rollback();
+				String error = "Insert statement didn't return a success count of 1.";
+				meLogger.error(error);
+				throw new WallaException(this.getClass().getName(), "LogMethodCall", error, HttpStatus.INTERNAL_SERVER_ERROR.value()); 				
+			}
+			
+			conn.commit();
+		}
+		catch (SQLException sqlEx) {
+			if (conn != null) { try { conn.rollback(); } catch (SQLException ignoreEx) {} }
+			meLogger.error(sqlEx);
+		} 
+		catch (Exception ex) {
+			if (conn != null) { try { conn.rollback(); } catch (SQLException ignoreEx) {} }
+			meLogger.error(ex);
+		}
+		finally {
+	        if (ps != null) try { ps.close(); } catch (SQLException logOrIgnore) {}
+	        if (conn != null) try { conn.close(); } catch (SQLException logOrIgnore) {}
 		}
 	}
 	

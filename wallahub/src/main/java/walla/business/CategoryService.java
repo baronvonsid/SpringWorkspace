@@ -57,7 +57,7 @@ public class CategoryService {
 		meLogger.debug("CategoryService object instantiated.");
 	}
 	
-	public long CreateCategory(long userId, Category newCategory, CustomResponse customResponse, long userAppId)
+	public long CreateCategory(long userId, Category newCategory, CustomResponse customResponse, long userAppId, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try {
@@ -69,8 +69,8 @@ public class CategoryService {
 			}
 			
 			//New Category
-			long categoryId = utilityDataHelper.GetNewId("CategoryId");
-			categoryDataHelper.CreateCategory(userId, newCategory, categoryId);
+			long categoryId = utilityDataHelper.GetNewId("CategoryId", requestId);
+			categoryDataHelper.CreateCategory(userId, newCategory, categoryId, requestId);
 			customResponse.setResponseCode(HttpStatus.CREATED.value());
 			
 			//TODO decouple this method.  Don't think we need.
@@ -89,10 +89,10 @@ public class CategoryService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return 0;
 		}
-		finally {UserTools.LogMethod("CreateCategory", meLogger, startMS, String.valueOf(userId));}
+		finally {utilityService.LogMethod("CategoryService","CreateCategory", startMS, requestId, "");}
 	}
 
-	public int UpdateCategory(long userId, Category newCategory, long categoryId, long userAppId)
+	public int UpdateCategory(long userId, Category newCategory, long categoryId, long userAppId, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try {
@@ -108,7 +108,7 @@ public class CategoryService {
 				return HttpStatus.CONFLICT.value();
 			}
 			
-			Category existingCategory = categoryDataHelper.GetCategoryMeta(userId, categoryId);
+			Category existingCategory = categoryDataHelper.GetCategoryMeta(userId, categoryId, requestId);
 			if (existingCategory == null)
 			{
 				meLogger.warn("Couldn't return a valid Category object");
@@ -121,12 +121,12 @@ public class CategoryService {
 				return HttpStatus.CONFLICT.value();
 			}
 
-			categoryDataHelper.UpdateCategory(userId, newCategory);
+			categoryDataHelper.UpdateCategory(userId, newCategory, requestId);
 			
 			if (existingCategory.getParentId() != newCategory.getParentId())
 			{
 				//TODO decouple this method.
-				CategoryRippleUpdate(userId, categoryId);
+				CategoryRippleUpdate(userId, categoryId, requestId);
 			}
 
 			utilityService.AddAction(ActionType.UserApp, userAppId, "CatUpd", "");
@@ -140,10 +140,10 @@ public class CategoryService {
 			meLogger.error(ex);
 			return HttpStatus.INTERNAL_SERVER_ERROR.value();
 		}
-		finally {UserTools.LogMethod("UpdateCategory", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(categoryId));}
+		finally {utilityService.LogMethod("CategoryService","UpdateCategory", startMS, requestId, String.valueOf(categoryId));}
 	}
 	
-	public int DeleteCategory(long userId, Category category, long categoryId, long userAppId)
+	public int DeleteCategory(long userId, Category category, long categoryId, long userAppId, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try {
@@ -159,12 +159,12 @@ public class CategoryService {
 				return HttpStatus.BAD_REQUEST.value();
 			}
 			
-			long[] categoryIds = categoryDataHelper.GetCategoryHierachy(userId, categoryId, false);
+			long[] categoryIds = categoryDataHelper.GetCategoryHierachy(userId, categoryId, false, requestId);
 			
-			categoryDataHelper.MarkCategoryAsDeleted(userId, categoryIds, category);
+			categoryDataHelper.MarkCategoryAsDeleted(userId, categoryIds, category, requestId);
 
 			//TODO decouple this method.
-			CategoryRippleDelete(userId, categoryIds);
+			CategoryRippleDelete(userId, categoryIds, requestId);
 			utilityService.AddAction(ActionType.UserApp, userAppId, "CatDel", "");
 			
 			return HttpStatus.OK.value();
@@ -176,14 +176,14 @@ public class CategoryService {
 			meLogger.error(ex);
 			return HttpStatus.INTERNAL_SERVER_ERROR.value();
 		}
-		finally {UserTools.LogMethod("DeleteCategory", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(categoryId));}
+		finally {utilityService.LogMethod("CategoryService","DeleteCategory", startMS, requestId, String.valueOf(categoryId));}
 	}
 	
-	public Category GetCategoryMeta(long userId, long categoryId, CustomResponse customResponse)
+	public Category GetCategoryMeta(long userId, long categoryId, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try {
-			Category category = categoryDataHelper.GetCategoryMeta(userId, categoryId);
+			Category category = categoryDataHelper.GetCategoryMeta(userId, categoryId, requestId);
 			if (category == null)
 			{
 				meLogger.warn("GetCategoryMeta didn't return a valid Category object");
@@ -199,10 +199,10 @@ public class CategoryService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return null;
 		}
-		finally {UserTools.LogMethod("GetCategoryMeta", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(categoryId));}
+		finally {utilityService.LogMethod("CategoryService","GetCategoryMeta", startMS, requestId, String.valueOf(categoryId));}
 	}
 	
-	public ImageList GetCategoryWithImages(long userId, long categoryId, int imageCursor, int size, Date clientVersionTimestamp, CustomResponse customResponse)
+	public ImageList GetCategoryWithImages(long userId, long categoryId, int imageCursor, int size, Date clientVersionTimestamp, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -210,7 +210,7 @@ public class CategoryService {
 			ImageList categoryImageList = null;
 
 			//Get main category for response.
-			categoryImageList = categoryDataHelper.GetCategoryImageListMeta(userId, categoryId);
+			categoryImageList = categoryDataHelper.GetCategoryImageListMeta(userId, categoryId, requestId);
 			if (categoryImageList == null)
 			{
 				meLogger.warn("No category image list header could not be retrieved from the database.");
@@ -231,11 +231,11 @@ public class CategoryService {
 			}
 
 			//Get total count for the result set (if first request) - TODO this works for EVERY request, need to change.
-			int totalImageCount = categoryDataHelper.GetTotalImageCount(userId, categoryId);
+			int totalImageCount = categoryDataHelper.GetTotalImageCount(userId, categoryId, requestId);
 			categoryImageList.setTotalImageCount(totalImageCount);
 			if (totalImageCount > 0)
 			{
-				categoryDataHelper.GetCategoryImages(userId, imageCursor, size, categoryImageList);
+				categoryDataHelper.GetCategoryImages(userId, imageCursor, size, categoryImageList, requestId);
 			}
 			
 			customResponse.setResponseCode(HttpStatus.OK.value());
@@ -251,15 +251,15 @@ public class CategoryService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return null;
 		}
-		finally {UserTools.LogMethod("GetCategoryImageListMeta", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(categoryId));}
+		finally {utilityService.LogMethod("CategoryService","GetCategoryImageListMeta", startMS, requestId, String.valueOf(categoryId));}
 	}
 	
-	public CategoryList GetCategoryListForUser(long userId, Date clientVersionTimestamp, CustomResponse customResponse)
+	public CategoryList GetCategoryListForUser(long userId, Date clientVersionTimestamp, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try {
 			CategoryList categoryList = null;
-			Date lastUpdate = categoryDataHelper.LastCategoryListUpdate(userId);
+			Date lastUpdate = categoryDataHelper.LastCategoryListUpdate(userId, requestId);
 			if (lastUpdate == null)
 			{
 				meLogger.warn("Last updated date for category could not be retrieved.");
@@ -279,7 +279,7 @@ public class CategoryService {
 			}
 			
 			//Get category list for response.
-			categoryList = categoryDataHelper.GetUserCategoryList(userId);
+			categoryList = categoryDataHelper.GetUserCategoryList(userId, requestId);
 			if (categoryList != null)
 			{
 				Calendar lastUpdateCalendar = Calendar.getInstance();
@@ -300,16 +300,16 @@ public class CategoryService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return null;
 		}
-		finally {UserTools.LogMethod("GetCategoryListForUser", meLogger, startMS, String.valueOf(userId));}
+		finally {utilityService.LogMethod("CategoryService","GetCategoryListForUser", startMS, requestId, "");}
 	}
 
-	public int MoveToNewCategory(long userId, long categoryId, ImageIdList moveList, long userAppId)
+	public int MoveToNewCategory(long userId, long categoryId, ImageIdList moveList, long userAppId, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
 		{
 			//Retrieve existing category list.
-			long[] categoriesAffected = categoryDataHelper.GetCategoryIdFromImageMoveList(userId, moveList);
+			long[] categoriesAffected = categoryDataHelper.GetCategoryIdFromImageMoveList(userId, moveList, requestId);
 			if (categoriesAffected == null)
 			{
 				meLogger.warn("Unexpected error, No categories were identified for update.");
@@ -317,15 +317,15 @@ public class CategoryService {
 			}
 			
 			//Apply category updates to db.
-			categoryDataHelper.MoveImagesToNewCategory(userId, categoryId, moveList);
+			categoryDataHelper.MoveImagesToNewCategory(userId, categoryId, moveList, requestId);
 			
 			//TODO decouple this method.
-			CategoryRippleUpdate(userId, categoryId);
+			CategoryRippleUpdate(userId, categoryId, requestId);
 			
 			//TODO decouple this method.
 			for (int i = 0; i< categoriesAffected.length; i++)
 			{
-				CategoryRippleUpdate(userId, categoriesAffected[i]);
+				CategoryRippleUpdate(userId, categoriesAffected[i], requestId);
 			}
 			
 			utilityService.AddAction(ActionType.UserApp, userAppId, "CatMove", "");
@@ -339,15 +339,15 @@ public class CategoryService {
 			meLogger.error(ex);
 			return HttpStatus.INTERNAL_SERVER_ERROR.value();
 		}
-		finally {UserTools.LogMethod("MoveToNewCategory", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(categoryId));}
+		finally {utilityService.LogMethod("CategoryService","MoveToNewCategory", startMS, requestId, String.valueOf(categoryId));}
 	}
 	
-	public long CreateOrFindUserAppCategory(long userId, int platformId, String machineName) throws WallaException
+	public long CreateOrFindUserAppCategory(long userId, int platformId, String machineName, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		try
 		{
-			Platform platform = cachedData.GetPlatform(platformId, "", "", 0, 0);
+			Platform platform = cachedData.GetPlatform(platformId, "", "", 0, 0, requestId);
 			if (platform == null)
 			{
 				throw new WallaException("CategoryService", "CreateOrFindUserAppCategory", "Platform not found. platformId:" + platformId, HttpStatus.BAD_REQUEST.value()); 
@@ -358,7 +358,7 @@ public class CategoryService {
 				categoryName = categoryName.substring(0,30);
 			
 			String sql = "SELECT [CategoryId] FROM [Category] WHERE [SystemOwned] = 1 AND [Name] = '" + categoryName + "' AND [UserId] = " + userId;
-			long categoryId = utilityDataHelper.GetLong(sql);
+			long categoryId = utilityDataHelper.GetLong(sql, requestId);
 			if (categoryId > 1)
 			{
 				return categoryId;
@@ -366,7 +366,7 @@ public class CategoryService {
 			else
 			{
 				sql = "SELECT [CategoryId] FROM [Category] WHERE [ParentId] = 0 AND [UserId] = " + userId;
-				long parentCategoryId = utilityDataHelper.GetLong(sql);
+				long parentCategoryId = utilityDataHelper.GetLong(sql, requestId);
 				
 				if (parentCategoryId < 1)
 				{
@@ -375,13 +375,13 @@ public class CategoryService {
 				}
 				
 				Category newCategory = new Category();
-				categoryId = utilityDataHelper.GetNewId("CategoryId");
+				categoryId = utilityDataHelper.GetNewId("CategoryId", requestId);
 				newCategory.setName(categoryName);
 				newCategory.setDesc("Auto generated tag for fotos uploaded from " + machineName + " - " + platform.getShortName());
 				newCategory.setSystemOwned(true);
 				newCategory.setParentId(parentCategoryId);
 				
-				categoryDataHelper.CreateCategory(userId, newCategory, categoryId);
+				categoryDataHelper.CreateCategory(userId, newCategory, categoryId, requestId);
 				return categoryId;
 			}
 		}
@@ -389,16 +389,16 @@ public class CategoryService {
 			meLogger.error(ex);
 			throw new WallaException(ex);
 		}
-		finally { UserTools.LogMethod("CreateOrFindUserAppCategory", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(platformId)); }
+		finally { utilityService.LogMethod("CategoryService","CreateOrFindUserAppCategory", startMS, requestId, String.valueOf(platformId)); }
 	}
 	
-	public long FindDefaultUserCategory(long userId) throws WallaException
+	public long FindDefaultUserCategory(long userId, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		try
 		{
 			String sql = "SELECT MIN([CategoryId]) from Category where ParentId = (SELECT [CategoryId] FROM [Category] WHERE [ParentId] = 0 AND [UserId] = " + userId + ")";
-			long categoryId = utilityDataHelper.GetLong(sql);
+			long categoryId = utilityDataHelper.GetLong(sql, requestId);
 			if (categoryId > 1)
 			{
 				return categoryId;
@@ -413,14 +413,14 @@ public class CategoryService {
 			meLogger.error(ex);
 			throw new WallaException(ex);
 		}
-		finally { UserTools.LogMethod("FindDefaultUserCategory", meLogger, startMS, String.valueOf(userId)); }
+		finally { utilityService.LogMethod("CategoryService","FindDefaultUserCategory", startMS, requestId, ""); }
 	}
 	
 	//*************************************************************************************************************
 	//*************************************  Messaging initiated methods ******************************************
 	//*************************************************************************************************************
 	
-	public void CategoryRippleDelete(long userId, long[] categoryIds)
+	public void CategoryRippleDelete(long userId, long[] categoryIds, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -429,15 +429,15 @@ public class CategoryService {
 				Should be called when a category is deleted.
 			*/
 
-			long[] galleryIds = categoryDataHelper.GetGalleryReferencingCategory(userId, categoryIds);
+			long[] galleryIds = categoryDataHelper.GetGalleryReferencingCategory(userId, categoryIds, requestId);
 			
 			for (int i = 0; i < galleryIds.length; i++)
 			{
 				//TODO decouple
-				galleryService.RefreshGalleryImages(userId, galleryIds[i]);
+				galleryService.RefreshGalleryImages(userId, galleryIds[i], requestId);
 			}
 			
-			imageService.DeleteAllImagesCategory(userId, categoryIds);
+			imageService.DeleteAllImagesCategory(userId, categoryIds, requestId);
 		}
 		catch (WallaException wallaEx) {
 			meLogger.error("CategoryRippleDelete failed with an error");
@@ -445,10 +445,10 @@ public class CategoryService {
 		catch (Exception ex) {
 			meLogger.error("CategoryRippleDelete failed with an error", ex);
 		}
-		finally {UserTools.LogMethod("CategoryRippleDelete", meLogger, startMS, String.valueOf(userId));}
+		finally {utilityService.LogMethod("CategoryService","CategoryRippleDelete", startMS, requestId, "");}
 	}
 
-	public void CategoryRippleUpdate(long userId, long categoryId)
+	public void CategoryRippleUpdate(long userId, long categoryId, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -462,7 +462,7 @@ public class CategoryService {
 			*/
 			
 			//Category has been updated, get all categories which might be affected.
-			long[] categoryIds = categoryDataHelper.GetCategoryHierachy(userId, categoryId, true);
+			long[] categoryIds = categoryDataHelper.GetCategoryHierachy(userId, categoryId, true, requestId);
 			if (categoryIds.length == 0)
 			{
 				String error = "No categories were returned from the database.  UserId:" + userId + " CategoryId: " + categoryId;
@@ -471,9 +471,9 @@ public class CategoryService {
 			}
 				
 			//Update LastUpdated dates for each category traversed.
-			categoryDataHelper.UpdateCategoryTimeAndCount(userId, categoryIds);
+			categoryDataHelper.UpdateCategoryTimeAndCount(userId, categoryIds, requestId);
 			
-			long[] galleryIds = categoryDataHelper.GetGalleryReferencingCategory(userId, categoryIds);
+			long[] galleryIds = categoryDataHelper.GetGalleryReferencingCategory(userId, categoryIds, requestId);
 			if (galleryIds == null || galleryIds.length == 0)
 			{
 				String error = "No galleries were returned from the database.  UserId:" + userId;;
@@ -484,7 +484,7 @@ public class CategoryService {
 			for (int i = 0; i < galleryIds.length; i++)
 			{
 				//TODO decouple
-				galleryService.RefreshGalleryImages(userId, galleryIds[i]);
+				galleryService.RefreshGalleryImages(userId, galleryIds[i], requestId);
 			}
 		}
 		catch (WallaException wallaEx) {
@@ -493,7 +493,7 @@ public class CategoryService {
 		catch (Exception ex) {
 			meLogger.error("CategoryRippleUpdate failed with an error", ex);
 		}
-		finally {UserTools.LogMethod("CategoryRippleUpdate", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(categoryId));}
+		finally {utilityService.LogMethod("CategoryService","CategoryRippleUpdate", startMS, requestId, String.valueOf(categoryId));}
 	}
 
 	

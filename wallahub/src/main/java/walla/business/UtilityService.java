@@ -5,6 +5,7 @@ import java.util.*;
 import javax.annotation.Resource;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 
 import walla.datatypes.auto.*;
 import walla.datatypes.java.*;
@@ -23,6 +24,9 @@ import org.springframework.beans.factory.annotation.Value;
 @Service("UtilityService")
 public class UtilityService {
 
+	@Value( "${logWebMethods.enabled}" ) private boolean logWebMethodsEnabled;
+	//@Value( "${logWebFormMethods.enabled}" ) private boolean logWebFormMethodsEnabled;
+	@Value( "${logMethods.enabled}" ) private boolean logMethodsEnabled;
 	@Value( "${messaging.enabled}" ) private boolean messagingEnabled;
 	
 	@Resource(name="utilityDataHelper") private UtilityDataHelperImpl utilityDataHelper;
@@ -40,7 +44,112 @@ public class UtilityService {
 		meLogger.debug("UtilityService object instantiated.");
 	}
 	
+	//UserTools.LogWebFormMethod("SettingsAccountPost", meLogger, startMS, request, responseJsp)
+	public void LogWebMethod(String object, String method, long startMS, HttpServletRequest request, String requestId, String response)
+	{
+		try
+		{
+			if (logWebMethodsEnabled)
+			{
+				long userId = -1;
+				String sessionId = "no session";
+				
+				HttpSession session = request.getSession(false);
+				if (session != null)
+				{
+					sessionId = session.getId();
+					CustomSessionState customSession = (CustomSessionState)session.getAttribute("CustomSessionState");
+					if (customSession != null)
+					{
+						userId = customSession.getUserId();
+					}
+				}
+
+				if (object != null && object.length() > 30)
+					object = object.substring(0,30);
+
+				if (method != null && method.length() > 30)
+					method = method.substring(0,30);
+				
+				String requestPath = request.getPathInfo();
+				if (requestPath != null && requestPath.length() > 200)
+					requestPath = requestPath.substring(requestPath.length() - 200);
+				
+				String params = request.getQueryString();
+				if (params != null && params.length() > 200)
+					params = params.substring(params.length() - 200);
+				
+				LogMethodDetail detail = new LogMethodDetail();
+				detail.setLogMethodType(LogMethodType.Web.name());
+				detail.setSession(sessionId);
+				detail.setUserId(userId);
+				detail.setRequestId(requestId);
+				detail.setRequestPath(requestPath);
+				detail.setParams(params);
+				detail.setObject(object);
+				detail.setMethod(method);
+				detail.setDuration(System.currentTimeMillis() - startMS);
+				detail.setResponse(response);
+				
+				Date startDate = new Date();
+				startDate.setTime(startMS);
+				detail.setStartDate(startDate);
+				
+				if (!messagingEnabled)
+				{
+					utilityDataHelper.LogMethodCall(detail);
+				}
+			}
+		}
+		catch (WallaException wallaEx) {
+			meLogger.error("Unexpected error when logging a web method call");
+		}
+		catch (Exception ex) {
+			meLogger.error("Unexpected error when logging a web method call", ex);
+		}
+	}
 	
+	public void LogMethod(String object, String method, long startMS, String requestId, String params)
+	{
+		try
+		{
+			if (logMethodsEnabled)
+			{
+				if (object != null && object.length() > 30)
+					object = object.substring(0,30);
+
+				if (method != null && method.length() > 30)
+					method = method.substring(0,30);
+
+				if (params != null && params.length() > 30)
+					params = params.substring(0,30);
+				
+				LogMethodDetail detail = new LogMethodDetail();
+				detail.setLogMethodType(LogMethodType.Internal.name());
+				detail.setRequestId(requestId);
+				detail.setObject(object);
+				detail.setMethod(method);
+				detail.setDuration(System.currentTimeMillis() - startMS);
+				
+				Date startDate = new Date();
+				startDate.setTime(startMS);
+				detail.setStartDate(startDate);
+				
+				detail.setParams(params);
+				
+				if (!messagingEnabled)
+				{
+					utilityDataHelper.LogMethodCall(detail);
+				}
+			}
+		}
+		catch (WallaException wallaEx) {
+			meLogger.error("Unexpected error when logging a method call");
+		}
+		catch (Exception ex) {
+			meLogger.error("Unexpected error when logging a method call", ex);
+		}
+	}
 	
 	
 	public void AddAction(ActionType actionType, long id, String action, String extraInfo)

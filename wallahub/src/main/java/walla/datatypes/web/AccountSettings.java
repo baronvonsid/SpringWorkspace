@@ -87,8 +87,8 @@ public class AccountSettings {
 	
 	private ArrayList<EmailRef> emails = null;
 	
-	private String action = null;
-	private String actionEmail = null;
+	//private String action = null;
+	//private String actionEmail = null;
 	
 	public String getProfileName()
 	{ return this.profileName; }
@@ -114,7 +114,7 @@ public class AccountSettings {
 	public void setTimezone(String value)
 	{ this.timezone = value; }
 	
-	public boolean isNewsletter()
+	public boolean getNewsletter()
 	{ return this.newsletter; }
 	
 	public void setNewsletter(Boolean value)
@@ -156,18 +156,20 @@ public class AccountSettings {
 	public void setCurrentPassword(String value)
 	{ this.currentPassword = value; }
 	
+	/*
 	public String getAction()
 	{ return this.action; }
 	
 	public void setAction(String value)
 	{ this.action = value; }
 
+	
 	public String getActionEmail()
 	{ return this.actionEmail; }
 	
 	public void setActionEmail(String value)
 	{ this.actionEmail = value; }
-	
+*/	
     public List<EmailRef> getEmails() {
         if (emails == null) {
             emails = new ArrayList<EmailRef>();
@@ -190,7 +192,7 @@ public class AccountSettings {
 	        this.address = value;
 	    }
 	
-	    public Boolean isPrinciple() {
+	    public Boolean getPrinciple() {
 	        return principle;
 	    }
 	
@@ -198,7 +200,7 @@ public class AccountSettings {
 	        this.principle = value;
 	    }
 	
-	    public Boolean isSecondary() {
+	    public Boolean getSecondary() {
 	        return secondary;
 	    }
 	
@@ -206,7 +208,7 @@ public class AccountSettings {
 	        this.secondary = value;
 	    }
 	
-	    public Boolean isVerified() {
+	    public Boolean getVerified() {
 	        return verified;
 	    }
 	

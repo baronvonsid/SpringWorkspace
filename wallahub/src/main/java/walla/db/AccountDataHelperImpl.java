@@ -1,5 +1,6 @@
 package walla.db;
 
+import javax.annotation.Resource;
 import javax.sql.DataSource;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
@@ -23,6 +24,7 @@ import java.util.List;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Repository;
 
+import walla.business.UtilityService;
 import walla.datatypes.auto.*;
 import walla.datatypes.java.*;
 import walla.utils.*;
@@ -33,6 +35,9 @@ import org.springframework.http.HttpStatus;
 public class AccountDataHelperImpl implements AccountDataHelper {
 
 	private DataSource dataSource;
+	
+	@Resource(name="utilityServicePooled")
+	private UtilityService utilityService;
 	
 	private static final Logger meLogger = Logger.getLogger(AccountDataHelperImpl.class);
 
@@ -45,7 +50,7 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		this.dataSource = dataSource;
 	}
 	
-	public long CreateAccount(Account newAccount, String passwordHash, String salt) throws WallaException
+	public long CreateAccount(Account newAccount, String passwordHash, String salt, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -67,7 +72,7 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			createSproc.setInt(5, newAccount.getAccountType());
 			createSproc.setString(6, newAccount.getCountry());
 			createSproc.setString(7, newAccount.getTimezone());
-			createSproc.setBoolean(8, newAccount.isNewsletter());
+			createSproc.setBoolean(8, newAccount.getNewsletter());
 			createSproc.registerOutParameter(9, Types.INTEGER);
 			createSproc.execute();
 			    
@@ -86,11 +91,11 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		finally {
 	        if (createSproc != null) try { createSproc.close(); } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { conn.close(); } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("CreateAccount", meLogger, startMS, newAccount.getProfileName());
+	        utilityService.LogMethod("AccountDataHelperImpl","CreateAccount", startMS, requestId, newAccount.getProfileName());
 		}
 	}
 
-	public void UpdateAccount(Account account) throws WallaException
+	public void UpdateAccount(Account account, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -109,7 +114,7 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			ps.setString(1, account.getDesc());
 			ps.setString(2, account.getCountry());
 			ps.setString(3, account.getTimezone());
-			ps.setBoolean(4, account.isNewsletter());
+			ps.setBoolean(4, account.getNewsletter());
 			ps.setLong(5, account.getId());
 			ps.setInt(6, account.getVersion());
 			
@@ -138,11 +143,11 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		finally {
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { conn.close(); } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("UpdateAccount", meLogger, startMS, String.valueOf(account.getId()));
+	        utilityService.LogMethod("AccountDataHelperImpl","UpdateAccount", startMS, requestId, String.valueOf(account.getId()));
 		}
 	}
 
-	public void UpdatePassword(long userId, String passwordHash, String salt) throws WallaException
+	public void UpdatePassword(long userId, String passwordHash, String salt, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -185,12 +190,11 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		finally {
 	        if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("UpdatePassword", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("AccountDataHelperImpl","UpdatePassword", startMS, requestId, "");
 		}
 	}
 	
-
-	public void UpdateAccountStatus(long userId, AccountStatus status) throws WallaException
+	public void UpdateAccountStatus(long userId, AccountStatus status, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -252,11 +256,11 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		finally {
 	        if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("UpdateAccountStatus", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("AccountDataHelperImpl","UpdateAccountStatus", startMS, requestId, status.name());
 		}
 	}
 
-	public String ShouldAccountBeLive(long userId) throws WallaException
+	public String ShouldAccountBeLive(long userId, String requestId) throws WallaException
 	{
 		//Checks to see if bank details and email are OK, and account can accept images.
 		//TODO add banking stuff.
@@ -317,11 +321,11 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 	        if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("ShouldAccountBeLive", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("AccountDataHelperImpl","ShouldAccountBeLive", startMS, requestId, "");
 		}
 	}
 	
-	public boolean ValidateEmailConfirm(long userId, String requestValidationString, CustomResponse customResponse)
+	public boolean ValidateEmailConfirm(long userId, String requestValidationString, CustomResponse customResponse, String requestId)
 	{
 		//Return email address if correctly validated.
 		long startMS = System.currentTimeMillis();
@@ -385,11 +389,11 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("ValidateEmailConfirm", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("AccountDataHelperImpl","ValidateEmailConfirm", startMS, requestId, requestValidationString);
 		}
 	}
 
-	public void AddEmail(long userId, String email, boolean principle, boolean secondary) throws WallaException
+	public void AddEmail(long userId, String email, boolean principle, boolean secondary, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		String sql = "INSERT INTO [Email] ([UserId],[Address],[Active],[Principle],[Secondary],[Verified])"
@@ -436,11 +440,11 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		finally {
 	        if (ps != null) try { ps.close(); } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { conn.close(); } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("AddEmail", meLogger, startMS, String.valueOf(userId) + " " + email);
+	        utilityService.LogMethod("AccountDataHelperImpl","AddEmail", startMS, requestId, email);
 		}
 	}
 	
-	public void UpdateEmail(long userId, String email, EmailAction action, String validationString) throws WallaException
+	public void UpdateEmail(long userId, String email, EmailAction action, String validationString, String requestId) throws WallaException
 	{
 
 		long startMS = System.currentTimeMillis();
@@ -554,10 +558,10 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 	        if (psTwo != null) try { if (!psTwo.isClosed()) {psTwo.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
 		}
-		UserTools.LogMethod("UpdateEmailStatus", meLogger, startMS, String.valueOf(userId));
+		utilityService.LogMethod("AccountDataHelperImpl","UpdateEmailStatus", startMS, requestId, email);
 	}
 	
-	public boolean EmailIsUnique(long userId, String email) throws WallaException
+	public boolean EmailIsUnique(long userId, String email, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -595,7 +599,7 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 	        if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("EmailIsUnique", meLogger, startMS, String.valueOf(userId) + " " + email);
+	        utilityService.LogMethod("AccountDataHelperImpl","EmailIsUnique", startMS, requestId, email);
 		}
 	}
 	
@@ -630,12 +634,12 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 	        if (sQuery != null) try { if (!sQuery.isClosed()) {sQuery.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("ProfileNameIsUnique", meLogger, startMS, profileName);
+	        utilityService.LogMethod("AccountDataHelperImpl","ProfileNameIsUnique", startMS, requestId, profileName);
 		}
 	}
 	*/
 	
-	public Account GetAccountMeta(long userId)
+	public Account GetAccountMeta(long userId, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -739,11 +743,11 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetAccountMeta", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("AccountDataHelperImpl","GetAccountMeta", startMS, requestId, "");
 		}
 	}
 
-	public AccountStorage GetAccountStorage(long userId)
+	public AccountStorage GetAccountStorage(long userId, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -860,11 +864,11 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetAccountStorage", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("AccountDataHelperImpl","GetAccountStorage", startMS, requestId, "");
 		}
 	}
 	
-	public void CreateUserApp(long userId, UserApp userApp) throws WallaException
+	public void CreateUserApp(long userId, UserApp userApp, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		String sql = "INSERT INTO [dbo].[UserApp]([UserAppId],[PlatformId],[AppId],[MachineName],[LastUsed],[Blocked],[TagId],[UserAppCategoryId],"
@@ -893,7 +897,7 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			ps.setInt(10, userApp.getThumbCacheSizeMB());
 			ps.setInt(11, userApp.getMainCopyCacheSizeMB());
 			ps.setString(12, userApp.getMainCopyFolder());
-			ps.setBoolean(13, userApp.isAutoUpload());
+			ps.setBoolean(13, userApp.getAutoUpload());
 			ps.setString(14, userApp.getAutoUploadFolder());
 			ps.setLong(15, userId);
 			
@@ -923,11 +927,11 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		finally {
 	        if (ps != null) try { ps.close(); } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { conn.close(); } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("CreateUserApp", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("AccountDataHelperImpl","CreateUserApp", startMS, requestId, "");
 		}
 	}
 	
-	public void UpdateUserApp(long userId, UserApp userApp) throws WallaException
+	public void UpdateUserApp(long userId, UserApp userApp, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -954,7 +958,7 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			ps.setInt(6, userApp.getThumbCacheSizeMB());
 			ps.setInt(7, userApp.getMainCopyCacheSizeMB());
 			ps.setString(8, userApp.getMainCopyFolder());
-			ps.setBoolean(9, userApp.isAutoUpload());
+			ps.setBoolean(9, userApp.getAutoUpload());
 			ps.setString(10, userApp.getAutoUploadFolder());
 			
 			ps.setLong(11, userId);
@@ -986,11 +990,11 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		finally {
 	        if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("UpdateUserApp", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(userApp.getId()));
+	        utilityService.LogMethod("AccountDataHelperImpl","UpdateUserApp", startMS, requestId, String.valueOf(userApp.getId()));
 		}
 	}
 	
-	public long FindExistingUserApp(long userId, int appId, int platformId, String machineName) throws WallaException
+	public long FindExistingUserApp(long userId, int appId, int platformId, String machineName, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -1026,11 +1030,11 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("FindExistingUserApp", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("AccountDataHelperImpl","FindExistingUserApp", startMS, requestId, machineName);
 		}
 	}
 	
-	public UserApp GetUserApp(long userId, long userAppId) throws WallaException
+	public UserApp GetUserApp(long userId, long userAppId, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -1101,11 +1105,11 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetUserApp", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(userAppId));
+	        utilityService.LogMethod("AccountDataHelperImpl","GetUserApp", startMS, requestId, String.valueOf(userAppId));
 		}
 	}
 
-	public void UserAppBlockUnblock(long userId, long userAppId, boolean block) throws WallaException
+	public void UserAppBlockUnblock(long userId, long userAppId, boolean block, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -1149,11 +1153,11 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		finally {
 	        if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("UserAppBlockUnblock", meLogger, startMS, String.valueOf(userAppId));
+	        utilityService.LogMethod("AccountDataHelperImpl","UserAppBlockUnblock", startMS, requestId, String.valueOf(userAppId));
 		}
 	}
 	
-	public LogonState GetLogonState(String userName)
+	public LogonState GetLogonState(String userName, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -1199,11 +1203,11 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetLogonState", meLogger, startMS, userName);
+	        utilityService.LogMethod("AccountDataHelperImpl","GetLogonState", startMS, requestId, userName);
 		}
 	}
 	
-	public void UpdateLogonState(long userId, int failedLoginCount, Date failedLoginLast) throws WallaException
+	public void UpdateLogonState(long userId, int failedLoginCount, Date failedLoginLast, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -1253,11 +1257,11 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		finally {
 	        if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("UpdateLogonState", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("AccountDataHelperImpl","UpdateLogonState", startMS, requestId, "");
 		}
 	}
 	
-	public void UpdateTempSalt(long userId, String salt) throws WallaException
+	public void UpdateTempSalt(long userId, String salt, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -1299,11 +1303,11 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		finally {
 	        if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("UpdateTempSalt", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("AccountDataHelperImpl","UpdateTempSalt", startMS, requestId, "");
 		}
 	}
 	
-	public AccountActionSummary GetAccountActions(long userId)
+	public AccountActionSummary GetAccountActions(long userId, String requestId)
 	{
 		/*
 		SELECT ACT.[Description] as ActionDesc, AA.[ActionDateTime], COUNT(1) AS NumTimes
@@ -1473,7 +1477,7 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			for (int i = 0; i < summary.getUserAppRef().size(); i++)
 			{
 				AccountActionSummary.UserAppRef current = summary.getUserAppRef().get(i);
-				if (!current.isBlocked())
+				if (!current.getBlocked())
 				{
 					ps = conn.prepareStatement(selectSql);
 					ps.setLong(1, current.getUserAppId());
@@ -1513,7 +1517,7 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetAccountActions", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("AccountDataHelperImpl","GetAccountActions", startMS, requestId, "");
 		}
 		
 	}

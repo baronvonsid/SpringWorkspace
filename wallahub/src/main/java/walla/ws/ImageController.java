@@ -98,6 +98,9 @@ public class ImageController {
 	@Resource(name="imageServicePooled")
 	private ImageService imageService;
 	
+	@Resource(name="utilityServicePooled")
+	private UtilityService utilityService;
+	
 	@Autowired
 	private ServletContext servletContext;
 
@@ -124,6 +127,7 @@ public class ImageController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -138,7 +142,7 @@ public class ImageController {
 			//Use status to work if create or update
 			if (imageMeta.getStatus() == 4)
 			{
-				responseCode = imageService.CreateUpdateImageMeta(customSession.getUserId(), imageMeta, imageId, customSession.getUserAppId());	
+				responseCode = imageService.CreateUpdateImageMeta(customSession.getUserId(), imageMeta, imageId, customSession.getUserAppId(), requestId);	
 			}
 			else if (imageMeta.getStatus() == 1)
 			{
@@ -158,7 +162,7 @@ public class ImageController {
 					synchronized(customSession) {
 						customSession.getUploadFilesReceived().remove(foundIndex);
 					}
-					responseCode = imageService.CreateUpdateImageMeta(customSession.getUserId(), imageMeta, imageId, customSession.getUserAppId());
+					responseCode = imageService.CreateUpdateImageMeta(customSession.getUserId(), imageMeta, imageId, customSession.getUserAppId(), requestId);
 				}
 				else
 				{
@@ -177,7 +181,7 @@ public class ImageController {
 		catch (Exception ex) {
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogWebMethod("CreateUpdateImageMeta", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("ImageController","CreateUpdateImageMeta", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	//  GET - /{profileName}/image/{imageId}/meta
@@ -191,6 +195,7 @@ public class ImageController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -203,7 +208,7 @@ public class ImageController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			ImageMeta responseImageMeta = imageService.GetImageMeta(customSession.getUserId(), imageId, customResponse);
+			ImageMeta responseImageMeta = imageService.GetImageMeta(customSession.getUserId(), imageId, customResponse, requestId);
 			
 			responseCode = customResponse.getResponseCode();
 			return responseImageMeta;
@@ -212,7 +217,7 @@ public class ImageController {
 			meLogger.error(ex);
 			return null;
 		}
-		finally { UserTools.LogWebMethod("GetImageMeta", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("ImageController","GetImageMeta", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	//  DELETE /{profileName}/image/{imageId}
@@ -224,6 +229,7 @@ public class ImageController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -242,12 +248,12 @@ public class ImageController {
 			imagesToDelete.setImages(new ImageList.Images());
 			imagesToDelete.getImages().getImageRef().add(toDelete);
 			
-			responseCode = imageService.DeleteImages(customSession.getUserId(), imagesToDelete);
+			responseCode = imageService.DeleteImages(customSession.getUserId(), imagesToDelete, requestId);
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogWebMethod("DeleteImage", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("ImageController","DeleteImage", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	//  DELETE /{profileName}/images
@@ -259,6 +265,7 @@ public class ImageController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -270,12 +277,12 @@ public class ImageController {
 				return;
 			}
 	
-			responseCode = imageService.DeleteImages(customSession.getUserId(), imagesToDelete);
+			responseCode = imageService.DeleteImages(customSession.getUserId(), imagesToDelete, requestId);
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogWebMethod("DeleteImageBulk", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("ImageController","DeleteImageBulk", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	//  POST /image
@@ -287,6 +294,7 @@ public class ImageController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -307,10 +315,10 @@ public class ImageController {
 				return null;
 			}
 			
-			long newImageId = imageService.GetImageId(customSession.getUserId());
+			long newImageId = imageService.GetImageId(requestId);
 			if (newImageId > 0)
 			{
-				if (!SaveFileToQue(customSession.getUserId(), newImageId, request.getInputStream()))
+				if (!SaveFileToQue(customSession.getUserId(), newImageId, request.getInputStream(), requestId))
 				{
 					responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 					meLogger.warn("UploadImage request failed,  no image could be saved.");
@@ -335,7 +343,7 @@ public class ImageController {
 			meLogger.error(ex);
 			return null;
 		}
-		finally { UserTools.LogWebMethod("UploadImage", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("ImageController","UploadImage", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 
 	//  GET /{type}/{identity}/{imageCursor}/{size}
@@ -353,6 +361,7 @@ public class ImageController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		Date clientVersionTimestamp = null;
 		try
@@ -377,7 +386,7 @@ public class ImageController {
 			if (paramSectionId != null)
 				sectionId = Long.parseLong(paramSectionId);
 
-			ImageList responseImageList = imageService.GetImageList(customSession.getUserId(), type, identity, sectionId, imageCursor, size, clientVersionTimestamp, customResponse);
+			ImageList responseImageList = imageService.GetImageList(customSession.getUserId(), type, identity, sectionId, imageCursor, size, clientVersionTimestamp, customResponse, requestId);
 			responseCode = customResponse.getResponseCode();
 
 			return responseImageList;
@@ -386,7 +395,7 @@ public class ImageController {
 			meLogger.error(ex);
 			return null;
 		}
-		finally { UserTools.LogWebMethod("GetImageList", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("ImageController","GetImageList", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 
 	//  GET /image/image/uploadstatus
@@ -401,6 +410,7 @@ public class ImageController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -413,7 +423,7 @@ public class ImageController {
 			}
 
 			CustomResponse customResponse = new CustomResponse();
-			UploadStatusList uploadStatusList = imageService.GetUploadStatusList(customSession.getUserId(), imageIdList, customSession.getUploadFilesReceived(),customResponse);
+			UploadStatusList uploadStatusList = imageService.GetUploadStatusList(customSession.getUserId(), imageIdList, customSession.getUploadFilesReceived(),customResponse, requestId);
 			responseCode = customResponse.getResponseCode();
 
 			return uploadStatusList;
@@ -422,7 +432,7 @@ public class ImageController {
 			meLogger.error(ex);
 			return null;
 		}
-		finally { UserTools.LogWebMethod("GetUploadStatus", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("ImageController","GetUploadStatus", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	//GET /image/{imageId}/original
@@ -435,6 +445,7 @@ public class ImageController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -448,7 +459,7 @@ public class ImageController {
 
 			File file = null;
 			CustomResponse customResponse = new CustomResponse();
-			ImageMeta responseImageMeta = imageService.GetImageMeta(customSession.getUserId(), imageId,customResponse);
+			ImageMeta responseImageMeta = imageService.GetImageMeta(customSession.getUserId(), imageId,customResponse, requestId);
 			responseCode = customResponse.getResponseCode();
 			
         	if (responseCode == HttpStatus.OK.value())
@@ -461,20 +472,20 @@ public class ImageController {
         		}
         		else
         		{
-        			file = imageService.GetOriginalImageFile(customSession.getUserId(), imageId, customResponse);
+        			file = imageService.GetOriginalImageFile(customSession.getUserId(), imageId, customResponse, requestId);
 	        		response.setHeader("Content-Disposition","attachment;filename=" + imageId + "." + responseImageMeta.getFormat());
 	        		
 	        		if (file != null)
 	        			UserTools.PopulateServletStream(file, response.getOutputStream());
 	        		
-	        		UserTools.DeleteFile(file.getPath().toString(), meLogger);
+	        		UserTools.DeleteFile(file.getPath().toString(), utilityService, requestId);
 	        	}
         	}
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogWebMethod("GetOriginalImage", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("ImageController","GetOriginalImage", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	
@@ -488,6 +499,7 @@ public class ImageController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -505,7 +517,7 @@ public class ImageController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			byte[] imageArray = imageService.GetMainCopyImageFile(customSession.getUserId(), imageId, false, customResponse);
+			byte[] imageArray = imageService.GetMainCopyImageFile(customSession.getUserId(), imageId, false, customResponse, requestId);
 			responseCode = customResponse.getResponseCode();
 			
 			if (imageArray != null && imageArray.length > 0)
@@ -519,7 +531,7 @@ public class ImageController {
 		catch (Exception ex) {
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogWebMethod("GetMainCopyImage", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("ImageController","GetMainCopyImage", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	//GET /{profileName}/image/{imageId}/{width}/{height}
@@ -536,6 +548,7 @@ public class ImageController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -553,7 +566,7 @@ public class ImageController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			byte[] imageArray = imageService.GetScaledImageFile(customSession.getUserId(), imageId, width, height, false, customResponse);
+			byte[] imageArray = imageService.GetScaledImageFile(customSession.getUserId(), imageId, width, height, false, customResponse, requestId);
 			responseCode = customResponse.getResponseCode();
 			
 			if (imageArray != null && imageArray.length > 0)
@@ -588,7 +601,7 @@ public class ImageController {
 		catch (Exception ex) {
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogWebMethod("GetImage", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("ImageController","GetImage", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	//GET /{profileName}/appimage/{imageRef}/{width}/{height}
@@ -603,6 +616,7 @@ public class ImageController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -615,7 +629,7 @@ public class ImageController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			byte[] imageArray = imageService.GetAppImageFile(imageRef, width, height, customResponse);
+			byte[] imageArray = imageService.GetAppImageFile(imageRef, width, height, customResponse, requestId);
 			responseCode = customResponse.getResponseCode();
 			
 			if (imageArray != null && imageArray.length > 0)
@@ -628,7 +642,7 @@ public class ImageController {
 		catch (Exception ex) {
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogWebMethod("GetAppImage", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("ImageController","GetAppImage", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 
 	//GET /{profileName}/imagepreview/{imageId}/maincopy
@@ -641,6 +655,7 @@ public class ImageController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		String message = "";
 		try
@@ -662,7 +677,7 @@ public class ImageController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			byte[] imageArray = imageService.GetMainCopyImageFile(0, imageId, true, customResponse);
+			byte[] imageArray = imageService.GetMainCopyImageFile(0, imageId, true, customResponse, requestId);
 			responseCode = customResponse.getResponseCode();
 			
 			if (imageArray != null && imageArray.length > 0)
@@ -675,7 +690,7 @@ public class ImageController {
 		catch (Exception ex) {
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogWebMethod("GetPreviewMainCopyImage", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("ImageController","GetPreviewMainCopyImage", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 
 	//GET /{profileName}/imagepreview/{imageId}/{width}/{height}
@@ -690,6 +705,7 @@ public class ImageController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		String message = "";
 		
@@ -710,15 +726,9 @@ public class ImageController {
 					return;
 				}
 			}
-			
-			if (imageId == 1)
-			{
-				String simon = "simon";
-				
-			}
-			
+
 			CustomResponse customResponse = new CustomResponse();
-			byte[] imageArray = imageService.GetScaledImageFile(0, imageId, width, height, true, customResponse);
+			byte[] imageArray = imageService.GetScaledImageFile(0, imageId, width, height, true, customResponse, requestId);
 			responseCode = customResponse.getResponseCode();
 			
 			if (imageArray != null && imageArray.length > 0)
@@ -730,7 +740,7 @@ public class ImageController {
 		catch (Exception ex) {
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogWebMethod("GetPreviewImage", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("ImageController","GetPreviewImage", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	
@@ -738,7 +748,7 @@ public class ImageController {
 	//***************************************
 	
 	
-	private boolean SaveFileToQue(long userId, long imageId, InputStream inputStream)
+	private boolean SaveFileToQue(long userId, long imageId, InputStream inputStream, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		FileOutputStream outputStream = null;
@@ -774,13 +784,15 @@ public class ImageController {
 		finally { 
 			if (outputStream != null) try { outputStream.close(); } catch (Exception logOrIgnore) {}
 			if (inputStream != null) try { inputStream.close(); } catch (Exception logOrIgnore) {}
-			UserTools.LogMethod("SaveFileToTemp", meLogger, startMS, "" + imageId); 
+			utilityService.LogMethod("ImageController", "SaveFileToTemp", startMS, requestId, "" + imageId); 
 		}
 	}
 
+	/*
 	private boolean SaveFileToTemptodelete(long userId, long imageId, InputStream inputStream)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		ZipInputStream zipIs = null;
 		FileOutputStream outputStream = null;
         try {
@@ -816,9 +828,10 @@ public class ImageController {
 		finally { 
 			if (outputStream != null) try { outputStream.close(); } catch (Exception logOrIgnore) {}
 			if (zipIs != null) try { zipIs.close(); } catch (Exception logOrIgnore) {}
-			UserTools.LogMethod("SaveFileToTemp", meLogger, startMS, "" + imageId); 
+			UserTools.LogMethod("SaveFileToTemp", meLogger, startMS, String.valueOf(imageId)); 
 		}
 	}
+	*/
 
 }
 

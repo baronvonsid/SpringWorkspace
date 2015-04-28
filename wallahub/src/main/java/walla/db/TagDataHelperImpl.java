@@ -1,5 +1,6 @@
 package walla.db;
 
+import javax.annotation.Resource;
 import javax.sql.DataSource;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
@@ -23,6 +24,7 @@ import java.util.List;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Repository;
 
+import walla.business.UtilityService;
 import walla.datatypes.auto.*;
 import walla.datatypes.java.*;
 import walla.utils.*;
@@ -36,6 +38,9 @@ public class TagDataHelperImpl implements TagDataHelper {
 	
 	private static final Logger meLogger = Logger.getLogger(TagDataHelperImpl.class);
 
+	@Resource(name="utilityServicePooled")
+	private UtilityService utilityService;
+	
 	public TagDataHelperImpl() {
 		meLogger.debug("TagDataHelperImpl object instantiated.");
 	}
@@ -45,7 +50,7 @@ public class TagDataHelperImpl implements TagDataHelper {
 		this.dataSource = dataSource;
 	}
 	
-	public void CreateTag(long userId, Tag newTag, long newId) throws WallaException
+	public void CreateTag(long userId, Tag newTag, long newId, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		String sql = "INSERT INTO [Tag] ([TagId],[Name],[Description],[SystemOwned], "
@@ -67,7 +72,7 @@ public class TagDataHelperImpl implements TagDataHelper {
 			ps.setLong(1, newId);
 			ps.setString(2, newTag.getName());
 			ps.setString(3, newTag.getDesc());
-			ps.setBoolean(4, newTag.isSystemOwned());
+			ps.setBoolean(4, newTag.getSystemOwned());
 			ps.setLong(5, userId);
 			
 			//Execute insert statement.
@@ -97,11 +102,11 @@ public class TagDataHelperImpl implements TagDataHelper {
 	        if (ps != null) try { ps.close(); } catch (SQLException logOrIgnore) {}
 	        if (bs != null) try { bs.close(); } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { conn.close(); } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("CreateTag", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("TagDataHelperImpl","CreateTag", startMS, requestId, String.valueOf(newId));
 		}
 	}
 	
-	public void UpdateTag(long userId, Tag existingTag) throws WallaException
+	public void UpdateTag(long userId, Tag existingTag, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -147,11 +152,11 @@ public class TagDataHelperImpl implements TagDataHelper {
 		finally {
 	        if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("UpdateTag", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("TagDataHelperImpl","UpdateTag", startMS, requestId, String.valueOf(existingTag.getId()));
 		}
 	}
 	
-	public void DeleteTag(long userId, long tagId, int version, String tagName) throws WallaException
+	public void DeleteTag(long userId, long tagId, int version, String tagName, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -213,11 +218,11 @@ public class TagDataHelperImpl implements TagDataHelper {
 	        if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (us != null) try { if (!us.isClosed()) {us.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("DeleteTag", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("TagDataHelperImpl","DeleteTag", startMS, requestId, String.valueOf(tagId));
 		}
 	}
 	
-	public void DeleteTagReferences(long userId, long tagId) throws WallaException
+	public void DeleteTagReferences(long userId, long tagId, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -249,12 +254,12 @@ public class TagDataHelperImpl implements TagDataHelper {
 		finally {
 	        if (us != null) try { if (!us.isClosed()) {us.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("DeleteTagReferences", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("TagDataHelperImpl","DeleteTagReferences", startMS, requestId, String.valueOf(tagId));
 		}
 		
 	}
 	
-	public Tag GetTagMeta(long userId, String tagName) throws WallaException
+	public Tag GetTagMeta(long userId, String tagName, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -300,11 +305,11 @@ public class TagDataHelperImpl implements TagDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetTagMeta", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("TagDataHelperImpl","GetTagMeta", startMS, requestId, tagName);
 		}
 	}
 	
-	public ImageList GetTagImageListMeta(long userId, String tagName) throws WallaException
+	public ImageList GetTagImageListMeta(long userId, String tagName, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -356,11 +361,11 @@ public class TagDataHelperImpl implements TagDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetTagImageListMeta", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("TagDataHelperImpl","GetTagImageListMeta", startMS, requestId, tagName);
 		}
 	}
 	
-	public Date LastTagListUpdate(long userId) throws WallaException
+	public Date LastTagListUpdate(long userId, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -394,11 +399,11 @@ public class TagDataHelperImpl implements TagDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 	        if (sQuery != null) try { if (!sQuery.isClosed()) {sQuery.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("LastTagListUpdate", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("TagDataHelperImpl","LastTagListUpdate", startMS, requestId, "");
 		}
 	}
 
-	public int xxxGetTotalImageCount(long userId, long tagId) throws WallaException
+	public int xxxGetTotalImageCount(long userId, long tagId, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -436,11 +441,11 @@ public class TagDataHelperImpl implements TagDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetTotalImageCount", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("TagDataHelperImpl","GetTotalImageCount", startMS, requestId, String.valueOf(tagId));
 		}
 	}
 	
-	public void GetTagImages(long userId, int imageCursor, int imageCount, ImageList tagImageList) throws WallaException
+	public void GetTagImages(long userId, int imageCursor, int imageCount, ImageList tagImageList, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -519,11 +524,11 @@ public class TagDataHelperImpl implements TagDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetTagImages", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("TagDataHelperImpl","GetTagImages", startMS, requestId, String.valueOf(tagImageList.getId()));
 		}
 	}
 	
-	public TagList GetUserTagList(long userId) throws WallaException
+	public TagList GetUserTagList(long userId, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -566,11 +571,11 @@ public class TagDataHelperImpl implements TagDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 	        if (sQuery != null) try { if (!sQuery.isClosed()) {sQuery.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetUserTagList", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("TagDataHelperImpl","GetUserTagList", startMS, requestId, "");
 		}
 	}
 
-	public void UpdateTagTimeAndCount(long userId, long tagId) throws WallaException
+	public void UpdateTagTimeAndCount(long userId, long tagId, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -613,11 +618,11 @@ public class TagDataHelperImpl implements TagDataHelper {
 		finally {
 	        if (us != null) try { if (!us.isClosed()) {us.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("UpdateTagTimeAndCount", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("TagDataHelperImpl","UpdateTagTimeAndCount", startMS, requestId, String.valueOf(tagId));
 		}
 	}	
 
-	public void AddRemoveTagImages(long userId, long tagId, ImageIdList moveList, boolean add) throws WallaException
+	public void AddRemoveTagImages(long userId, long tagId, ImageIdList moveList, boolean add, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -695,11 +700,11 @@ public class TagDataHelperImpl implements TagDataHelper {
 		finally {
 	        if (bs != null) try { bs.close(); } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { conn.close(); } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("AddRemoveTagImages", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("TagDataHelperImpl","AddRemoveTagImages", startMS, requestId, "");
 		}
 	}
 
-	public long[] GetGalleriesLinkedToTag(long userId, long tagId) throws WallaException
+	public long[] GetGalleriesLinkedToTag(long userId, long tagId, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -740,11 +745,11 @@ public class TagDataHelperImpl implements TagDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 	        if (sQuery != null) try { if (!sQuery.isClosed()) {sQuery.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetGalleriesLinkedToTag", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("TagDataHelperImpl","GetGalleriesLinkedToTag", startMS, requestId, String.valueOf(tagId));
 		}
 	}
 	
-	public long[] ReGenDynamicTags(long userId) throws WallaException
+	public long[] ReGenDynamicTags(long userId, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -786,7 +791,7 @@ public class TagDataHelperImpl implements TagDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (statement != null) try { if (!statement.isClosed()) {statement.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("ReGenDynamicTags", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("TagDataHelperImpl","ReGenDynamicTags", startMS, requestId, "");
 		}
 	}	
 }

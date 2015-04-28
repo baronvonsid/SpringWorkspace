@@ -54,11 +54,11 @@ public class GalleryService {
 		meLogger.debug("GalleryService object instantiated.");
 	}
 	
-	public int CreateUpdateGallery(long userId, Gallery newGallery, String galleryName, long userAppId)
+	public int CreateUpdateGallery(long userId, Gallery newGallery, String galleryName, long userAppId, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try {
-			Gallery existingGallery = galleryDataHelper.GetGalleryMeta(userId, galleryName);
+			Gallery existingGallery = galleryDataHelper.GetGalleryMeta(userId, galleryName, requestId);
 			if (existingGallery == null)
 			{
 				if (!newGallery.getName().equals(galleryName))
@@ -67,7 +67,7 @@ public class GalleryService {
 					return HttpStatus.CONFLICT.value(); 
 				}
 				
-				long newGalleryId = utilityDataHelper.GetNewId("GalleryId");
+				long newGalleryId = utilityDataHelper.GetNewId("GalleryId", requestId);
 				
 				String passwordHash = "";
 				String gallerySalt = "";
@@ -84,10 +84,10 @@ public class GalleryService {
 					passwordHash = SecurityTools.GetHashedPassword(newGallery.getPassword(), gallerySalt, 160, 1000);
 				}
 
-				galleryDataHelper.CreateGallery(userId, newGallery, newGalleryId, passwordHash, gallerySalt, UserTools.GetComplexString());
+				galleryDataHelper.CreateGallery(userId, newGallery, newGalleryId, passwordHash, gallerySalt, UserTools.GetComplexString(), requestId);
 				
 				//TODO switch to messaging.
-				RefreshGalleryImages(userId, newGalleryId);
+				RefreshGalleryImages(userId, newGalleryId, requestId);
 				
 				utilityService.AddAction(ActionType.UserApp, userAppId, "GalAdd", "");
 				return HttpStatus.CREATED.value();
@@ -127,10 +127,10 @@ public class GalleryService {
 					passwordHash = SecurityTools.GetHashedPassword(newGallery.getPassword(), gallerySalt, 160, 1000);
 				}
 				
-				galleryDataHelper.UpdateGallery(userId, newGallery, passwordHash, gallerySalt);
+				galleryDataHelper.UpdateGallery(userId, newGallery, passwordHash, gallerySalt, requestId);
 
 				//TODO switch to messaging.
-				RefreshGalleryImages(userId, newGallery.getId());
+				RefreshGalleryImages(userId, newGallery.getId(), requestId);
 				utilityService.AddAction(ActionType.UserApp, userAppId, "GalUpd", "");
 				
 				if (!existingGallery.getName().equals(galleryName))
@@ -150,10 +150,10 @@ public class GalleryService {
 			meLogger.error(ex);
 			return HttpStatus.INTERNAL_SERVER_ERROR.value();
 		}
-		finally {UserTools.LogMethod("CreateUpdateGallery", meLogger, startMS, String.valueOf(userId) + " " + galleryName);}
+		finally {utilityService.LogMethod("GalleryService","CreateUpdateGallery", startMS, requestId, galleryName);}
 	}
 
-	public int DeleteGallery(long userId, Gallery gallery, String galleryName, long userAppId)
+	public int DeleteGallery(long userId, Gallery gallery, String galleryName, long userAppId, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try {
@@ -164,7 +164,7 @@ public class GalleryService {
 				return HttpStatus.CONFLICT.value(); 
 			}
 			
-			galleryDataHelper.DeleteGallery(userId, gallery.getId(), gallery.getVersion(), galleryName);
+			galleryDataHelper.DeleteGallery(userId, gallery.getId(), gallery.getVersion(), galleryName, requestId);
 
 			utilityService.AddAction(ActionType.UserApp, userAppId, "GalDel", "");
 			return HttpStatus.OK.value();
@@ -176,7 +176,7 @@ public class GalleryService {
 			meLogger.error(ex);
 			return HttpStatus.INTERNAL_SERVER_ERROR.value();
 		}
-		finally {UserTools.LogMethod("DeleteGallery", meLogger, startMS, String.valueOf(userId) + " " + galleryName);}
+		finally {utilityService.LogMethod("GalleryService","DeleteGallery", startMS, requestId, galleryName);}
 	}
 	
 	/*
@@ -201,7 +201,7 @@ public class GalleryService {
 			meLogger.error(ex);
 			return -1;
 		}
-		finally {UserTools.LogMethod("GetUserForGallery", meLogger, startMS, userName + " " + galleryName);}
+		finally {utilityService.LogMethod("GalleryService","GetUserForGallery", startMS, requestId, userName + " " + galleryName);}
 	}
 	*/
 	
@@ -222,12 +222,12 @@ public class GalleryService {
 		}
 	}
 	
-	public Gallery GetGalleryMeta(long userId, String galleryName, CustomResponse customResponse)
+	public Gallery GetGalleryMeta(long userId, String galleryName, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try {
 			//Get gallery list for response.
-			Gallery gallery = galleryDataHelper.GetGalleryMeta(userId, galleryName);
+			Gallery gallery = galleryDataHelper.GetGalleryMeta(userId, galleryName, requestId);
 			if (gallery == null)
 			{
 				meLogger.warn("GetGalleryMeta didn't return a valid Gallery object");
@@ -250,15 +250,15 @@ public class GalleryService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return null;
 		}
-		finally {UserTools.LogMethod("GetGalleryMeta", meLogger, startMS, String.valueOf(userId) + " " + galleryName);}
+		finally {utilityService.LogMethod("GalleryService","GetGalleryMeta", startMS, requestId, galleryName);}
 	}
 
-	public GalleryList GetGalleryListForUser(long userId, Date clientVersionTimestamp, CustomResponse customResponse)
+	public GalleryList GetGalleryListForUser(long userId, Date clientVersionTimestamp, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try {
 			GalleryList galleryList = null;
-			Date lastUpdate = galleryDataHelper.LastGalleryListUpdate(userId);
+			Date lastUpdate = galleryDataHelper.LastGalleryListUpdate(userId, requestId);
 			if (lastUpdate == null)
 			{
 				meLogger.warn("Last updated date for gallery could not be retrieved.");
@@ -278,7 +278,7 @@ public class GalleryService {
 			}
 			
 			//Get tag list for response.
-			galleryList = galleryDataHelper.GetUserGalleryList(userId);
+			galleryList = galleryDataHelper.GetUserGalleryList(userId, requestId);
 			if (galleryList!= null)
 			{
 				Calendar lastUpdateCalendar = Calendar.getInstance();
@@ -299,20 +299,20 @@ public class GalleryService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return null;
 		}
-		finally {UserTools.LogMethod("GetGalleryListForUser", meLogger, startMS, String.valueOf(userId));}
+		finally {utilityService.LogMethod("GalleryService","GetGalleryListForUser", startMS, requestId, "");}
 	}
 
-	public long GetDefaultGallery(long userId, int appId) throws WallaException
+	public long GetDefaultGallery(long userId, int appId, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		try
 		{
-			App app = cachedData.GetApp(appId, "");
+			App app = cachedData.GetApp(appId, "", requestId);
 			
 			String sql = "SELECT [GalleryId] FROM [Gallery] WHERE [SystemOwned] = 1 "
 					+ "AND [GalleryType] = " + app.getDefaultGalleryType() + " AND [UserId] = " + userId;
 			
-			long galleryId = utilityDataHelper.GetLong(sql);
+			long galleryId = utilityDataHelper.GetLong(sql, requestId);
 			if (galleryId > 0)
 			{
 				return galleryId;
@@ -327,10 +327,10 @@ public class GalleryService {
 			meLogger.error(ex);
 			throw ex;
 		}
-		finally { UserTools.LogMethod("GetDefaultGallery", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(appId)); }
+		finally { utilityService.LogMethod("GalleryService","GetDefaultGallery", startMS, requestId, String.valueOf(appId)); }
 	}
 	
-	public GalleryOptions GetGalleryOptions(long userId, Date clientVersionTimestamp, CustomResponse customResponse)
+	public GalleryOptions GetGalleryOptions(long userId, Date clientVersionTimestamp, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try {
@@ -340,7 +340,7 @@ public class GalleryService {
 			latestDate.setTime(cal.getTimeInMillis());
 			
 			//Get Presentation and Style objects from memory.
-			List<Presentation> presentations = cachedData.GetPresentationList();
+			List<Presentation> presentations = cachedData.GetPresentationList(requestId);
 			if (presentations == null)
 			{
 				meLogger.debug("No gallery options list generated because available presentations could not be retrieved.");
@@ -348,7 +348,7 @@ public class GalleryService {
 				return null;
 			}
 			
-			List<Style> style = cachedData.GetStyleList();
+			List<Style> style = cachedData.GetStyleList(requestId);
 			if (style == null)
 			{
 				meLogger.debug("No gallery options list generated because available styles could not be retrieved.");
@@ -427,16 +427,16 @@ public class GalleryService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return null;
 		}
-		finally {UserTools.LogMethod("GetGalleryOptions", meLogger, startMS, "");}
+		finally {utilityService.LogMethod("GalleryService","GetGalleryOptions", startMS, requestId, "");}
 	}
 
-	public Gallery GetGallerySections(long userId, Gallery requestGallery, CustomResponse customResponse)
+	public Gallery GetGallerySections(long userId, Gallery requestGallery, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try {
-			long newTempGalleryId = utilityDataHelper.GetNewId("TempGalleryId");
+			long newTempGalleryId = utilityDataHelper.GetNewId("TempGalleryId", requestId);
 			
-			Gallery gallery = galleryDataHelper.GetGallerySections(userId, requestGallery, newTempGalleryId);
+			Gallery gallery = galleryDataHelper.GetGallerySections(userId, requestGallery, newTempGalleryId, requestId);
 
 			customResponse.setResponseCode(HttpStatus.OK.value());
 			return gallery;
@@ -450,21 +450,21 @@ public class GalleryService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return null;
 		}
-		finally {UserTools.LogMethod("GetGallerySections", meLogger, startMS, String.valueOf(userId));}
+		finally {utilityService.LogMethod("GalleryService","GetGallerySections", startMS, requestId, String.valueOf(requestGallery.getId()));}
 	}
 	
-	public Presentation GetPresentation(int presentationId) throws WallaException
+	public Presentation GetPresentation(int presentationId, String requestId) throws WallaException
 	{
-		return cachedData.GetPresentation(presentationId);
+		return cachedData.GetPresentation(presentationId, requestId);
 	}
 	
-	public Style GetStyle(int styleId) throws WallaException
+	public Style GetStyle(int styleId, String requestId) throws WallaException
 	{
-		return cachedData.GetStyle(styleId);
+		return cachedData.GetStyle(styleId, requestId);
 	}
 	
 	public String GetGalleryPassThroughToken(String galleryName, HttpServletRequest request, 
-			CustomSessionState customSession, CustomResponse customResponse)
+			CustomSessionState customSession, CustomResponse customResponse, String requestId)
 	{
 		//Only reads user data from DB, any state are held in the session object.
 		long startMS = System.currentTimeMillis();
@@ -481,7 +481,7 @@ public class GalleryService {
 			// Length 28
 			String token = SecurityTools.GetHashedPassword(keyFactors, tempSalt, 160, 1000);
 			
-			galleryDataHelper.UpdateTempSalt(customSession.getUserId(), galleryName, tempSalt);
+			galleryDataHelper.UpdateTempSalt(customSession.getUserId(), galleryName, tempSalt, requestId);
 			
 			customResponse.setResponseCode(HttpStatus.OK.value());
 			utilityService.AddActionSecurityGallery("GalToken", token, null, request, customSession);
@@ -494,11 +494,11 @@ public class GalleryService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return "";
 		}
-		finally { UserTools.LogMethod("GetGalleryLogonToken", meLogger, startMS, "ProfileName: " + profileName); }
+		finally { utilityService.LogMethod("GalleryService","GetGalleryLogonToken", startMS, requestId, profileName); }
 	}
 	
 	public boolean AutoLoginGalleryUser(boolean useTokenOnly, int accessType, String logonToken, String complexUrl, String password, String profileName, String galleryName, HttpServletRequest request, 
-			CustomSessionState customSession, CustomResponse customResponse)
+			CustomSessionState customSession, CustomResponse customResponse, String requestId)
 	{
 		//Only reads user data from DB, any state are held in the session object.
 		long startMS = System.currentTimeMillis();
@@ -547,7 +547,7 @@ public class GalleryService {
 				}
 			}
 
-			GalleryLogon galleryLogon = galleryDataHelper.GetGalleryLogonDetail(profileName, galleryName, complexUrl);
+			GalleryLogon galleryLogon = galleryDataHelper.GetGalleryLogonDetail(profileName, galleryName, complexUrl, requestId);
 			if (galleryLogon == null)
 			{
 				message = "Gallery could not be retrieved for logon.  User:" + profileName + " Gallery:" + galleryName + " ComplexUrl:" + complexUrl;
@@ -655,10 +655,10 @@ public class GalleryService {
 			meLogger.error(ex);
 			return false;
 		}
-		finally { UserTools.LogMethod("AutoLoginGalleryUser", meLogger, startMS, "ProfileName: " + profileName + " Gallery: " + galleryName); }
+		finally { utilityService.LogMethod("GalleryService","AutoLoginGalleryUser", startMS, requestId, galleryName); }
 	}
 	
-	public boolean LoginGalleryUser(GalleryLogon requestLogon, HttpServletRequest request, CustomSessionState customSession)
+	public boolean LoginGalleryUser(GalleryLogon requestLogon, HttpServletRequest request, CustomSessionState customSession, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		String profileName = "";
@@ -742,7 +742,7 @@ public class GalleryService {
 				return GalleryLoginFailReturn(customSession);
 			}
 
-			GalleryLogon galleryLogon = galleryDataHelper.GetGalleryLogonDetail(profileName, galleryName, "");
+			GalleryLogon galleryLogon = galleryDataHelper.GetGalleryLogonDetail(profileName, galleryName, "", requestId);
 			if (galleryLogon == null)
 			{
 				message = "Gallery could not be retrieved for logon.  User:" + profileName + " Gallery:" + galleryName;
@@ -789,7 +789,7 @@ public class GalleryService {
 			utilityService.AddActionSecurityGallery("GallErr", galleryName, requestLogon, request, customSession);
 			return false;
 		}
-		finally { UserTools.LogMethod("LoginGalleryUser", meLogger, startMS, "Profile:" + profileName + " Gallery:" + galleryName); }
+		finally { utilityService.LogMethod("GalleryService","LoginGalleryUser", startMS, requestId, galleryName); }
 	}
 	
 	private boolean GalleryLoginFailReturn(CustomSessionState customSession) throws InterruptedException
@@ -810,7 +810,7 @@ public class GalleryService {
 		return false;
 	}
 	
-	public String GetGalleryUserLogonToken(String profileName, String galleryName, HttpServletRequest request, CustomSessionState customSession, CustomResponse customResponse)
+	public String GetGalleryUserLogonToken(String profileName, String galleryName, HttpServletRequest request, CustomSessionState customSession, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		String message = "";
@@ -840,7 +840,7 @@ public class GalleryService {
 			    }
 			}
 			
-			GalleryLogon galleryLogon = galleryDataHelper.GetGalleryLogonDetail(profileName, galleryName, "");
+			GalleryLogon galleryLogon = galleryDataHelper.GetGalleryLogonDetail(profileName, galleryName, "", requestId);
 			if (galleryLogon == null)
 			{
 				message = "Gallery could not be retrieved for logon.  User:" + profileName + " Gallery:" + galleryName;
@@ -887,15 +887,15 @@ public class GalleryService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return "";
 		}
-		finally { UserTools.LogMethod("GetGalleryUserLogonToken", meLogger, startMS, "ProfileName: " + profileName + " GalleryName:" + galleryName); }
+		finally { utilityService.LogMethod("GalleryService","GetGalleryUserLogonToken", startMS, requestId, galleryName); }
 	}
 	
-	public int GetGalleryAccessType(String profileName, String galleryName, CustomResponse customResponse) throws WallaException
+	public int GetGalleryAccessType(String profileName, String galleryName, CustomResponse customResponse, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		try
 		{
-			GalleryLogon galleryLogon = galleryDataHelper.GetGalleryLogonDetail(profileName, galleryName, "");
+			GalleryLogon galleryLogon = galleryDataHelper.GetGalleryLogonDetail(profileName, galleryName, "", requestId);
 			if (galleryLogon == null)
 			{
 				meLogger.warn("Gallery could not be retrieved for logon.  User:" + profileName + " Gallery:" + galleryName);
@@ -912,19 +912,19 @@ public class GalleryService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return -1;
 		}
-		finally { UserTools.LogMethod("GetGalleryAccessType", meLogger, startMS, "ProfileName: " + profileName + " GalleryName:" + galleryName); }
+		finally { utilityService.LogMethod("GalleryService","GetGalleryAccessType", startMS, requestId, galleryName); }
 	}
 	
 	//*************************************************************************************************************
 	//*************************************  Messaging initiated methods ******************************************
 	//*************************************************************************************************************
 
-	public void RefreshGalleryImages(long userId, long galleryId)
+	public void RefreshGalleryImages(long userId, long galleryId, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
 		{
-			galleryDataHelper.RegenerateGalleryImages(userId, galleryId);
+			galleryDataHelper.RegenerateGalleryImages(userId, galleryId, requestId);
 		}
 		catch (WallaException wallaEx) {
 			meLogger.error("RefreshGalleryImages failed with an error");
@@ -932,7 +932,7 @@ public class GalleryService {
 		catch (Exception ex) {
 			meLogger.error("RefreshGalleryImages failed with an error", ex);
 		}
-		finally {UserTools.LogMethod("RefreshGalleryImages", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(galleryId));}
+		finally {utilityService.LogMethod("GalleryService","RefreshGalleryImages", startMS, requestId, String.valueOf(galleryId));}
 	}
 	
 }

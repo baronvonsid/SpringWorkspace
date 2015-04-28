@@ -1,5 +1,6 @@
 package walla.db;
 
+import javax.annotation.Resource;
 import javax.sql.DataSource;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
@@ -23,6 +24,7 @@ import java.util.List;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Repository;
 
+import walla.business.UtilityService;
 import walla.datatypes.auto.*;
 import walla.datatypes.java.*;
 import walla.utils.*;
@@ -38,6 +40,9 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 	
 	private static final Logger meLogger = Logger.getLogger(CategoryDataHelperImpl.class);
 
+	@Resource(name="utilityServicePooled")
+	private UtilityService utilityService;
+	
 	public CategoryDataHelperImpl() {
 		meLogger.debug("CategoryDataHelperImpl object instantiated.");
 	}
@@ -47,7 +52,7 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 		this.dataSource = dataSource;
 	}
 	
-	public void CreateCategory(long userId, Category newCategory, long categoryId) throws WallaException
+	public void CreateCategory(long userId, Category newCategory, long categoryId, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		String sql = "INSERT INTO [dbo].[Category] ([CategoryId],[ParentId],[Name],[Description],"
@@ -60,7 +65,7 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 		try {
 			int returnCount = 0;
 			
-			if (!CheckCategoryExists(userId, newCategory.getParentId()))
+			if (!CheckCategoryExists(userId, newCategory.getParentId(), requestId))
 			{
 				String message = "Parent Category is not valid.  ParentId: " + newCategory.getParentId();
 				meLogger.error(message);
@@ -76,7 +81,7 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 			ps.setLong(2, newCategory.getParentId());
 			ps.setString(3, newCategory.getName());
 			ps.setString(4, newCategory.getDesc());
-			ps.setBoolean(5, newCategory.isSystemOwned());
+			ps.setBoolean(5, newCategory.getSystemOwned());
 			ps.setLong(6, userId);
 			
 			//Execute insert statement.
@@ -105,11 +110,11 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 		finally {
 	        if (ps != null) try { ps.close(); } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { conn.close(); } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("CreateCategory", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(categoryId));
+	        utilityService.LogMethod("CategoryDataHelperImpl","CreateCategory", startMS, requestId, String.valueOf(categoryId));
 		}
 	}
 	
-	public void UpdateCategory(long userId, Category existingCategory) throws WallaException
+	public void UpdateCategory(long userId, Category existingCategory, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -119,7 +124,7 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 			int returnCount = 0;
 			String updateVersionSql = null;
 			
-			if (!CheckCategoryExists(userId, existingCategory.getParentId()))
+			if (!CheckCategoryExists(userId, existingCategory.getParentId(), requestId))
 			{
 				String error = "Parent Category is not valid.  ParentId: " + existingCategory.getParentId();
 				meLogger.error(error);
@@ -164,11 +169,11 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 		finally {
 	        if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("UpdateCategory", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("CategoryDataHelperImpl","UpdateCategory", startMS, requestId, String.valueOf(existingCategory.getId()));
 		}
 	}
 	
-	public void MarkCategoryAsDeleted(long userId, long[] categoryIds, Category existingCategory) throws WallaException
+	public void MarkCategoryAsDeleted(long userId, long[] categoryIds, Category existingCategory, String requestId) throws WallaException
 	{
 		/*
 		 * Category gets marked with Active of 0.
@@ -238,11 +243,11 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 		finally {
 	        if (ds != null) try { if (!ds.isClosed()) {ds.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("MarkCategoryAsDeleted", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("CategoryDataHelperImpl","MarkCategoryAsDeleted", startMS, requestId, "");
 		}
 	}
 	
-	public Category GetCategoryMeta(long userId, long categoryId)
+	public Category GetCategoryMeta(long userId, long categoryId, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -288,11 +293,11 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetCategoryMeta", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(categoryId));
+	        utilityService.LogMethod("CategoryDataHelperImpl","GetCategoryMeta", startMS, requestId, String.valueOf(categoryId));
 		}
 	}
 	
-	public ImageList GetCategoryImageListMeta(long userId, long categoryId)
+	public ImageList GetCategoryImageListMeta(long userId, long categoryId, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -338,11 +343,11 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetCategoryImageListMeta", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(categoryId));
+	        utilityService.LogMethod("CategoryDataHelperImpl","GetCategoryImageListMeta", startMS, requestId, String.valueOf(categoryId));
 		}
 	}
 	
-	public Date LastCategoryListUpdate(long userId)
+	public Date LastCategoryListUpdate(long userId, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -376,11 +381,11 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 	        if (sQuery != null) try { if (!sQuery.isClosed()) {sQuery.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("LastCategoryListUpdate", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("CategoryDataHelperImpl","LastCategoryListUpdate", startMS, requestId, "");
 		}
 	}
 
-	public int GetTotalImageCount(long userId, long categoryId) throws WallaException
+	public int GetTotalImageCount(long userId, long categoryId, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -418,11 +423,11 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetTotalImageCount", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(categoryId));
+	        utilityService.LogMethod("CategoryDataHelperImpl","GetTotalImageCount", startMS, requestId, String.valueOf(categoryId));
 		}
 	}
 
-	public void GetCategoryImages(long userId, int imageCursor, int imageCount, ImageList categoryImageList) throws WallaException
+	public void GetCategoryImages(long userId, int imageCursor, int imageCount, ImageList categoryImageList, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -495,11 +500,11 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetCategoryImages", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("CategoryDataHelperImpl","GetCategoryImages", startMS, requestId, "");
 		}
 	}
 
-	public CategoryList GetUserCategoryList(long userId) throws WallaException
+	public CategoryList GetUserCategoryList(long userId, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -545,11 +550,11 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 	        if (sQuery != null) try { if (!sQuery.isClosed()) {sQuery.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetUserCategoryList", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("CategoryDataHelperImpl","GetUserCategoryList", startMS, requestId, "");
 		}
 	}
 
-	private boolean CheckCategoryExists(long userId, long categoryId) throws WallaException
+	private boolean CheckCategoryExists(long userId, long categoryId, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -579,11 +584,11 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 	        if (sQuery != null) try { if (!sQuery.isClosed()) {sQuery.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("CheckCategoryExists", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(categoryId));
+	        utilityService.LogMethod("CategoryDataHelperImpl","CheckCategoryExists", startMS, requestId, String.valueOf(categoryId));
 		}
 	}
 	
-	public long[] GetGalleryReferencingCategory(long userId, long[] categoryIds) throws WallaException
+	public long[] GetGalleryReferencingCategory(long userId, long[] categoryIds, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -632,11 +637,11 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (statement != null) try { if (!statement.isClosed()) {statement.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetGalleryReferencingCategory", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("CategoryDataHelperImpl","GetGalleryReferencingCategory", startMS, requestId, "");
 		}
 	}
 	
-	public void UpdateCategoryTimeAndCount(long userId, long[] categoryIds) throws WallaException
+	public void UpdateCategoryTimeAndCount(long userId, long[] categoryIds, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -674,11 +679,11 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 		finally {
 			if (ds != null) try { if (!ds.isClosed()) {ds.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("UpdateCategoryTimeAndCount", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("CategoryDataHelperImpl","UpdateCategoryTimeAndCount", startMS, requestId, "");
 		}
 	}
 	
-	public long[] GetCategoryHierachy(long userId, long categoryId, boolean up) throws WallaException
+	public long[] GetCategoryHierachy(long userId, long categoryId, boolean up, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -723,11 +728,11 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (statement != null) try { if (!statement.isClosed()) {statement.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetCategoryHierachy", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(categoryId));
+	        utilityService.LogMethod("CategoryDataHelperImpl","GetCategoryHierachy", startMS, requestId, String.valueOf(categoryId));
 		}
 	}	
 
-	public long[] GetCategoryIdFromImageMoveList(long userId, ImageIdList moveList) throws WallaException
+	public long[] GetCategoryIdFromImageMoveList(long userId, ImageIdList moveList, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -789,11 +794,11 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (statement != null) try { if (!statement.isClosed()) {statement.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetCategoryIdFromImageMoveList", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("CategoryDataHelperImpl","GetCategoryIdFromImageMoveList", startMS, requestId, "");
 		}
 	}
 	
-	public void MoveImagesToNewCategory(long userId, long categoryId, ImageIdList moveList) throws WallaException
+	public void MoveImagesToNewCategory(long userId, long categoryId, ImageIdList moveList, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -846,7 +851,7 @@ public class CategoryDataHelperImpl implements CategoryDataHelper {
 			if (statement != null) try { if (!statement.isClosed()) {statement.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
 		}
-		UserTools.LogMethod("MoveImagesToNewCategory", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(categoryId));
+		utilityService.LogMethod("CategoryDataHelperImpl","MoveImagesToNewCategory", startMS, requestId, String.valueOf(categoryId));
 	}
 	
 	

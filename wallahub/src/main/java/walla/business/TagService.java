@@ -54,12 +54,12 @@ public class TagService {
 		meLogger.debug("TagService object instantiated.");
 	}
 	
-	public int CreateUpdateTag(long userId, Tag newtag, String tagName, long userAppId)
+	public int CreateUpdateTag(long userId, Tag newtag, String tagName, long userAppId, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
 		{
-			Tag existingTag = tagDataHelper.GetTagMeta(userId, tagName);
+			Tag existingTag = tagDataHelper.GetTagMeta(userId, tagName, requestId);
 
 			if (existingTag == null)
 			{
@@ -69,8 +69,8 @@ public class TagService {
 					return HttpStatus.CONFLICT.value(); 
 				}
 				
-				long newTagId = utilityDataHelper.GetNewId("TagId");
-				tagDataHelper.CreateTag(userId, newtag, newTagId);
+				long newTagId = utilityDataHelper.GetNewId("TagId", requestId);
+				tagDataHelper.CreateTag(userId, newtag, newTagId, requestId);
 				utilityService.AddAction(ActionType.UserApp, userAppId, "TagAdd", tagName);
 				return HttpStatus.CREATED.value();
 			}
@@ -82,7 +82,7 @@ public class TagService {
 					return HttpStatus.CONFLICT.value(); 
 				}
 				
-				tagDataHelper.UpdateTag(userId, newtag);
+				tagDataHelper.UpdateTag(userId, newtag, requestId);
 				
 				utilityService.AddAction(ActionType.UserApp, userAppId, "TagUpd", tagName);
 				if (!existingTag.getName().equals(tagName))
@@ -102,10 +102,10 @@ public class TagService {
 			meLogger.error(ex);
 			return HttpStatus.INTERNAL_SERVER_ERROR.value();
 		}
-		finally {UserTools.LogMethod("CreateUpdateTag", meLogger, startMS, String.valueOf(userId) + " " + tagName);}
+		finally {utilityService.LogMethod("TagService","CreateUpdateTag", startMS, requestId, tagName);}
 	}
 
-	public int DeleteTag(long userId, Tag tag, String tagName, long userAppId)
+	public int DeleteTag(long userId, Tag tag, String tagName, long userAppId, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
@@ -116,10 +116,10 @@ public class TagService {
 				return HttpStatus.CONFLICT.value(); 
 			}
 			
-			tagDataHelper.DeleteTag(userId, tag.getId(), tag.getVersion(), tagName);
+			tagDataHelper.DeleteTag(userId, tag.getId(), tag.getVersion(), tagName, requestId);
 
 			//TODO decouple method
-			TagRippleDelete(userId, tag.getId());
+			TagRippleDelete(userId, tag.getId(), requestId);
 			
 			utilityService.AddAction(ActionType.UserApp, userAppId, "TagDel", tagName);
 			return HttpStatus.OK.value();
@@ -131,16 +131,16 @@ public class TagService {
 			meLogger.error(ex);
 			return HttpStatus.INTERNAL_SERVER_ERROR.value();
 		}
-		finally {UserTools.LogMethod("DeleteTag", meLogger, startMS, String.valueOf(userId) + " " + tagName);}
+		finally {utilityService.LogMethod("TagService","DeleteTag", startMS, requestId, tagName);}
 	}
 	
-	public Tag GetTagMeta(long userId, String tagName, CustomResponse customResponse)
+	public Tag GetTagMeta(long userId, String tagName, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
 		{
 			//Get tag list for response.
-			Tag tag = tagDataHelper.GetTagMeta(userId, tagName);
+			Tag tag = tagDataHelper.GetTagMeta(userId, tagName, requestId);
 			if (tag == null)
 			{
 				meLogger.warn("GetTagMeta didn't return a valid Tag object");
@@ -160,16 +160,16 @@ public class TagService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return null;
 		}
-		finally {UserTools.LogMethod("GetTagMeta", meLogger, startMS, String.valueOf(userId) + " " + tagName);}
+		finally {utilityService.LogMethod("TagService","GetTagMeta", startMS, requestId, tagName);}
 	}
 	
-	public TagList GetTagListForUser(long userId, Date clientVersionTimestamp, CustomResponse customResponse)
+	public TagList GetTagListForUser(long userId, Date clientVersionTimestamp, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
 		{
 			TagList tagList = null;
-			Date lastUpdate = tagDataHelper.LastTagListUpdate(userId);
+			Date lastUpdate = tagDataHelper.LastTagListUpdate(userId, requestId);
 			if (lastUpdate == null)
 			{
 				meLogger.warn("Last updated date for tag could not be retrieved.");
@@ -189,7 +189,7 @@ public class TagService {
 			}
 			
 			//Get tag list for response.
-			tagList = tagDataHelper.GetUserTagList(userId);
+			tagList = tagDataHelper.GetUserTagList(userId, requestId);
 			if (tagList != null)
 			{
 				Calendar lastUpdateCalendar = Calendar.getInstance();
@@ -210,25 +210,25 @@ public class TagService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return null;
 		}
-		finally {UserTools.LogMethod("GetTagListForUser", meLogger, startMS, String.valueOf(userId));}
+		finally {utilityService.LogMethod("TagService","GetTagListForUser", startMS, requestId, "");}
 	}
 
-	public int AddRemoveTagImages(long userId, String tagName, ImageIdList moveList, boolean add, long userAppId)
+	public int AddRemoveTagImages(long userId, String tagName, ImageIdList moveList, boolean add, long userAppId, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
 		{
-			Tag tag = tagDataHelper.GetTagMeta(userId, tagName);
+			Tag tag = tagDataHelper.GetTagMeta(userId, tagName, requestId);
 			if (tag == null)
 			{
 				meLogger.warn("AddRemoveTagImages didn't return a valid Tag object");
 				return HttpStatus.INTERNAL_SERVER_ERROR.value(); 
 			}
 			
-			tagDataHelper.AddRemoveTagImages(userId, tag.getId(), moveList, add);
+			tagDataHelper.AddRemoveTagImages(userId, tag.getId(), moveList, add, requestId);
 
 			//TODO decouple method
-			TagRippleUpdate(userId, tag.getId());
+			TagRippleUpdate(userId, tag.getId(), requestId);
 			
 			utilityService.AddAction(ActionType.UserApp, userAppId, "TagImgChg", "");
 			
@@ -241,15 +241,15 @@ public class TagService {
 			meLogger.error(ex);
 			return HttpStatus.INTERNAL_SERVER_ERROR.value();
 		}
-		finally {UserTools.LogMethod("AddRemoveTagImages", meLogger, startMS, String.valueOf(userId) + " " + tagName);}
+		finally {utilityService.LogMethod("TagService","AddRemoveTagImages", startMS, requestId, tagName);}
 	}
 	
-	public long CreateOrFindUserAppTag(long userId, int platformId, String machineName) throws WallaException
+	public long CreateOrFindUserAppTag(long userId, int platformId, String machineName, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		try
 		{
-			Platform platform = cachedData.GetPlatform(platformId, "", "", 0, 0);
+			Platform platform = cachedData.GetPlatform(platformId, "", "", 0, 0, requestId);
 			if (platform == null)
 			{
 				String error = "Platform not found. platformId:" + platformId;
@@ -261,7 +261,7 @@ public class TagService {
 				tagName = tagName.substring(0,30);
 			
 			String sql = "SELECT [TagId] FROM [Tag] WHERE [SystemOwned] = 1 AND [Name] = '" + tagName + "' AND [UserId] = " + userId;
-			long tagId = utilityDataHelper.GetLong(sql);
+			long tagId = utilityDataHelper.GetLong(sql, requestId);
 			if (tagId > 1)
 			{
 				return tagId;
@@ -269,11 +269,11 @@ public class TagService {
 			else
 			{
 				Tag newTag = new Tag();
-				long newTagId = utilityDataHelper.GetNewId("TagId");
+				long newTagId = utilityDataHelper.GetNewId("TagId", requestId);
 				newTag.setName(tagName);
 				newTag.setDesc("Auto generated tag for fotos uploaded from " + machineName + " - " + platform.getShortName());
 				newTag.setSystemOwned(true);
-				tagDataHelper.CreateTag(userId, newTag, newTagId);
+				tagDataHelper.CreateTag(userId, newTag, newTagId, requestId);
 				
 				return newTagId;
 			}
@@ -282,28 +282,28 @@ public class TagService {
 			meLogger.error(ex);
 			throw new WallaException(ex);
 		}
-		finally { UserTools.LogMethod("CreateOrFindUserAppTag", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(platformId)); }
+		finally { utilityService.LogMethod("TagService","CreateOrFindUserAppTag", startMS, requestId, String.valueOf(platformId) + " " + machineName); }
 	}
 	
 	//*************************************************************************************************************
 	//*************************************  Messaging initiated methods ******************************************
 	//*************************************************************************************************************
 	
-	public void ReGenDynamicTags(long userId)
+	public void ReGenDynamicTags(long userId, String requestId) 
 	{
 		long startMS = System.currentTimeMillis();
 		try
 		{
 			//Returns an array of affected tags.
-			long tags[] = tagDataHelper.ReGenDynamicTags(userId);
+			long tags[] = tagDataHelper.ReGenDynamicTags(userId, requestId);
 			
 			for (int ii = 0; ii < tags.length; ii++)
 			{
-				long[] galleryIds = tagDataHelper.GetGalleriesLinkedToTag(userId, tags[ii]);
+				long[] galleryIds = tagDataHelper.GetGalleriesLinkedToTag(userId, tags[ii], requestId);
 				for (int i = 0; i < galleryIds.length; i++)
 				{
 					//TODO decouple
-					galleryService.RefreshGalleryImages(userId, galleryIds[i]);
+					galleryService.RefreshGalleryImages(userId, galleryIds[i], requestId);
 				}
 			}
 		}
@@ -313,23 +313,23 @@ public class TagService {
 		catch (Exception ex) {
 			meLogger.error("ReGenDynamicTags failed with an error", ex);
 		}
-		finally {UserTools.LogMethod("ReGenDynamicTags", meLogger, startMS, String.valueOf(userId));}
+		finally {utilityService.LogMethod("TagService","ReGenDynamicTags", startMS, requestId, "");}
 	}
 	
- 	public void TagRippleUpdate(long userId, long tagId)
+ 	public void TagRippleUpdate(long userId, long tagId, String requestId) 
 	{
  		long startMS = System.currentTimeMillis();
 		try
 		{
 			//Update tag updated dates
-			tagDataHelper.UpdateTagTimeAndCount(userId, tagId);
+			tagDataHelper.UpdateTagTimeAndCount(userId, tagId, requestId);
 			
 			//Find any views which reference this tag and update last updated.
-			long[] galleryIds = tagDataHelper.GetGalleriesLinkedToTag(userId, tagId);
+			long[] galleryIds = tagDataHelper.GetGalleriesLinkedToTag(userId, tagId, requestId);
 			for (int i = 0; i < galleryIds.length; i++)
 			{
 				//TODO decouple
-				galleryService.RefreshGalleryImages(userId, galleryIds[i]);
+				galleryService.RefreshGalleryImages(userId, galleryIds[i], requestId);
 			}
 		}
 		catch (WallaException wallaEx) {
@@ -338,24 +338,24 @@ public class TagService {
 		catch (Exception ex) {
 			meLogger.error("TagRippleUpdate failed with an error", ex);
 		}
-		finally {UserTools.LogMethod("TagRippleUpdate", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(tagId));}
+		finally {utilityService.LogMethod("TagService","TagRippleUpdate", startMS, requestId, String.valueOf(tagId));}
 	}
  	
- 	public void TagRippleDelete(long userId, long tagId)
+ 	public void TagRippleDelete(long userId, long tagId, String requestId) 
  	{
  		long startMS = System.currentTimeMillis();
 		try
 		{
 			//Find any views which reference this tag and update last updated.
-			long[] galleryIds = tagDataHelper.GetGalleriesLinkedToTag(userId, tagId);
+			long[] galleryIds = tagDataHelper.GetGalleriesLinkedToTag(userId, tagId, requestId);
 			
 			//Update tag updated dates
-			tagDataHelper.DeleteTagReferences(userId, tagId);
+			tagDataHelper.DeleteTagReferences(userId, tagId, requestId);
 			
 			for (int i = 0; i < galleryIds.length; i++)
 			{
 				//TODO decouple
-				galleryService.RefreshGalleryImages(userId, galleryIds[i]);
+				galleryService.RefreshGalleryImages(userId, galleryIds[i], requestId);
 			}
 		}
 		catch (WallaException wallaEx) {
@@ -364,7 +364,7 @@ public class TagService {
 		catch (Exception ex) {
 			meLogger.error("TagRippleDelete failed with an error", ex);
 		}
-		finally {UserTools.LogMethod("TagRippleDelete", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(tagId));}
+		finally {utilityService.LogMethod("TagService","TagRippleDelete", startMS, requestId, String.valueOf(tagId));}
  	}
 	
  	/*

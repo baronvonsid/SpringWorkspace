@@ -75,6 +75,9 @@ public class AccountController {
 	@Resource(name="accountServicePooled")
 	private AccountService accountService;
 	
+	@Resource(name="utilityServicePooled")
+	private UtilityService utilityService;
+	
 	//GET /newusertoken
 	@RequestMapping(value="/newusertoken", method=RequestMethod.GET, produces=MediaType.APPLICATION_XML_VALUE,
 			consumes = MediaType.APPLICATION_XML_VALUE, headers={"Accept-Charset=utf-8"} )
@@ -83,6 +86,7 @@ public class AccountController {
 			HttpServletResponse response)
 	{	
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		Logon responseLogon = new Logon();
 		try
@@ -102,7 +106,7 @@ public class AccountController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			String key = accountService.GetNewUserToken(request, customSession, customResponse);
+			String key = accountService.GetNewUserToken(request, customSession, customResponse, requestId);
 			responseCode = customResponse.getResponseCode();
 			
 			if (customResponse.getResponseCode() == HttpStatus.OK.value())
@@ -119,7 +123,7 @@ public class AccountController {
 			meLogger.error(ex);
 			return null;
 		}
-		finally { UserTools.LogWebMethod("GetNewUserToken", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("AccountController","GetNewUserToken", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	//  PUT /{profileName}
@@ -133,6 +137,7 @@ public class AccountController {
 	{
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		try
 		{
 			response.addHeader("Cache-Control", "no-cache");
@@ -158,7 +163,7 @@ public class AccountController {
 						|| customSession.getUserId() != account.getId())
 				{
 					CustomResponse customResponse = new CustomResponse();
-					accountService.UpdateAccount(account,customResponse);
+					accountService.UpdateAccount(account, customResponse, requestId);
 					responseCode = customResponse.getResponseCode();
 				}
 				else
@@ -174,7 +179,7 @@ public class AccountController {
 				if (customSession == null)
 				{
 					CustomResponse customResponse = new CustomResponse();
-					accountService.CreateAccount(account, customResponse, customSession);
+					accountService.CreateAccount(account, customResponse, customSession, requestId);
 					responseCode = customResponse.getResponseCode();
 				}
 				else
@@ -188,7 +193,7 @@ public class AccountController {
 		catch (Exception ex) {
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogWebMethod("Logon", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("AccountController","Logon", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	//  GET - /{profileName}
@@ -200,6 +205,7 @@ public class AccountController {
 			HttpServletResponse response)
 	{	
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -213,7 +219,7 @@ public class AccountController {
 			}
 
 			CustomResponse customResponse = new CustomResponse();
-			Account account = accountService.GetAccountMeta(customSession.getUserId(), customResponse);
+			Account account = accountService.GetAccountMeta(customSession.getUserId(), customResponse, requestId);
 
 			responseCode = customResponse.getResponseCode();
 			return account;
@@ -222,7 +228,7 @@ public class AccountController {
 			meLogger.error(ex);
 			return null;
 		}
-		finally { UserTools.LogWebMethod("GetAccount", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("AccountController","GetAccount", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	/*
@@ -236,6 +242,7 @@ public class AccountController {
 			HttpServletResponse response)
 	{	
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -248,7 +255,7 @@ public class AccountController {
 		catch (Exception ex) {
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogWebMethod("Logon", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("AccountController","Logon", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 */
 	
@@ -262,6 +269,7 @@ public class AccountController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -293,11 +301,11 @@ public class AccountController {
 			long userAppId = userApp.getId();
 			if (userAppId == 0)
 			{
-				userAppId = accountService.CreateUserApp(customSession.getUserId(), customSession.getAppId(), customSession.getPlatformId(), userApp, customResponse);
+				userAppId = accountService.CreateUserApp(customSession.getUserId(), customSession.getAppId(), customSession.getPlatformId(), userApp, customResponse, requestId);
 			}
 			else
 			{
-				accountService.UpdateUserApp(customSession.getUserId(), customSession.getAppId(), customSession.getPlatformId(), userApp, customResponse);
+				accountService.UpdateUserApp(customSession.getUserId(), customSession.getAppId(), customSession.getPlatformId(), userApp, customResponse, requestId);
 			}
 			
 			responseCode = customResponse.getResponseCode();
@@ -312,7 +320,7 @@ public class AccountController {
 			meLogger.error(ex);
 			return null;
 		}
-		finally { UserTools.LogWebMethod("CreateUpdateUserApp", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("AccountController","CreateUpdateUserApp", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	// GET /{profileName}/userapp/{userAppId}
@@ -325,6 +333,7 @@ public class AccountController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -345,7 +354,7 @@ public class AccountController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			UserApp userApp = accountService.GetUserApp(customSession.getUserId(), customSession.getAppId(), customSession.getPlatformId(), userAppId, customResponse);
+			UserApp userApp = accountService.GetUserApp(customSession.getUserId(), customSession.getAppId(), customSession.getPlatformId(), userAppId, customResponse, requestId);
 			
 			synchronized(customSession) {
 				customSession.setUserAppId(userApp.getId());
@@ -358,7 +367,7 @@ public class AccountController {
 			meLogger.error(ex);
 			return null;
 		}
-		finally { UserTools.LogWebMethod("GetUserAppMarkSession", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("AccountController","GetUserAppMarkSession", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	// GET /profilename/{profileName}
@@ -370,6 +379,7 @@ public class AccountController {
 		HttpServletResponse response)
 	{	
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -379,7 +389,7 @@ public class AccountController {
 			
 			String profileReturn = "USED";
 			CustomResponse customResponse = new CustomResponse();
-			if (accountService.CheckProfileNameIsUnique(profileName, customResponse))
+			if (accountService.CheckProfileNameIsUnique(profileName, customResponse, requestId))
 			{
 				profileReturn = "OK";
 			}
@@ -391,7 +401,7 @@ public class AccountController {
 			meLogger.error(ex);
 			return null;
 		}
-		finally { UserTools.LogWebMethod("CheckProfileName", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("AccountController","CheckProfileName", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	// PUT /{profileName}/clientapp
@@ -406,6 +416,7 @@ public class AccountController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -419,7 +430,7 @@ public class AccountController {
 			}
 
 			CustomResponse customResponse = new CustomResponse();
-			int appId = accountService.VerifyApp(clientApp, customResponse);
+			int appId = accountService.VerifyApp(clientApp, customResponse, requestId);
 			if (customResponse.getResponseCode() != HttpStatus.OK.value())
 			{
 				meLogger.warn("The application key failed validation.");
@@ -427,7 +438,7 @@ public class AccountController {
 				return;
 			}
 							
-			int platformId = accountService.GetPlatformId(clientApp, customResponse);
+			int platformId = accountService.GetPlatformId(clientApp, customResponse, requestId);
 			if (customResponse.getResponseCode() != HttpStatus.OK.value())
 			{
 				meLogger.warn("The platform is not supported.");
@@ -444,7 +455,7 @@ public class AccountController {
 		catch (Exception ex) {
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogWebMethod("SetClientApp", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("AccountController","SetClientApp", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	// POST /clientapp
@@ -458,13 +469,14 @@ public class AccountController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
 			response.addHeader("Cache-Control", "no-cache");
 
 			CustomResponse customResponse = new CustomResponse();
-			accountService.VerifyApp(clientApp, customResponse);
+			accountService.VerifyApp(clientApp, customResponse, requestId);
 			if (customResponse.getResponseCode() != HttpStatus.OK.value())
 			{
 				meLogger.warn("The application key failed validation.");
@@ -473,7 +485,7 @@ public class AccountController {
 				return;
 			}
 	
-			accountService.GetPlatformId(clientApp, customResponse);
+			accountService.GetPlatformId(clientApp, customResponse, requestId);
 			if (customResponse.getResponseCode() != HttpStatus.OK.value())
 			{
 				meLogger.warn("The platform is not supported.");
@@ -487,7 +499,7 @@ public class AccountController {
 		catch (Exception ex) {
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogWebMethod("CheckClientApp", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("AccountController","CheckClientApp", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	//POST /logontoken
@@ -497,6 +509,7 @@ public class AccountController {
 			HttpServletResponse response)
 	{	
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		Logon responseLogon = new Logon();
 		try
@@ -540,7 +553,7 @@ public class AccountController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			String key = accountService.GetLogonToken(request, customSession, customResponse);
+			String key = accountService.GetLogonToken(request, customSession, customResponse, requestId);
 			responseCode = customResponse.getResponseCode();
 			
 			if (customResponse.getResponseCode() == HttpStatus.OK.value())
@@ -557,7 +570,7 @@ public class AccountController {
 			meLogger.error(ex);
 			return null;
 		}
-		finally { UserTools.LogWebMethod("GetLogonToken", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("AccountController","GetLogonToken", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	//POST /logon
@@ -569,6 +582,7 @@ public class AccountController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -598,7 +612,7 @@ public class AccountController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			accountService.LogonCheck(logon, request, customSession, customResponse);
+			accountService.LogonCheck(logon, request, customSession, customResponse, requestId);
 			if (customResponse.getResponseCode() == HttpStatus.OK.value())
 			{
 				Cookie wallaSessionIdCookie = new Cookie("X-Walla-Id", UserTools.GetLatestWallaId(customSession));
@@ -615,7 +629,7 @@ public class AccountController {
 		catch (Exception ex) {
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogWebMethod("Logon", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("AccountController","Logon", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	//POST /logout
@@ -626,6 +640,7 @@ public class AccountController {
 			HttpServletResponse response)
 	{
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -645,7 +660,7 @@ public class AccountController {
 		catch (Exception ex) {
 			meLogger.error(ex);
 		}
-		finally { UserTools.LogWebMethod("Logout", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("AccountController","Logout", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	//GET /{profileName}/logon
@@ -657,6 +672,7 @@ public class AccountController {
 			HttpServletResponse response)
 	{	
 		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
 		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
 		try
 		{
@@ -669,7 +685,7 @@ public class AccountController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
-			String token = accountService.GetAdminPassThroughToken(request, customSession, customResponse);
+			String token = accountService.GetAdminPassThroughToken(request, customSession, customResponse, requestId);
 			
 			responseCode = customResponse.getResponseCode();
 			
@@ -686,7 +702,7 @@ public class AccountController {
 			meLogger.error(ex);
 			return "";
 		}
-		finally { UserTools.LogWebMethod("GetGalleryPassThroughToken", meLogger, startMS, request, responseCode); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("AccountController","GetGalleryPassThroughToken", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	

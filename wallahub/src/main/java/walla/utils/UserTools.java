@@ -24,6 +24,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+import walla.business.UtilityService;
 import walla.datatypes.*;
 import walla.datatypes.auto.Account;
 import walla.datatypes.auto.Gallery;
@@ -41,7 +42,7 @@ import org.springframework.web.util.WebUtils;
 
 public final class UserTools {
 
-	public static void Copyfile(String sourceFile, String destinationFile, Logger meLogger) throws IOException
+	public static void Copyfile(String sourceFile, String destinationFile, UtilityService utilityService, String requestId) throws IOException
 	{
 		long startMS = System.currentTimeMillis();
 		InputStream in = null;
@@ -66,7 +67,7 @@ public final class UserTools {
 		finally { 
 			if (in != null) try { in.close(); } catch (Exception logOrIgnore) {}
 			if (out != null) try { out.close(); } catch (Exception logOrIgnore) {}
-			UserTools.LogMethod("Copyfile", meLogger, startMS, "" + sourceFile); 
+			utilityService.LogMethod("UserTools","Copyfile", startMS, requestId, sourceFile); 
 		}
 	}
 	
@@ -126,7 +127,7 @@ public final class UserTools {
 		outStream.close();
 	}
 	
-	public static void MoveFile(String sourceFile, String destinationFile, Logger meLogger)
+	public static void MoveFile(String sourceFile, String destinationFile, UtilityService utilityService, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -135,11 +136,11 @@ public final class UserTools {
 			  source.renameTo(new File(destinationFile));
 		}
 		finally { 
-			UserTools.LogMethod("MoveFile", meLogger, startMS, "" + sourceFile); 
+			utilityService.LogMethod("UserTools","MoveFile", startMS, requestId, sourceFile); 
 		}
 	}
 	
-	public static void DeleteFile(String filePath, Logger meLogger)
+	public static void DeleteFile(String filePath, UtilityService utilityService, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -147,10 +148,10 @@ public final class UserTools {
 			File deleteFile = new File(filePath);
 			deleteFile.delete();
 		}
-		finally {UserTools.LogMethod("DeleteFile", meLogger, startMS, filePath);}
+		finally {utilityService.LogMethod("UserTools","DeleteFile", startMS, requestId, filePath);}
 	}
 
-	public static void CompressToZip(String sourceFile, String destinationFile, Logger meLogger) throws WallaException, IOException
+	public static void CompressToZip(String sourceFile, String destinationFile, UtilityService utilityService, String requestId) throws WallaException, IOException
 	{
         FileInputStream fileInputStream = null;
         ZipOutputStream zipOutputStream = null;
@@ -188,11 +189,11 @@ public final class UserTools {
 			if (fileInputStream != null) try { fileInputStream.close(); } catch (Exception logOrIgnore) {}
 			if (zipOutputStream != null) try { zipOutputStream.close(); } catch (Exception logOrIgnore) {}
 			if (fileOutputStream != null) try { fileOutputStream.close(); } catch (Exception logOrIgnore) {}
-			UserTools.LogMethod("CompressToZip", meLogger, startMS, "" + sourceFile); 
+			utilityService.LogMethod("UserTools","CompressToZip", startMS, requestId, sourceFile); 
 		}
 	}
 	
-	public static void DecompressFromZip(String sourceFile, String destinationFile, Logger meLogger) throws WallaException, IOException
+	public static void DecompressFromZip(String sourceFile, String destinationFile, Logger meLogger, UtilityService utilityService, String requestId) throws WallaException, IOException
 	{
         FileInputStream fileInputStream = null;
         ZipInputStream zipInputStream = null;
@@ -241,7 +242,7 @@ public final class UserTools {
 			if (fileInputStream != null) try { fileInputStream.close(); } catch (Exception logOrIgnore) {}
 			if (zipInputStream != null) try { zipInputStream.close(); } catch (Exception logOrIgnore) {}
 			if (fileOutputStream != null) try { fileOutputStream.close(); } catch (Exception logOrIgnore) {}
-			UserTools.LogMethod("DecompressFromZip", meLogger, startMS, "" + sourceFile); 
+			utilityService.LogMethod("UserTools","DecompressFromZip", startMS, requestId, sourceFile); 
 		}
 	}
 	
@@ -269,6 +270,16 @@ public final class UserTools {
 	{
 		UUID identifier = java.util.UUID.randomUUID();
 		return identifier.toString().replace("-", "").toUpperCase();
+	}
+	
+	public static String GetRequestId()
+	{
+		Random rand = new Random();
+		long randomNumber = rand.nextLong();
+		
+		String id = String.valueOf(System.currentTimeMillis()) + "-" + String.valueOf(randomNumber);
+		
+		return id;
 	}
 	
 	public static String GetIpAddress(HttpServletRequest request)
@@ -303,45 +314,7 @@ public final class UserTools {
 		return m.matches();
 	}
 	
-	public static void LogWebMethod(String method, Logger meLogger, long startMS, HttpServletRequest request, int responseCode)
-	{
-		if (meLogger.isDebugEnabled())
-		{
-			long duration = System.currentTimeMillis() - startMS;
-			String queryString = request.getQueryString();
-			
-			if (queryString == null)
-				queryString = "";
-			
-			String message = method + "|" + duration + "|" + responseCode + "|" + request.getPathInfo() + "|" + queryString;
-			meLogger.debug(message);
-		}
-	}
-	
-	public static void LogWebFormMethod(String method, Logger meLogger, long startMS, HttpServletRequest request, String responseJsp)
-	{
-		if (meLogger.isDebugEnabled())
-		{
-			long duration = System.currentTimeMillis() - startMS;
-			String queryString = request.getQueryString();
-			
-			if (queryString == null)
-				queryString = "";
-			
-			String message = method + "|" + duration + "|" + responseJsp + "|" + request.getPathInfo() + "|" + queryString;
-			meLogger.debug(message);
-		}
-	}
-	
-	public static void LogMethod(String method, Logger meLogger, long startMS, String params)
-	{
-		if (meLogger.isDebugEnabled())
-		{
-			long duration = System.currentTimeMillis() - startMS;
-			String message = method + "|" + duration + "|" + params;
-			meLogger.debug(message);
-		}
-	}
+
 	
 	public static CustomSessionState GetInitialAdminSession(HttpServletRequest request, Logger meLogger) throws WallaException
 	{

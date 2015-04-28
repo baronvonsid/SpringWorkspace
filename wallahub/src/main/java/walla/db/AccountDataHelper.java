@@ -12,26 +12,26 @@ import walla.utils.WallaException;
 
 public interface AccountDataHelper {
 
-	public long CreateAccount(Account newAccount, String passwordHash, String salt) throws WallaException;
-	public void UpdateAccount(Account acount) throws WallaException;
-	public Account GetAccountMeta(long userId);
-	public AccountStorage GetAccountStorage(long userId);
-	public void UpdateAccountStatus(long userId, AccountStatus status) throws WallaException;
-	public boolean ValidateEmailConfirm(long userId, String requestValidationString, CustomResponse customResponse);
-	public void AddEmail(long userId, String email, boolean principle, boolean secondary) throws WallaException;
-	public void UpdateEmail(long userId, String email, EmailAction action, String validationString) throws WallaException;
-	public String ShouldAccountBeLive(long userId) throws WallaException;
+	public long CreateAccount(Account newAccount, String passwordHash, String salt, String requestId) throws WallaException;
+	public void UpdateAccount(Account acount, String requestId) throws WallaException;
+	public Account GetAccountMeta(long userId, String requestId);
+	public AccountStorage GetAccountStorage(long userId, String requestId);
+	public void UpdateAccountStatus(long userId, AccountStatus status, String requestId) throws WallaException;
+	public boolean ValidateEmailConfirm(long userId, String requestValidationString, CustomResponse customResponse, String requestId);
+	public void AddEmail(long userId, String email, boolean principle, boolean secondary, String requestId) throws WallaException;
+	public void UpdateEmail(long userId, String email, EmailAction action, String validationString, String requestId) throws WallaException;
+	public String ShouldAccountBeLive(long userId, String requestId) throws WallaException;
 	
-	public boolean EmailIsUnique(long userId, String email) throws WallaException;
-	public UserApp GetUserApp(long userId, long userAppId) throws WallaException;
-	public long FindExistingUserApp(long userId, int appId, int platformId, String machineName) throws WallaException;
-	public void CreateUserApp(long userId, UserApp userApp) throws WallaException;
-	public void UpdateUserApp(long userId, UserApp userApp) throws WallaException;
-	public void UserAppBlockUnblock(long userId, long userAppId, boolean block) throws WallaException;
+	public boolean EmailIsUnique(long userId, String email, String requestId) throws WallaException;
+	public UserApp GetUserApp(long userId, long userAppId, String requestId) throws WallaException;
+	public long FindExistingUserApp(long userId, int appId, int platformId, String machineName, String requestId) throws WallaException;
+	public void CreateUserApp(long userId, UserApp userApp, String requestId) throws WallaException;
+	public void UpdateUserApp(long userId, UserApp userApp, String requestId) throws WallaException;
+	public void UserAppBlockUnblock(long userId, long userAppId, boolean block, String requestId) throws WallaException;
 	
-	public LogonState GetLogonState(String userName) throws WallaException;
-	public void UpdateLogonState(long userId, int failedLoginCount, Date failedLoginLast) throws WallaException;
-	public void UpdatePassword(long userId, String passwordHash, String salt) throws WallaException;
-	public void UpdateTempSalt(long userId, String salt) throws WallaException;
-	public AccountActionSummary GetAccountActions(long userId);
+	public LogonState GetLogonState(String userName, String requestId) throws WallaException;
+	public void UpdateLogonState(long userId, int failedLoginCount, Date failedLoginLast, String requestId) throws WallaException;
+	public void UpdatePassword(long userId, String passwordHash, String salt, String requestId) throws WallaException;
+	public void UpdateTempSalt(long userId, String salt, String requestId) throws WallaException;
+	public AccountActionSummary GetAccountActions(long userId, String requestId);
 }

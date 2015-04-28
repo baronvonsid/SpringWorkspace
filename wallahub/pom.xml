@@ -74,9 +74,12 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
 					<generatePackage>walla.datatypes.auto</generatePackage>
 					<generateDirectory>src/main/java</generateDirectory>
 					<extension>true</extension>
+
 					<args>
 						<arg>-npa</arg>
+						<arg>-enableIntrospection</arg>
 					</args>
+					
 				</configuration>
 			</plugin>
 	    </plugins>

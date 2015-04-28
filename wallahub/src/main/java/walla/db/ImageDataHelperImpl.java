@@ -1,5 +1,6 @@
 package walla.db;
 
+import javax.annotation.Resource;
 import javax.sql.DataSource;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
@@ -22,6 +23,7 @@ import java.util.List;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Repository;
 
+import walla.business.UtilityService;
 import walla.datatypes.auto.*;
 import walla.datatypes.java.*;
 import walla.utils.*;
@@ -35,6 +37,9 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 	
 	private static final Logger meLogger = Logger.getLogger(ImageDataHelperImpl.class);
 	
+	@Resource(name="utilityServicePooled")
+	private UtilityService utilityService;
+	
 	public ImageDataHelperImpl() {
 		meLogger.debug("ImageDataHelperImpl object instantiated.");
 	}
@@ -43,7 +48,7 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 		this.dataSource = dataSource;
 	}
 
-	public UploadStatusList GetCurrentUploads(long userId, ImageIdList imageIdToCheck)
+	public UploadStatusList GetCurrentUploads(long userId, ImageIdList imageIdToCheck, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -111,11 +116,11 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetCurrentUploads", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("ImageDataHelperImpl","GetCurrentUploads", startMS, requestId, "");
 		}
 	}
 
-	public void MarkImagesAsInactive(long userId, ImageList imagesToDelete) throws WallaException 
+	public void MarkImagesAsInactive(long userId, ImageList imagesToDelete, String requestId) throws WallaException 
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -182,11 +187,11 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 		finally {
 	        if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("MarkImagesAsInactive", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("ImageDataHelperImpl","MarkImagesAsInactive", startMS, requestId, "");
 		}
 	}
 	
-	public ImageList GetActiveImagesInCategories(long userId, long[] categoryIds)
+	public ImageList GetActiveImagesInCategories(long userId, long[] categoryIds, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -233,11 +238,11 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 			if (statement != null) try { if (!statement.isClosed()) {statement.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetActiveImagesInCategories", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("ImageDataHelperImpl","GetActiveImagesInCategories", startMS, requestId, "");
 		}
 	}
 	
-	public ImageMeta GetImageMeta(long userId, long imageId)
+	public ImageMeta GetImageMeta(long userId, long imageId, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -383,11 +388,11 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 			if (rsTag != null) try { if (!rsTag.isClosed()) {rsTag.close();} } catch (SQLException logOrIgnore) {}
 			if (psTag != null) try { if (!psTag.isClosed()) {psTag.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetImageMeta", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(imageId));
+	        utilityService.LogMethod("ImageDataHelperImpl","GetImageMeta", startMS, requestId, String.valueOf(imageId));
 		}
 	}
 
-	public void CreateImage(long userId, ImageMeta newImage) throws WallaException 
+	public void CreateImage(long userId, ImageMeta newImage, String requestId) throws WallaException 
 	{
 		long startMS = System.currentTimeMillis();
 		String sqlImage = "INSERT INTO [Image] ([ImageId],[CategoryId],[Name],[Description],[OriginalFileName],[Format],[Status],"
@@ -443,7 +448,7 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 			Calendar aLongTimeAgo = Calendar.getInstance();
 			aLongTimeAgo.set(1800, 1, 1);
 			
-			if (newImage.isTakenDateSet()  && newImage.getTakenDate().after(aLongTimeAgo))
+			if (newImage.getTakenDateSet()  && newImage.getTakenDate().after(aLongTimeAgo))
 			{ psMeta.setDate(6,new java.sql.Date(newImage.getTakenDate().getTimeInMillis())); }
 			else
 			{ psMeta.setNull(6, java.sql.Types.DATE); }
@@ -521,11 +526,11 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 	        if (psMeta != null) try { psMeta.close(); } catch (SQLException logOrIgnore) {}
 	        if (bsTagInsert != null) try { bsTagInsert.close(); } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { conn.close(); } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("CreateImage", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("ImageDataHelperImpl","CreateImage", startMS, requestId, String.valueOf(newImage.getId()));
 		}
 	}
 
-	public void UpdateImage(long userId, ImageMeta existingImage) throws WallaException 
+	public void UpdateImage(long userId, ImageMeta existingImage, String requestId) throws WallaException 
 	{
 		long startMS = System.currentTimeMillis();
 		String sqlImage = "UPDATE [Image] SET [Name] = ?,[Description] = ?, [RecordVersion] = [RecordVersion] + 1, [LastUpdated] = dbo.GetDateNoMS() "
@@ -694,11 +699,11 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 	        if (bsTagInsert != null) try { bsTagInsert.close(); } catch (SQLException logOrIgnore) {}
 	        if (bsTagDelete != null) try { bsTagDelete.close(); } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { conn.close(); } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("UpdateImage", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("ImageDataHelperImpl","UpdateImage", startMS, requestId, String.valueOf(existingImage.getId()));
 		}		
 	}
 	
-	public long[] GetTagsLinkedToImages(long userId, ImageList imageList) throws WallaException
+	public long[] GetTagsLinkedToImages(long userId, ImageList imageList, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -754,11 +759,11 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 	        if (statement != null) try { if (!statement.isClosed()) {statement.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetTagsLinkedToImages", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("ImageDataHelperImpl","GetTagsLinkedToImages", startMS, requestId, "");
 		}
 	}
 	
-	public long[] GetCategoriesLinkedToImages(long userId, ImageList imageList) throws WallaException
+	public long[] GetCategoriesLinkedToImages(long userId, ImageList imageList, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -814,11 +819,11 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
 	        if (statement != null) try { if (!statement.isClosed()) {statement.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("GetCategoriesLinkedToImages", meLogger, startMS, String.valueOf(userId));
+	        utilityService.LogMethod("ImageDataHelperImpl","GetCategoriesLinkedToImages", startMS, requestId, "");
 		}
 	}
 
-	public void UpdateImageStatus(long userId, long imageId, int status, boolean error, String errorMessage) throws WallaException
+	public void UpdateImageStatus(long userId, long imageId, int status, boolean error, String errorMessage, String requestId) throws WallaException
 	{
 		//check new status is previous status + 1.
 		long startMS = System.currentTimeMillis();
@@ -883,7 +888,7 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 		finally {
 	        if (ps != null) try { if (!ps.isClosed()) {ps.close();} } catch (SQLException logOrIgnore) {}
 	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
-	        UserTools.LogMethod("UpdateImageStatus", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(imageId));
+	        utilityService.LogMethod("ImageDataHelperImpl","UpdateImageStatus", startMS, requestId, String.valueOf(imageId));
 		}
 	}
 	

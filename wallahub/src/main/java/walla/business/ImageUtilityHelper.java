@@ -15,6 +15,7 @@ import java.util.Iterator;
 import java.awt.image.BufferedImage;
 import java.io.*;
 
+
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.FileImageInputStream;
@@ -42,7 +43,7 @@ public final class ImageUtilityHelper
 {
 	//private static Logger meLogger = null;
 	
-	public static String EnrichImageMetaFromFileData(String imageFilePath, String originalZipFile, ImageMeta imageMeta, Logger meLogger, long imageId)
+	public static String EnrichImageMetaFromFileData(String imageFilePath, String originalZipFile, ImageMeta imageMeta, Logger meLogger, long imageId, UtilityService utilityService, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -51,7 +52,7 @@ public final class ImageUtilityHelper
 			File zipFile = new File(originalZipFile);
 			
 			/* Size, Format, Date taken */
-			String response = EnrichMetaFromFile(imageFile, zipFile, imageMeta, meLogger, imageId);
+			String response = EnrichMetaFromFile(imageFile, zipFile, imageMeta, meLogger, imageId, utilityService, requestId);
 			if (!response.equals("OK"))
 				return response;
 			
@@ -83,7 +84,7 @@ public final class ImageUtilityHelper
 				JpegDirectory jpegDirectory = fileMetaData.getDirectory(JpegDirectory.class);
 				if (jpegDirectory != null)
 				{
-					response = EnrichMetaFromJPEG(jpegDirectory, imageMeta, meLogger, imageId);
+					response = EnrichMetaFromJPEG(jpegDirectory, imageMeta, meLogger, imageId, utilityService, requestId);
 					if (!response.equals("OK"))
 						return response;
 				}
@@ -92,7 +93,7 @@ public final class ImageUtilityHelper
 			ExifIFD0Directory exifDirectory = fileMetaData.getDirectory(ExifIFD0Directory.class);
 			if (exifDirectory != null)
 			{
-				response = EnrichMetaFromEXIF(exifDirectory, imageMeta, meLogger, imageId);
+				response = EnrichMetaFromEXIF(exifDirectory, imageMeta, meLogger, imageId, utilityService, requestId);
 				if (!response.equals("OK"))
 					return response;
 			}
@@ -100,7 +101,7 @@ public final class ImageUtilityHelper
 			ExifSubIFDDirectory exifSubDirectory = fileMetaData.getDirectory(ExifSubIFDDirectory.class);
 			if (exifSubDirectory != null)
 			{
-				response = EnrichMetaFromEXIFSub(exifSubDirectory, imageMeta, meLogger, imageId);
+				response = EnrichMetaFromEXIFSub(exifSubDirectory, imageMeta, meLogger, imageId, utilityService, requestId);
 				if (!response.equals("OK"))
 					return response;
 			}
@@ -123,7 +124,7 @@ public final class ImageUtilityHelper
 			meLogger.error(ex);
 			return ex.getMessage();
 		}
-		finally {UserTools.LogMethod("EnrichImageMetaFromFileData", meLogger, startMS, String.valueOf(imageId));}
+		finally {utilityService.LogMethod("ImageUtilityHelper","EnrichImageMetaFromFileData", startMS, requestId, String.valueOf(imageId));}
 		
 		/*
 		for (Directory directory : fileMetaData.getDirectories()) 
@@ -153,7 +154,7 @@ public final class ImageUtilityHelper
 
 	}
 	
-	private static String EnrichMetaFromFile(File currentFile, File zipFile, ImageMeta imageMeta, Logger meLogger, long imageId)
+	private static String EnrichMetaFromFile(File currentFile, File zipFile, ImageMeta imageMeta, Logger meLogger, long imageId, UtilityService utilityService, String requestId)
 	{
 		//Enrich:
 		/* Size, Format, Date taken */
@@ -163,6 +164,13 @@ public final class ImageUtilityHelper
 			Path path = currentFile.toPath();
 			BasicFileAttributeView attributeView = Files.getFileAttributeView(path, BasicFileAttributeView.class);
 			BasicFileAttributes attributes = attributeView.readAttributes();
+			
+			String extension = "";
+			int i = currentFile.getName().lastIndexOf('.');
+			if (i > 0) {
+			    extension = currentFile.getName().substring(i+1);
+			}
+			
 			
 			imageMeta.setSize(attributes.size());
 
@@ -192,7 +200,7 @@ public final class ImageUtilityHelper
 			
 			//String extension = imageMeta.getOriginalFileName().substring(imageMeta.getOriginalFileName().lastIndexOf(".")+1);
 			
-			switch (imageInfo.getImageFormat().toUpperCase())
+			switch (extension.toUpperCase())
 			{
 				case "JPG":
 				case "JPEG":
@@ -222,7 +230,7 @@ public final class ImageUtilityHelper
 			meLogger.error(ex);
 			return ex.getMessage();
 		}
-		finally {UserTools.LogMethod("EnrichMetaFromFile", meLogger, startMS, String.valueOf(imageId));}
+		finally {utilityService.LogMethod("ImageUtilityHelper","EnrichMetaFromFile", startMS, requestId, String.valueOf(imageId));}
 	}
 	
 	/*
@@ -243,11 +251,11 @@ public final class ImageUtilityHelper
 			meLogger.error(ex);
 			return ex.getMessage();
 		}
-		finally {UserTools.LogMethod("LoadFileIntoMemoryReadAttributes", meLogger, startMS, String.valueOf(imageId));}
+		finally {utilityService.LogMethod("ImageUtilityHelper","LoadFileIntoMemoryReadAttributes", startMS, requestId, String.valueOf(imageId));}
 	}
 	*/
 	
-	private static String EnrichMetaFromJPEG(JpegDirectory jpegDirectory, ImageMeta imageMeta, Logger meLogger, long imageId)
+	private static String EnrichMetaFromJPEG(JpegDirectory jpegDirectory, ImageMeta imageMeta, Logger meLogger, long imageId, UtilityService utilityService, String requestId)
 	{
 		/*
  		height - integer
@@ -276,10 +284,10 @@ public final class ImageUtilityHelper
 			meLogger.error(ex);
 			return ex.getMessage();
 		}
-		finally {UserTools.LogMethod("EnrichMetaFromJPEG", meLogger, startMS, String.valueOf(imageId));}
+		finally {utilityService.LogMethod("ImageUtilityHelper","EnrichMetaFromJPEG", startMS, requestId, String.valueOf(imageId));}
 	}
 	
-	private static String EnrichMetaFromEXIF(ExifIFD0Directory exifDirectory, ImageMeta imageMeta, Logger meLogger, long imageId)
+	private static String EnrichMetaFromEXIF(ExifIFD0Directory exifDirectory, ImageMeta imageMeta, Logger meLogger, long imageId, UtilityService utilityService, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -325,10 +333,10 @@ public final class ImageUtilityHelper
 			meLogger.error(ex);
 			return ex.getMessage();
 		}
-		finally {UserTools.LogMethod("EnrichMetaFromEXIF", meLogger, startMS, String.valueOf(imageId));}
+		finally {utilityService.LogMethod("ImageUtilityHelper","EnrichMetaFromEXIF", startMS, requestId, String.valueOf(imageId));}
 	}
 	
-	private static String EnrichMetaFromEXIFSub(ExifSubIFDDirectory exifSubDirectory, ImageMeta imageMeta, Logger meLogger, long imageId)
+	private static String EnrichMetaFromEXIFSub(ExifSubIFDDirectory exifSubDirectory, ImageMeta imageMeta, Logger meLogger, long imageId, UtilityService utilityService, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -409,7 +417,7 @@ public final class ImageUtilityHelper
 			meLogger.error(ex);
 			return ex.getMessage();
 		}
-		finally {UserTools.LogMethod("EnrichMetaFromEXIFSub", meLogger, startMS, String.valueOf(imageId));}
+		finally {utilityService.LogMethod("ImageUtilityHelper","EnrichMetaFromEXIFSub", startMS, requestId, String.valueOf(imageId));}
 	}
 
 	/********************************************************************************/
@@ -419,7 +427,7 @@ public final class ImageUtilityHelper
 	/**
 	 * @throws InfoException ******************************************************************************/
 	
-	public static boolean CheckForPortrait(String mainImagePath, Logger meLogger) throws IOException, InfoException
+	public static boolean CheckForPortrait(String mainImagePath, UtilityService utilityService, String requestId) throws IOException, InfoException
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -430,7 +438,7 @@ public final class ImageUtilityHelper
 			else
 				return false;
 		}
-		finally {UserTools.LogMethod("CheckForPortrait", meLogger, startMS, mainImagePath);}
+		finally {utilityService.LogMethod("ImageUtilityHelper","CheckForPortrait", startMS, requestId, mainImagePath);}
 	}
 	
 	/*
@@ -468,12 +476,12 @@ public final class ImageUtilityHelper
 			
 			return portrait;
 		}
-		finally {UserTools.LogMethod("CheckForPortrait", meLogger, startMS, mainImagePath);}
+		finally {utilityService.LogMethod("ImageUtilityHelper","CheckForPortrait", startMS, requestId, mainImagePath);}
 	}
 	*/
 	
 	
-	public static void SwitchHeightWidth(String mainImagePath, ImageMeta imageMeta, Logger meLogger) throws IOException, InfoException
+	public static void SwitchHeightWidth(String mainImagePath, ImageMeta imageMeta, UtilityService utilityService, String requestId) throws IOException, InfoException
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -507,10 +515,11 @@ public final class ImageUtilityHelper
 			
 			
 		}
-		finally {UserTools.LogMethod("SwitchHeightWidth", meLogger, startMS, mainImagePath);}
+		finally {utilityService.LogMethod("ImageUtilityHelper","SwitchHeightWidth", startMS, requestId, mainImagePath);}
 	}
 	
-	public static void SaveMainImage(long userId, long imageId, String sourceFilePath, String destinationFilePath, String tempFilePath, int targetWidth, int targetHeight, Logger meLogger) throws IOException, InterruptedException, IM4JavaException
+	public static void SaveMainImage(long userId, long imageId, String sourceFilePath, String destinationFilePath, String tempFilePath, int targetWidth, 
+			int targetHeight, UtilityService utilityService, String requestId) throws IOException, InterruptedException, IM4JavaException
 	{
 		//Using the original image, save a JPEG version, correctly orientated with no EXIF
 		long startMS = System.currentTimeMillis();
@@ -554,24 +563,25 @@ public final class ImageUtilityHelper
 				cmd.run(op);
 			}
 		}
-		finally {UserTools.LogMethod("SaveMainImage", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(imageId));}
+		finally {utilityService.LogMethod("ImageUtilityHelper","SaveMainImage", startMS, requestId, String.valueOf(imageId));}
 	}
 	
-	public static void SaveOriginal(long userId, String fromFilePath, String originalFileDest, Logger meLogger) throws IOException, InterruptedException, IM4JavaException, WallaException
+	public static void SaveOriginal(long userId, String fromFilePath, String originalFileDest, UtilityService utilityService, String requestId) throws IOException, InterruptedException, IM4JavaException, WallaException
 	{	
 		long startMS = System.currentTimeMillis();
 		try
 		{
 			//Path destinationFile = Paths.get(toFolderPath, imageId + "." + extension);
-			UserTools.CompressToZip(fromFilePath, originalFileDest, meLogger);
+			UserTools.CompressToZip(fromFilePath, originalFileDest, utilityService, requestId);
 			//UserTools.Copyfile(fromFilePath, originalFileDest, meLogger);
 			
 			//return destinationFile.toString();
 		}
-		finally {UserTools.LogMethod("SaveOriginal", meLogger, startMS, originalFileDest);}
+		finally {utilityService.LogMethod("ImageUtilityHelper","SaveOriginal", startMS, requestId, originalFileDest);}
 	}
 	
-	public static void SaveReducedSizeImages(long userId, long imageId, String sourceFilePath, String destinationFilePath, int targetWidth, int targetHeight, Logger meLogger) throws IOException, InterruptedException, IM4JavaException
+	public static void SaveReducedSizeImages(long userId, long imageId, String sourceFilePath, String destinationFilePath, 
+			int targetWidth, int targetHeight, UtilityService utilityService, String requestId) throws IOException, InterruptedException, IM4JavaException
 	{
 		//Load image into memory, then save of JPEGs of particular sizes.
 		//50, 300, 800.  Square Dimensions.  Cropping required.
@@ -670,7 +680,7 @@ public final class ImageUtilityHelper
 			cmd.run(op);
 		
 		}
-		finally {UserTools.LogMethod("SaveReducedSizeImages", meLogger, startMS, String.valueOf(userId) + " " + String.valueOf(imageId));}
+		finally {utilityService.LogMethod("ImageUtilityHelper","SaveReducedSizeImages", startMS, requestId, String.valueOf(imageId));}
 	}
 }
 
