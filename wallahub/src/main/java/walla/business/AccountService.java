@@ -508,8 +508,6 @@ public class AccountService {
 	{
 		long startMS = System.currentTimeMillis();
 		try {
-			meLogger.debug("CreateUserApp() begins. UserId:" + userId);
-			
 			if (proposedUserApp.getMachineName() == null || proposedUserApp.getMachineName().isEmpty())
 			{
 				meLogger.warn("CreateUserApp didn't receive a machine name, this is mandatory.");

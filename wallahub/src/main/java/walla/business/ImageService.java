@@ -145,6 +145,17 @@ public class ImageService {
 				
 				utilityService.AddAction(ActionType.UserApp, userAppId, "ImgMetaUpd", "");
 				//TODO Add queued process to update any views\tags
+				
+				//TODO decouple
+				if (imageMeta.getTags() != null && imageMeta.getTags().getTagRef().size() > 0)
+				{
+					for(ImageMeta.Tags.TagRef tagRef : imageMeta.getTags().getTagRef())
+					{
+						//TODO decouple method
+						tagService.TagRippleUpdate(userId, tagRef.getId(), requestId);
+					}
+				}
+				
 			}
 			else
 			{

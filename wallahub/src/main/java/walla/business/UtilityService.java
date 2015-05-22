@@ -79,6 +79,9 @@ public class UtilityService {
 				if (params != null && params.length() > 200)
 					params = params.substring(params.length() - 200);
 				
+				if (response != null && response.length() > 100)
+					response = response.substring(0,100);
+				
 				LogMethodDetail detail = new LogMethodDetail();
 				detail.setLogMethodType(LogMethodType.Web.name());
 				detail.setSession(sessionId);
@@ -121,8 +124,8 @@ public class UtilityService {
 				if (method != null && method.length() > 30)
 					method = method.substring(0,30);
 
-				if (params != null && params.length() > 30)
-					params = params.substring(0,30);
+				if (params != null && params.length() > 200)
+					params = params.substring(0,200);
 				
 				LogMethodDetail detail = new LogMethodDetail();
 				detail.setLogMethodType(LogMethodType.Internal.name());

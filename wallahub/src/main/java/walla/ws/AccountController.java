@@ -48,8 +48,8 @@ import walla.utils.*;
 
 	GetNewUserToken() GET /newusertoken
 	CreateUpdateAccount() PUT/POST /{profileName}
-	GetAccount() GET /{profileName}
-	AckEmailConfirm() GET /{profileName}/{validationString}
+	GetAccountMeta() GET /{profileName}
+	//AckEmailConfirm() GET /{profileName}/{validationString}
 	CheckProfileName() GET /profilename/{profileName}
 	
 	CreateUpdateUserApp() PUT /{profileName}/userapp
@@ -57,7 +57,7 @@ import walla.utils.*;
 	
 	CheckClientApp() POST /clientapp
 	SetClientApp PUT /{profileName}/clientapp
-	GetLogonToken() POST /logontoken
+	GetLogonToken() GET /logon/token
 	Logon() POST /logon
 	Logout() POST /logout
 	
@@ -176,7 +176,7 @@ public class AccountController {
 			else
 			{
 				CustomSessionState customSession = UserTools.CheckNewUserSession(account, request, meLogger);
-				if (customSession == null)
+				if (customSession != null)
 				{
 					CustomResponse customResponse = new CustomResponse();
 					accountService.CreateAccount(account, customResponse, customSession, requestId);
@@ -356,8 +356,11 @@ public class AccountController {
 			CustomResponse customResponse = new CustomResponse();
 			UserApp userApp = accountService.GetUserApp(customSession.getUserId(), customSession.getAppId(), customSession.getPlatformId(), userAppId, customResponse, requestId);
 			
-			synchronized(customSession) {
-				customSession.setUserAppId(userApp.getId());
+			if (userApp != null)
+			{
+				synchronized(customSession) {
+					customSession.setUserAppId(userApp.getId());
+				}
 			}
 			
 			responseCode = customResponse.getResponseCode();
@@ -386,6 +389,8 @@ public class AccountController {
 			response.addHeader("Cache-Control", "no-cache");
 			
 			Thread.sleep(500);
+			
+			//TODO ensure correct session is used, cannot be anonymous
 			
 			String profileReturn = "USED";
 			CustomResponse customResponse = new CustomResponse();
@@ -475,6 +480,9 @@ public class AccountController {
 		{
 			response.addHeader("Cache-Control", "no-cache");
 
+			//TODO Anonymous sessions can use this.  Add additional protection
+			Thread.sleep(200);
+			
 			CustomResponse customResponse = new CustomResponse();
 			accountService.VerifyApp(clientApp, customResponse, requestId);
 			if (customResponse.getResponseCode() != HttpStatus.OK.value())
@@ -502,7 +510,7 @@ public class AccountController {
 		finally { utilityService.LogWebMethod("AccountController","CheckClientApp", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
-	//POST /logontoken
+	//GET /logon/token
 	@RequestMapping(value="/logon/token", method=RequestMethod.GET, produces=MediaType.APPLICATION_XML_VALUE, headers={"Accept-Charset=utf-8"} )
 	public @ResponseBody Logon GetLogonToken(
 			HttpServletRequest request, 
@@ -631,9 +639,9 @@ public class AccountController {
 		}
 		finally { utilityService.LogWebMethod("AccountController","Logon", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
-	
+
 	//POST /logout
-	@RequestMapping(value = { "/logout" }, method = { RequestMethod.POST }, 
+	@RequestMapping(value = { "/{profileName}/logout" }, method = { RequestMethod.POST }, 
 			headers={"Accept-Charset=utf-8"})
 	public void Logout(
 			HttpServletRequest request,
@@ -704,9 +712,7 @@ public class AccountController {
 		}
 		finally { utilityService.LogWebMethod("AccountController","GetGalleryPassThroughToken", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
-	
-	
-	
+
 	//  GET /session
 	@RequestMapping(value="/session", method=RequestMethod.GET, 
 			produces=MediaType.APPLICATION_XML_VALUE )

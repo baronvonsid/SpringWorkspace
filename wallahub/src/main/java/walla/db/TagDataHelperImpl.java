@@ -232,8 +232,8 @@ public class TagDataHelperImpl implements TagDataHelper {
 			conn = dataSource.getConnection();
 			conn.setAutoCommit(false);
 
-			String deleteImagesSql = "DELETE FROM [TagImage] WHERE [TagId]=" + tagId + " AND UserId=" + userId; 
-			String deleteGalleryTagsSql = "DELETE FROM [GalleryTag] WHERE [TagId]=" + tagId + " AND UserId=" + userId;
+			String deleteImagesSql = "DELETE FROM [TagImage] WHERE [TagId]=" + tagId; 
+			String deleteGalleryTagsSql = "DELETE FROM [GalleryTag] WHERE [TagId]=" + tagId;
 			us = conn.createStatement();
 			us.addBatch(deleteImagesSql);
 			us.addBatch(deleteGalleryTagsSql);

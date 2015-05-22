@@ -54,7 +54,7 @@ import walla.utils.*;
 	GetGalleryOptions() GET /{profileName}/gallery/galleryoptions
 	GetGallerySections() GET /{profileName}/gallery/gallerysections
 	PostGalleryPreview() POST /{profileName}/gallery/preview
-	GetGalleryLogonToken GET /{profileName}/gallery/{galleryName}/gallerylogon
+	GetGalleryPassThroughToken GET /{profileName}/gallery/{galleryName}/gallerylogon
 	*/
 
 @Controller

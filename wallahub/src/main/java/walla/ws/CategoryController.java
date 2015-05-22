@@ -43,7 +43,6 @@ import walla.utils.*;
 	UpdateCategory() PUT /{profileName}/category/{categoryId}
 	DeleteCategory() DELETE /{profileName}/category/{categoryId}
 	GetCategoryMeta() GET /{profileName}/category/{categoryId}
-	
 	GetCategoryList() GET /{profileName}/categories
 	MoveToNewCategory() PUT {profileName}/category/{categoryId}/images	
 	

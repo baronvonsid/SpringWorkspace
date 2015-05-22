@@ -268,7 +268,7 @@ public class TagController {
 		finally { utilityService.LogWebMethod("TagController","AddImagesToTag", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
-	// PUT /{profileName}/tag/{tagName}/images
+	// DELETE /{profileName}/tag/{tagName}/images
 	// No client caching
 	@RequestMapping(value = { "/{profileName}/tag/{tagName}/images" }, method = { RequestMethod.DELETE }, produces=MediaType.APPLICATION_XML_VALUE,
 			consumes = MediaType.APPLICATION_XML_VALUE, headers={"Accept-Charset=utf-8"} )

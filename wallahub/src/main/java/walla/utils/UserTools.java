@@ -87,7 +87,7 @@ public final class UserTools {
 									}
 								});
 								*/
-		if (matchingFiles.length == 1)
+		if (matchingFiles != null && matchingFiles.length == 1)
 		{
 			return matchingFiles[0];
 		}
@@ -275,7 +275,7 @@ public final class UserTools {
 	public static String GetRequestId()
 	{
 		Random rand = new Random();
-		long randomNumber = rand.nextLong();
+		long randomNumber = Math.abs(rand.nextLong());
 		
 		String id = String.valueOf(System.currentTimeMillis()) + "-" + String.valueOf(randomNumber);
 		
@@ -504,9 +504,8 @@ public final class UserTools {
 		
 		if (customSession.getRemoteAddress().compareTo(GetIpAddress(request)) != 0)
 		{
-			String error = "IP address of the session has changed since the logon was established.";
-			meLogger.error(error);
-			throw new WallaException("UserTools", "GetGallerySession", error, HttpStatus.FORBIDDEN.value()); 
+			meLogger.warn("IP address of the session has changed since the logon was established.");
+			return null;
 		}
 		
 		return customSession;
@@ -536,9 +535,8 @@ public final class UserTools {
 		
 		if (customSession.getRemoteAddress().compareTo(GetIpAddress(request)) != 0)
 		{
-			String error = "IP address of the session has changed since the logon was established.";
-			meLogger.error(error);
-			throw new WallaException("UserTools", "GetGalleryPreviewSession", error, HttpStatus.FORBIDDEN.value()); 
+			meLogger.warn("IP address of the session has changed since the logon was established.");
+			return null;
 		}
 		
 		return customSession;

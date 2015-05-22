@@ -466,7 +466,7 @@ public class CategoryService {
 			if (categoryIds.length == 0)
 			{
 				String error = "No categories were returned from the database.  UserId:" + userId + " CategoryId: " + categoryId;
-				meLogger.warn(error);
+				meLogger.debug(error);
 				return;
 			}
 				
@@ -477,7 +477,7 @@ public class CategoryService {
 			if (galleryIds == null || galleryIds.length == 0)
 			{
 				String error = "No galleries were returned from the database.  UserId:" + userId;;
-				meLogger.warn(error);
+				meLogger.debug(error);
 				return;
 			}
 
