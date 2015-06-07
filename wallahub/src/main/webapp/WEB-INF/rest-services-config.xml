@@ -1,17 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:oxm="http://www.springframework.org/schema/oxm"
-	xmlns:util="http://www.springframework.org/schema/util" xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xmlns:oxm="http://www.springframework.org/schema/oxm"
+	xmlns:util="http://www.springframework.org/schema/util" 
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
 	xmlns:context="http://www.springframework.org/schema/context"
-	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd  
-                                    http://www.springframework.org/schema/mvc 
-                                    http://www.springframework.org/schema/mvc/spring-mvc-3.0.xsd  
-                                    http://www.springframework.org/schema/context 
-                                    http://www.springframework.org/schema/context/spring-context-3.0.xsd  
-                                    http://www.springframework.org/schema/oxm  
-                                    http://www.springframework.org/schema/oxm/spring-oxm-3.0.xsd  
-                                    http://www.springframework.org/schema/util  
-                                    http://www.springframework.org/schema/util/spring-util-3.0.xsd">
+	xmlns:amq="http://activemq.apache.org/schema/core"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+						http://www.springframework.org/schema/beans/spring-beans-3.0.xsd  
+                        http://www.springframework.org/schema/mvc 
+                        http://www.springframework.org/schema/mvc/spring-mvc-3.0.xsd  
+                        http://www.springframework.org/schema/context 
+                        http://www.springframework.org/schema/context/spring-context-3.0.xsd  
+                        http://www.springframework.org/schema/oxm  
+                        http://www.springframework.org/schema/oxm/spring-oxm-3.0.xsd  
+                        http://www.springframework.org/schema/util  
+                        http://www.springframework.org/schema/util/spring-util-3.0.xsd
+                        http://activemq.apache.org/schema/core
+						http://activemq.apache.org/schema/core/activemq-core.xsd">
 
 	<!-- Enables automatic mapping of fund objects to and from JSON -->
 	<mvc:annotation-driven />
@@ -25,8 +31,141 @@
 	<context:component-scan base-package="walla.web" />
 	<!-- <context:component-scan base-package="walla.business" /> -->
 	<!-- <context:component-scan base-package="walla.db" /> -->
-	
+
 	<context:property-placeholder location="/WEB-INF/walla.properties" ignore-unresolvable="false" ignore-resource-not-found="false" />
+
+	<bean id="amqConnectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
+		<property name="brokerURL">
+	    	<value>${jms.broker.url}</value>
+	    </property>
+	</bean>
+
+	<bean id="cachedConnectionFactory" class="org.springframework.jms.connection.CachingConnectionFactory">
+		<property name="targetConnectionFactory" ref="amqConnectionFactory" />
+	    <property name="sessionCacheSize">
+	    	<value>10</value>
+	    </property>	
+	</bean>
+
+<!-- 
+	  <bean id="jmsFactory" class="org.apache.activemq.pool.PooledConnectionFactory" destroy-method="stop">
+	    <property name="connectionFactory">
+	      <bean class="org.apache.activemq.ActiveMQConnectionFactory">
+	        <property name="brokerURL">
+	          <value>${jms.broker.url}</value>
+	        </property>
+	      </bean>
+	    </property>
+	  </bean>
+	-->
+	
+		<bean id="logQueue" class="org.apache.activemq.command.ActiveMQQueue">
+			<constructor-arg value="${jms.broker.logqueue}" />
+		</bean>
+
+		<bean id="logTemplate" class="org.springframework.jms.core.JmsTemplate">
+		    <property name="connectionFactory">
+		      <ref local="cachedConnectionFactory"/>
+		    </property>
+		    <property name="defaultDestination">
+		    	<ref local="logQueue" />
+		    </property>
+		</bean>
+
+		<bean id="aggQueue" class="org.apache.activemq.command.ActiveMQQueue">
+			<constructor-arg value="${jms.broker.aggqueue}" />
+		</bean>
+
+		<bean id="aggTemplate" class="org.springframework.jms.core.JmsTemplate">
+		    <property name="connectionFactory">
+		      <ref local="cachedConnectionFactory"/>
+		    </property>
+		    <property name="defaultDestination">
+		    	<ref local="aggQueue" />
+		    </property>
+		</bean>
+
+		<bean id="emailQueue" class="org.apache.activemq.command.ActiveMQQueue">
+			<constructor-arg value="${jms.broker.emailqueue}" />
+		</bean>
+
+		<bean id="emailTemplate" class="org.springframework.jms.core.JmsTemplate">
+		    <property name="connectionFactory">
+		      <ref local="cachedConnectionFactory"/>
+		    </property>
+		    <property name="defaultDestination">
+		    	<ref local="emailQueue" />
+		    </property>
+		</bean>
+
+		<bean id="noAggQueue" class="org.apache.activemq.command.ActiveMQQueue">
+			<constructor-arg value="${jms.broker.noaggqueue}" />
+		</bean>
+
+		<bean id="noAggTemplate" class="org.springframework.jms.core.JmsTemplate">
+		    <property name="connectionFactory">
+		      <ref local="cachedConnectionFactory"/>
+		    </property>
+		    <property name="defaultDestination">
+		    	<ref local="noAggQueue" />
+		    </property>
+		</bean>
+		
+		<bean id="newImageQueue" class="org.apache.activemq.command.ActiveMQQueue">
+			<constructor-arg value="${jms.broker.newimagequeue}" />
+		</bean>
+
+		<bean id="newImageTemplate" class="org.springframework.jms.core.JmsTemplate">
+		    <property name="connectionFactory">
+		      <ref local="cachedConnectionFactory"/>
+		    </property>
+		    <property name="defaultDestination">
+		    	<ref local="newImageQueue" />
+		    </property>
+		</bean>		
+
+
+
+<!--
+	  <bean id="myJmsTemplate" class="org.springframework.jms.core.JmsTemplate">
+	    <property name="connectionFactory">
+	      <ref local="jmsFactory"/>
+	    </property>
+	  </bean>
+
+
+                        http://activemq.apache.org/schema/core
+						http://activemq.apache.org/schema/core/activemq-core.xsd
+
+	
+	
+	
+						http://www.springframework.org/schema/jms
+						http://www.springframework.org/schema/jms/spring-jms.xsd
+	
+	
+	<bean id="amqConnectionFactory" 
+	    class="org.apache.activemq.ActiveMQConnectionFactory" 
+	    amq:brokerURL="tcp://localhost:61614" />
+
+	<bean id="cachedConnectionFactory" 
+	    class="org.springframework.jms.connection.CachingConnectionFactory"
+	    amq:targetConnectionFactory-ref="amqConnectionFactory" 
+	    amq:sessionCacheSize="10" />
+
+	<bean id="destination" 
+	    class="org.apache.activemq.command.ActiveMQQueue">
+	
+		<constructor-arg value="FOO.TEST" />
+	</bean>
+
+	<bean id="producerTemplate" 
+	    class="org.springframework.jms.core.JmsTemplate"
+	    amq:connectionFactory-ref="cachedConnectionFactory"
+	    amq:defaultDestination-ref="destination" />
+	-->
+	
+	
 	
 	<!-- 
 	<bean class="org.springframework.context.support.PropertySourcesPlaceholderConfigurer">

@@ -12,6 +12,7 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.nio.file.Path;
@@ -34,6 +35,9 @@ import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
 
 import org.apache.log4j.Logger;
 import org.springframework.http.HttpStatus;
@@ -314,7 +318,17 @@ public final class UserTools {
 		return m.matches();
 	}
 	
-
+	public static String ObjectToXml(Object object) throws JAXBException
+	{
+        JAXBContext context = JAXBContext.newInstance(object.getClass());
+        Marshaller marshaller = context.createMarshaller();
+        marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+	
+        StringWriter writer = new StringWriter(); 
+        marshaller.marshal(object, writer);
+        
+        return writer.toString(); 
+	}
 	
 	public static CustomSessionState GetInitialAdminSession(HttpServletRequest request, Logger meLogger) throws WallaException
 	{

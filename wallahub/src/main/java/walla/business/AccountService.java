@@ -29,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Required;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.apache.commons.lang3.*;
 
 @Service("AccountService")
@@ -54,6 +55,8 @@ public class AccountService {
 	
 	@Resource(name="utilityServicePooled")
 	private UtilityService utilityService;
+	
+	@Value( "${messaging.enabled}" ) private boolean messagingEnabled;
 	
 	private static final Logger meLogger = Logger.getLogger(AccountService.class);
 
@@ -412,8 +415,13 @@ public class AccountService {
 
 			accountDataHelper.UpdateEmail(userId, email, EmailAction.Verified, "", requestId);
 			
-			//TODO decouple.
-			CheckUpdateAccountStatus(userId, requestId);
+			if (messagingEnabled)
+			{
+				RequestMessage requestMessage = utilityService.BuildRequestMessage(userId, "AccountService", "CheckUpdateAccountStatus", requestId, 0, 0, null);
+				utilityService.SendMessageToQueue(QueueTemplate.Agg, requestMessage, "CHKACCTSTATUS");
+			}
+			else
+				CheckUpdateAccountStatus(userId, requestId);
 			
 			customResponse.setResponseCode(HttpStatus.OK.value());
 			customResponse.setMessage("Email: " + email + " was validated.");
@@ -461,11 +469,17 @@ public class AccountService {
 		try 
 		{
 			accountDataHelper.UpdateEmail(userId, email, action, "", requestId);
-			
-			//TODO decouple.
+
 			if (action == EmailAction.Verified)
-				CheckUpdateAccountStatus(userId, requestId);
-			
+			{
+				if (messagingEnabled)
+				{
+					RequestMessage requestMessage = utilityService.BuildRequestMessage(userId, "AccountService", "CheckUpdateAccountStatus", requestId, 0, 0, null);
+					utilityService.SendMessageToQueue(QueueTemplate.Agg, requestMessage, "CHKACCTSTATUS");
+				}
+				else
+					CheckUpdateAccountStatus(userId, requestId);
+			}
 			
 			customResponse.setResponseCode(HttpStatus.OK.value());
 		}
@@ -525,7 +539,7 @@ public class AccountService {
 			UserApp newUserApp = new UserApp();
 			userAppId = utilityDataHelper.GetNewId("UserAppId", requestId);
 
-			App app = cachedData.GetApp(appId, "", requestId);
+			App app = cachedData.GetApp(appId, "", 0,0,0,requestId);
 			newUserApp.setId(userAppId);
 			newUserApp.setAppId(appId);
 			newUserApp.setPlatformId(platformId);
@@ -646,12 +660,13 @@ public class AccountService {
 			}
 			
 			//Check the userapp is still relevent for the platform.
-			if (userApp.getPlatformId() != platformId)
+			if (userApp.getPlatformId() != platformId || userApp.getAppId() != appId)
 			{
 				//Register new userapp, the platform has changed.  This could either be an upgrade, name change or copying config.
 				//Use existing app as a starting point.
-				meLogger.info("Platforms don't match, create a new platform. UserAppId:" + userAppId + " PlatformId:" + platformId);
+				meLogger.info("Platforms or app don't match. UserAppId:" + userAppId + " PlatformId:" + platformId + " AppId:" + appId);
 				
+				/*
 				UserApp newUserApp = new UserApp();
 				newUserApp.setAutoUpload(userApp.getAutoUpload());
 				newUserApp.setAutoUploadFolder(userApp.getAutoUploadFolder());
@@ -668,6 +683,7 @@ public class AccountService {
 					customResponse.setResponseCode(HttpStatus.NOT_FOUND.value());
 					return null;
 				}
+				*/
 			}
 			else
 			{
@@ -751,6 +767,7 @@ public class AccountService {
 		finally { utilityService.LogMethod("AccountService","CheckProfileNameIsUnique", startMS, requestId, profileName); }
 	}
 
+	/*
 	public int GetPlatformId(ClientApp clientApp, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
@@ -786,50 +803,148 @@ public class AccountService {
 		}
 		finally { utilityService.LogMethod("AccountService","GetPlatformId", startMS, requestId, ""); }
 	}
+	*/
 	
-	public int VerifyApp(ClientApp clientApp, CustomResponse customResponse, String requestId)
+	public void SetAppAndPlatformWS(AppDetail appDetail, CustomSessionState customSession, CustomResponse customResponse, String requestId)
 	{
-		//Check for key existing in Walla	
+		//Check for key existing in Walla, matching versions, CRC.
 		//If not, then send back not found message
-		//If exists - but retired, then send back not acceptable message
-		//Else send back OK.
+		//If exists - but check for supported value and if warning or error send back message.
 		long startMS = System.currentTimeMillis();
 		try
 		{
-			String key = clientApp.getWSKey();
-			if (key == null || key.length() < 10)
+			/* Check app details supplied are known */
+			String key = (appDetail.getAppKey() == null) ? "" : appDetail.getAppKey();
+			if (key.length() != 32)
 			{
-				meLogger.warn("Valid key not supplied.  Key:" + clientApp.getWSKey());
+				meLogger.warn("Valid key not supplied.  Key:" + key);
 				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
-				return 0;
+				return;
 			}
 			
-			App app = cachedData.GetApp(0, clientApp.getWSKey(), requestId);
+			App app = cachedData.GetApp(0, key, appDetail.getAppMajorVersion(), appDetail.getAppMinorVersion(), appDetail.getAppCRC(), requestId);
 			if (app == null)
 			{
-				meLogger.info("App not found.  Key:" + clientApp.getWSKey());
-				customResponse.setResponseCode(HttpStatus.NOT_ACCEPTABLE.value());
-				return 0;
+				meLogger.info("App not found.  Key:" + key);
+				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+				return;
 			}
 			
-			if (app.getStatus() != 1)
+			/* Check platform details are known */
+			String platformOS = (appDetail.getPlatformOS() == null) ? "" : appDetail.getPlatformOS();
+			String platformType = (appDetail.getPlatformType() == null) ? "" : appDetail.getPlatformType();
+			if (platformOS == null || platformType == null || platformOS.length() < 1 || platformType.length() < 1)
 			{
-				meLogger.info("App not enabled.  Key:" + clientApp.getWSKey());
-				customResponse.setResponseCode(HttpStatus.NOT_ACCEPTABLE.value());
-				return 0;
+				meLogger.warn("Valid OS and machine not supplied.  OS:" + platformOS + " machine:" + platformType);
+				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+				return;
+			}
+			
+			Platform platform = cachedData.GetPlatform(0, platformOS, platformType, appDetail.getOSMajorVersion(), appDetail.getOSMinorVersion(), requestId);
+			if (platform == null)
+			{
+				
+				//TODO Probably add a method to add the platform to the cache.   Considering user-agent.
+				
+				meLogger.info("Platform not found. OS:" + platformOS + " platformType:" + platformType);
+				customResponse.setResponseCode(HttpStatus.BAD_REQUEST.value());
+				return;
+			}
+					
+			/* Check if app supported on this platform */		
+			Boolean isPlatformSupported = cachedData.GetAppPlatformSupported(app.getAppId(), platform.getPlatformId(), requestId);	
+					
+			if (app.getStatus() == 2 || app.getStatus() == 1) /* fully supported */
+			{
+				String message = "";
+				
+				if (app.getUserMessage().length() > 0)
+					message = app.getUserMessage();
+				
+				if (!isPlatformSupported)
+					message = message + "  The app is not fully tested on your system. Please check fotowalla.com for the latest information.";
+				
+				customResponse.setMessage(message.trim());
+			}
+			else
+			{
+				meLogger.warn("Application not supported.  App id:" + app.getStatus());
+				customResponse.setResponseCode(HttpStatus.UNAUTHORIZED.value());
+				return;
+			}
+			
+			synchronized(customSession) {
+				customSession.setPlatformId(platform.getPlatformId());
+				customSession.setAppId(app.getAppId());
 			}
 			
 			customResponse.setResponseCode(HttpStatus.OK.value());
-			return app.getAppId();
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
-			return 0;
 		}
-		finally { utilityService.LogMethod("AccountService","VerifyApp", startMS, requestId, ""); }
+		finally { utilityService.LogMethod("AccountService","SetAppAndPlatformWS", startMS, requestId, ""); }
 	}
 
+	public void SetAppAndPlatformWeb(int appId, HttpServletRequest request, CustomSessionState customSession, CustomResponse customResponse, String requestId)
+	{
+		//Check for key existing in Walla, matching versions, CRC.
+		//If not, then send back not found message
+		//If exists - but check for supported value and if warning or error send back message.
+		long startMS = System.currentTimeMillis();
+		try
+		{
+			App app = cachedData.GetApp(appId, "", 0, 0, 0, requestId);
+			if (app == null)
+			{
+				meLogger.info("App not found.  Id:" + appId);
+				customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+				return;
+			}
+			
+			//TODO look up existing user agents and check if supported.  For now just log these for research.
+			String userAgent = request.getHeader("user-agent");
+			meLogger.info("User agent: " + userAgent);
+			int platformId = 1000;  // Temp hardocded.
+			
+			/* Check if app supported on this platform */		
+			Boolean isPlatformSupported = cachedData.GetAppPlatformSupported(appId, platformId, requestId);	
+					
+			if (app.getStatus() == 2 || app.getStatus() == 1) /* fully supported */
+			{
+				String message = "";
+				
+				if (app.getUserMessage().length() > 0)
+					message = app.getUserMessage();
+				
+				if (!isPlatformSupported)
+					message = message + "  The app is not fully tested on your browser. Please check fotowalla.com for the latest information.";
+				
+				customResponse.setMessage(message.trim());
+			}
+			else
+			{
+				meLogger.warn("Application not supported.  App id:" + app.getStatus());
+				customResponse.setResponseCode(HttpStatus.UNAUTHORIZED.value());
+				return;
+			}
+			
+			synchronized(customSession) {
+				customSession.setPlatformId(platformId);
+				customSession.setAppId(app.getAppId());
+			}
+			
+			customResponse.setResponseCode(HttpStatus.OK.value());
+		}
+		catch (Exception ex) {
+			meLogger.error(ex);
+			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+		}
+		finally { utilityService.LogMethod("AccountService","SetAppAndPlatformWeb", startMS, requestId, ""); }
+	}
+	
+	
 	public String GetNewUserToken(HttpServletRequest request, CustomSessionState customSession, CustomResponse customResponse, String requestId)
 	{
 		//Only reads user data from DB, any state is held in the session object.

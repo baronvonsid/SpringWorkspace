@@ -55,8 +55,11 @@ import walla.utils.*;
 	CreateUpdateUserApp() PUT /{profileName}/userapp
 	GetUserAppMarkSession() GET /{profileName}/userapp/{userAppId}
 	
-	CheckClientApp() POST /clientapp
-	SetClientApp PUT /{profileName}/clientapp
+	-- deleted CheckClientApp() POST /clientapp
+	-- deleted SetClientApp PUT /{profileName}/clientapp
+	
+	VerifyApp() POST /verifyapp
+	
 	GetLogonToken() GET /logon/token
 	Logon() POST /logon
 	Logout() POST /logout
@@ -259,8 +262,8 @@ public class AccountController {
 	}
 */
 	
-	//  PUT /{profileName}/userapp
-	@RequestMapping(value = { "/{profileName}/userapp" }, method = { RequestMethod.PUT }, produces=MediaType.APPLICATION_XML_VALUE,
+	//  POST /{profileName}/userapp
+	@RequestMapping(value = { "/{profileName}/userapp" }, method = { RequestMethod.POST }, produces=MediaType.APPLICATION_XML_VALUE,
 			consumes = MediaType.APPLICATION_XML_VALUE, headers={"Accept-Charset=utf-8"} )
 	public @ResponseBody String CreateUpdateUserApp(
 			@PathVariable("profileName") String profileName,
@@ -289,13 +292,20 @@ public class AccountController {
 				return null;
 			}
 
+			/*
 			if (customSession.getPlatformId() < 1 || customSession.getAppId() < 1)
 			{
 				responseCode = HttpStatus.BAD_REQUEST.value();
 				meLogger.warn("CreateUpdateUserApp request failed because no platform/app was setup, User:" + profileName);
 				return null;
 			}
-
+*/
+			
+			
+			
+			
+			
+			
 			CustomResponse customResponse = new CustomResponse();
 			
 			long userAppId = userApp.getId();
@@ -346,12 +356,12 @@ public class AccountController {
 				return null;
 			}
 			
-			if (customSession.getPlatformId() < 1 || customSession.getAppId() < 1)
-			{
-				responseCode = HttpStatus.BAD_REQUEST.value();
-				meLogger.warn("GetUserAppMarkSession request failed because no platform/app was setup, User:" + profileName);
-				return null;
-			}
+			//if (customSession.getPlatformId() < 1 || customSession.getAppId() < 1)
+			//{
+			//	responseCode = HttpStatus.BAD_REQUEST.value();
+			//	meLogger.warn("GetUserAppMarkSession request failed because no platform/app was setup, User:" + profileName);
+			//	return null;
+			//}
 			
 			CustomResponse customResponse = new CustomResponse();
 			UserApp userApp = accountService.GetUserApp(customSession.getUserId(), customSession.getAppId(), customSession.getPlatformId(), userAppId, customResponse, requestId);
@@ -410,6 +420,7 @@ public class AccountController {
 	}
 	
 	// PUT /{profileName}/clientapp
+	/*
 	@RequestMapping(	value = { "/{profileName}/clientapp" }, 
 						method = { RequestMethod.PUT }, 
 						consumes = MediaType.APPLICATION_XML_VALUE,
@@ -509,10 +520,53 @@ public class AccountController {
 		}
 		finally { utilityService.LogWebMethod("AccountController","CheckClientApp", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
+	*/
 	
-	//GET /logon/token
-	@RequestMapping(value="/logon/token", method=RequestMethod.GET, produces=MediaType.APPLICATION_XML_VALUE, headers={"Accept-Charset=utf-8"} )
+	// POST /verifyapp
+	/*
+	@RequestMapping(	value = { "/verifyapp" }, 
+						method = { RequestMethod.POST }, 
+						consumes = MediaType.APPLICATION_XML_VALUE,
+						produces=MediaType.APPLICATION_XML_VALUE,
+						headers={"Accept-Charset=utf-8"} )
+	public @ResponseBody ResponseDetail VerifyApp(
+			@RequestBody AppDetail appDetail,
+			HttpServletRequest request,
+			HttpServletResponse response)
+	{
+		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
+		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
+		try
+		{
+			response.addHeader("Cache-Control", "no-cache");
+
+			//TODO Anonymous sessions can use this.  Add additional protection
+			Thread.sleep(200);
+			
+			ResponseDetail responseDetail = new ResponseDetail();
+			responseCode = accountService.VerifyApp(appDetail, responseDetail, requestId);
+			if (responseCode != HttpStatus.OK.value())
+			{
+				meLogger.warn("The application/platform key failed validation.");
+				Thread.sleep(500);
+				return null;
+			}
+
+			return responseDetail;
+		}
+		catch (Exception ex) {
+			meLogger.error(ex);
+			return null;
+		}
+		finally { utilityService.LogWebMethod("AccountController","VerifyApp", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
+	}
+	*/
+	
+	//POST /logon/token
+	@RequestMapping(value="/logon/token", consumes = MediaType.APPLICATION_XML_VALUE, method=RequestMethod.POST, produces=MediaType.APPLICATION_XML_VALUE, headers={"Accept-Charset=utf-8"} )
 	public @ResponseBody Logon GetLogonToken(
+			@RequestBody AppDetail appDetail,
 			HttpServletRequest request, 
 			HttpServletResponse response)
 	{	
@@ -522,7 +576,7 @@ public class AccountController {
 		Logon responseLogon = new Logon();
 		try
 		{
-			Thread.sleep(300);
+			Thread.sleep(100);
 			response.addHeader("Cache-Control", "no-cache");
 			
 			//TODO add remote address to the DB, to check for other sessions, from other IPs coming in.
@@ -561,6 +615,20 @@ public class AccountController {
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
+			accountService.SetAppAndPlatformWS(appDetail, customSession, customResponse, requestId);
+			if (customResponse.getResponseCode() != HttpStatus.OK.value())
+			{
+				meLogger.warn("The application/platform key failed validation.");
+				responseCode = customResponse.getResponseCode();
+				Thread.sleep(500);
+				return null;
+			}
+			
+			//A warning might be displayed here.
+			if (customResponse.getMessage().length() > 0)
+				responseLogon.setMessage(customResponse.getMessage());
+
+			customResponse = new CustomResponse();
 			String key = accountService.GetLogonToken(request, customSession, customResponse, requestId);
 			responseCode = customResponse.getResponseCode();
 			
@@ -720,6 +788,8 @@ public class AccountController {
 	{	
 		try
 		{
+			
+			
 			HttpSession tomcatSession = request.getSession(false);
 			if (tomcatSession == null)
 			{

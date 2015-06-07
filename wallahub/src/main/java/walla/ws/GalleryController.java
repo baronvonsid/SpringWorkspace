@@ -213,10 +213,10 @@ public class GalleryController {
 		finally { utilityService.LogWebMethod("GalleryController","GetGalleryList", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 
-	//  GET - /{profileName}/gallery/galleryoptions
-	@RequestMapping(value="/{profileName}/gallery/galleryoptions", method=RequestMethod.GET, 
+	//  GET - /{profileName}/gallery/galleryoption
+	@RequestMapping(value="/{profileName}/gallery/galleryoption", method=RequestMethod.GET, 
 	produces=MediaType.APPLICATION_XML_VALUE, headers={"Accept-Charset=utf-8"} )
-	public @ResponseBody GalleryOptions GetGalleryOptions(
+	public @ResponseBody GalleryOption GetGalleryOption(
 			@PathVariable("profileName") String profileName,
 			HttpServletRequest request,
 			HttpServletResponse response)
@@ -240,7 +240,7 @@ public class GalleryController {
 				clientVersionTimestamp = new Date(headerDateLong);
 
 			CustomResponse customResponse = new CustomResponse();
-			GalleryOptions galleryOptions = galleryService.GetGalleryOptions(customSession.getUserId(), clientVersionTimestamp, customResponse, requestId);
+			GalleryOption galleryOptions = galleryService.GetGalleryOption(customSession.getUserId(), clientVersionTimestamp, customResponse, requestId);
 	
 			responseCode = customResponse.getResponseCode();
 
@@ -250,7 +250,7 @@ public class GalleryController {
 			meLogger.error(ex);
 			return null;
 		}
-		finally { utilityService.LogWebMethod("GalleryController","GetGalleryOptions", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
+		finally { utilityService.LogWebMethod("GalleryController","GetGalleryOption", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
 	
 	//  GET - /{profileName}/gallery/gallerysections

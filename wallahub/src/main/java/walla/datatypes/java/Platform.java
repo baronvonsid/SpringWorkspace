@@ -6,7 +6,6 @@ public class Platform {
 	private String operatingSystem;
 	private String machineType;
 	private String shortName;
-	private boolean supported;
 	private int majorVersion;
 	private int minorVersion;
 	
@@ -52,16 +51,6 @@ public class Platform {
 	public String getShortName()
 	{
 		return this.shortName;
-	}
-	
-	public void setSupported(boolean supported)
-	{
-		this.supported = supported;
-	}
-	
-	public boolean getSupported()
-	{
-		return this.supported;
 	}
 	
 	public void setMajorVersion(int majorVersion)

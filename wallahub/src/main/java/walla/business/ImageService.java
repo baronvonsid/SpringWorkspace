@@ -19,6 +19,7 @@ import javax.imageio.stream.ImageOutputStream;
 import javax.sql.DataSource;
 import javax.xml.datatype.*;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.log4j.Logger;
 import org.springframework.http.HttpStatus;
 
@@ -106,6 +107,8 @@ public class ImageService {
 	@Resource(name="utilityServicePooled")
 	private UtilityService utilityService;
 	
+	@Value( "${messaging.enabled}" ) private boolean messagingEnabled;
+	
 	private static final Logger meLogger = Logger.getLogger(ImageService.class);
 	
 	//*************************************************************************************************************
@@ -131,12 +134,17 @@ public class ImageService {
 			
 			if (imageMeta.getStatus().intValue() == 1)
 			{
-				//TODO change to queued process.
 				imageDataHelper.CreateImage(userId, imageMeta, requestId);
 				responseCode = HttpStatus.CREATED.value();
 				
-				//TODO decouple.
-				SetupNewImage(userId, imageId, userAppId, requestId);
+				if (messagingEnabled)
+				{
+					RequestMessage requestMessage = utilityService.BuildRequestMessage(userId, "ImageService", "SetupNewImage", requestId, imageId, userAppId, null);
+					utilityService.SendMessageToQueue(QueueTemplate.NewImage, requestMessage, "NEWIMG");
+				}
+				else
+					SetupNewImage(userId, imageId, userAppId, requestId);
+				
 			}
 			else if (imageMeta.getStatus().intValue() == 4)
 			{
@@ -144,15 +152,18 @@ public class ImageService {
 				responseCode = HttpStatus.OK.value();
 				
 				utilityService.AddAction(ActionType.UserApp, userAppId, "ImgMetaUpd", "");
-				//TODO Add queued process to update any views\tags
 				
-				//TODO decouple
 				if (imageMeta.getTags() != null && imageMeta.getTags().getTagRef().size() > 0)
 				{
 					for(ImageMeta.Tags.TagRef tagRef : imageMeta.getTags().getTagRef())
 					{
-						//TODO decouple method
-						tagService.TagRippleUpdate(userId, tagRef.getId(), requestId);
+						if (messagingEnabled)
+						{
+							RequestMessage requestMessage = utilityService.BuildRequestMessage(userId, "TagService", "TagRippleUpdate", requestId, tagRef.getId(), 0, null);
+							utilityService.SendMessageToQueue(QueueTemplate.Agg, requestMessage, "TAGUPD");
+						}
+						else
+							tagService.TagRippleUpdate(userId, tagRef.getId(), requestId);
 					}
 				}
 				
@@ -206,17 +217,24 @@ public class ImageService {
 		finally {utilityService.LogMethod("ImageService","GetImageMeta", startMS, requestId, String.valueOf(imageId));}
 	}
 	
-	public int DeleteImages(long userId, ImageList imagesToDelete, String requestId)
+	public int DeleteImages(long userId, ImageIdList imagesToDelete, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try 
 		{
-			//Mark images as inactive.
-			imageDataHelper.MarkImagesAsInactive(userId, imagesToDelete, requestId);
+			long[] imageList = ArrayUtils.toPrimitive(imagesToDelete.getImageRef().toArray(new Long[imagesToDelete.getImageRef().size()]));
 			
-			//TODO Decouple method call
-			ImageDeletePermanent(userId, imagesToDelete, requestId);
+			//Mark images as inactive.
+			imageDataHelper.MarkImagesAsInactive(userId, imageList, requestId);
 
+			if (messagingEnabled)
+			{
+				RequestMessage requestMessage = utilityService.BuildRequestMessage(userId, "ImageService", "ImageDeletePermanent", requestId, 0, 0, imageList);
+				utilityService.SendMessageToQueue(QueueTemplate.NoAgg, requestMessage, "IMGDEL");
+			}
+			else
+				ImageDeletePermanent(userId, imageList, requestId);
+			
 			return HttpStatus.OK.value();
 		}
 		catch (WallaException wallaEx) {
@@ -835,18 +853,32 @@ public class ImageService {
 				{
 					for(ImageMeta.Tags.TagRef tagRef : imageMeta.getTags().getTagRef())
 					{
-						//TODO decouple this method.
-						tagService.TagRippleUpdate(userId, tagRef.getId(), requestId);
+						if (messagingEnabled)
+						{
+							RequestMessage requestMessage = utilityService.BuildRequestMessage(userId, "TagService", "TagRippleUpdate", requestId, tagRef.getId(), 0, null);
+							utilityService.SendMessageToQueue(QueueTemplate.Agg, requestMessage, "TAGUPD");
+						}
+						else
+							tagService.TagRippleUpdate(userId, tagRef.getId(), requestId);
+						
 					}
 				}
 			}
 			
-			//TODO decouple
-			tagService.ReGenDynamicTags(userId, requestId);
-			
-			//TODO For the category, call CategoryRippleUpdates decoupled		
-			categoryService.CategoryRippleUpdate(userId, imageMeta.getCategoryId(), requestId);
-			
+			if (messagingEnabled)
+			{
+				RequestMessage requestMessageTag = utilityService.BuildRequestMessage(userId, "TagService", "ReGenDynamicTags", requestId, imageMeta.getCategoryId(), 0, null);
+				utilityService.SendMessageToQueue(QueueTemplate.Agg, requestMessageTag, "TAGDYNGEN");
+				
+				RequestMessage requestMessageCat = utilityService.BuildRequestMessage(userId, "CategoryService", "CategoryRippleUpdate", requestId, imageMeta.getCategoryId(), 0, null);
+				utilityService.SendMessageToQueue(QueueTemplate.Agg, requestMessageCat, "CATUPD");
+			}
+			else
+			{
+				tagService.ReGenDynamicTags(userId, requestId);
+				categoryService.CategoryRippleUpdate(userId, imageMeta.getCategoryId(), requestId);
+			}
+
 			utilityService.AddAction(ActionType.UserApp, userAppId, "ImgAdd", "");
 		}
 		catch (Exception ex) {
@@ -864,7 +896,7 @@ public class ImageService {
 		try
 		{
 			//Select all images in the deleted categories.
-			ImageList imagesToDelete = imageDataHelper.GetActiveImagesInCategories(userId, categoryIds, requestId);
+			ImageIdList imagesToDelete = imageDataHelper.GetActiveImagesInCategories(userId, categoryIds, requestId);
 			if (imagesToDelete == null)
 			{
 				meLogger.warn("No images were found to delete.");
@@ -878,7 +910,7 @@ public class ImageService {
 		finally {utilityService.LogMethod("ImageService","DeleteAllImagesCategory", startMS, requestId, "");}
 	}
 	
-	public void ImageDeletePermanent(long userId, ImageList imagesToDelete, String requestId)
+	public void ImageDeletePermanent(long userId, long[] imagesToDelete, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -888,13 +920,20 @@ public class ImageService {
 			if (tags == null)
 			{
 				meLogger.warn("Tags linked to images could not be retrieved from the database");
-				return;
 			}
-			
-			for (int i = 0; i < tags.length; i++)
+			else
 			{
-				//TODO decouple this method.
-				tagService.TagRippleUpdate(userId, tags[i], requestId);
+				for (int i = 0; i < tags.length; i++)
+				{
+					if (messagingEnabled)
+					{
+						RequestMessage requestMessage = utilityService.BuildRequestMessage(userId, "TagService", "TagRippleUpdate", requestId, tags[i], 0, null);
+						utilityService.SendMessageToQueue(QueueTemplate.Agg, requestMessage, "TAGUPD");
+					}
+					else
+						tagService.TagRippleUpdate(userId, tags[i], requestId);
+					
+				}
 			}
 
 			//Distinct list of categories - check if category still Active.
@@ -902,16 +941,30 @@ public class ImageService {
 			if (categories == null)
 			{
 				meLogger.warn("Categories linked to images could not be retrieved from the database");
-				return;
 			}
-			
-			for (int i = 0; i < categories.length; i++)
+			else
 			{
-				//TODO decouple this method.
-				categoryService.CategoryRippleUpdate(userId, categories[i], requestId);
+				for (int i = 0; i < categories.length; i++)
+				{
+					if (messagingEnabled)
+					{
+						RequestMessage requestMessage = utilityService.BuildRequestMessage(userId, "CategoryService", "CategoryRippleUpdate", requestId, categories[i], 0, null);
+						utilityService.SendMessageToQueue(QueueTemplate.Agg, requestMessage, "CATUPD");
+					}
+					else
+						categoryService.CategoryRippleUpdate(userId, categories[i], requestId);
+				}
 			}
 
-			tagService.ReGenDynamicTags(userId, requestId);
+			if (messagingEnabled)
+			{
+				RequestMessage requestMessage = utilityService.BuildRequestMessage(userId, "TagService", "ReGenDynamicTags", requestId, userId, 0, null);
+				utilityService.SendMessageToQueue(QueueTemplate.Agg, requestMessage, "TAGDYNGEN");
+			}
+			else
+			{
+				tagService.ReGenDynamicTags(userId, requestId);
+			}
 			
 			//Clear up physical files.
 			//Remove all temporary files stored.

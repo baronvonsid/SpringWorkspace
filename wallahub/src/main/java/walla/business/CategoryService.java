@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Required;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 
 @Service("CategoryService")
 public class CategoryService {
@@ -45,6 +46,8 @@ public class CategoryService {
 	
 	@Resource(name="utilityServicePooled")
 	private UtilityService utilityService;
+	
+	@Value( "${messaging.enabled}" ) private boolean messagingEnabled;
 	
 	private static final Logger meLogger = Logger.getLogger(CategoryService.class);
 
@@ -125,8 +128,13 @@ public class CategoryService {
 			
 			if (existingCategory.getParentId() != newCategory.getParentId())
 			{
-				//TODO decouple this method.
-				CategoryRippleUpdate(userId, categoryId, requestId);
+				if (messagingEnabled)
+				{
+					RequestMessage requestMessage = utilityService.BuildRequestMessage(userId, "CategoryService", "CategoryRippleUpdate", requestId, categoryId, 0, null);
+					utilityService.SendMessageToQueue(QueueTemplate.Agg, requestMessage, "CATUPD");
+				}
+				else
+					CategoryRippleUpdate(userId, categoryId, requestId);
 			}
 
 			utilityService.AddAction(ActionType.UserApp, userAppId, "CatUpd", "");
@@ -163,8 +171,16 @@ public class CategoryService {
 			
 			categoryDataHelper.MarkCategoryAsDeleted(userId, categoryIds, category, requestId);
 
-			//TODO decouple this method.
-			CategoryRippleDelete(userId, categoryIds, requestId);
+			if (messagingEnabled)
+			{
+				RequestMessage requestMessage = utilityService.BuildRequestMessage(userId, "CategoryService", "CategoryRippleDelete", requestId, 0, 0, categoryIds);
+				utilityService.SendMessageToQueue(QueueTemplate.NoAgg, requestMessage, "CATDEL");
+			}
+			else
+				CategoryRippleDelete(userId, categoryIds, requestId);
+			
+			
+			
 			utilityService.AddAction(ActionType.UserApp, userAppId, "CatDel", "");
 			
 			return HttpStatus.OK.value();
@@ -319,13 +335,25 @@ public class CategoryService {
 			//Apply category updates to db.
 			categoryDataHelper.MoveImagesToNewCategory(userId, categoryId, moveList, requestId);
 			
-			//TODO decouple this method.
-			CategoryRippleUpdate(userId, categoryId, requestId);
+			if (messagingEnabled)
+			{
+				RequestMessage requestMessage = utilityService.BuildRequestMessage(userId, "CategoryService", "CategoryRippleUpdate", requestId, categoryId, 0, null);
+				utilityService.SendMessageToQueue(QueueTemplate.Agg, requestMessage, "CATUPD");
+			}
+			else
+				CategoryRippleUpdate(userId, categoryId, requestId);
+
 			
 			//TODO decouple this method.
 			for (int i = 0; i< categoriesAffected.length; i++)
 			{
-				CategoryRippleUpdate(userId, categoriesAffected[i], requestId);
+				if (messagingEnabled)
+				{
+					RequestMessage requestMessage = utilityService.BuildRequestMessage(userId, "CategoryService", "CategoryRippleUpdate", requestId, categoriesAffected[i], 0, null);
+					utilityService.SendMessageToQueue(QueueTemplate.Agg, requestMessage, "CATUPD");
+				}
+				else
+					CategoryRippleUpdate(userId, categoriesAffected[i], requestId);
 			}
 			
 			utilityService.AddAction(ActionType.UserApp, userAppId, "CatMove", "");
@@ -433,8 +461,13 @@ public class CategoryService {
 			
 			for (int i = 0; i < galleryIds.length; i++)
 			{
-				//TODO decouple
-				galleryService.RefreshGalleryImages(userId, galleryIds[i], requestId);
+				if (messagingEnabled)
+				{
+					RequestMessage requestMessage = utilityService.BuildRequestMessage(userId, "GalleryService", "RefreshGalleryImages", requestId, galleryIds[i], 0, null);
+					utilityService.SendMessageToQueue(QueueTemplate.Agg, requestMessage, "GALRFH");
+				}
+				else
+					galleryService.RefreshGalleryImages(userId, galleryIds[i], requestId);
 			}
 			
 			imageService.DeleteAllImagesCategory(userId, categoryIds, requestId);
@@ -483,8 +516,13 @@ public class CategoryService {
 
 			for (int i = 0; i < galleryIds.length; i++)
 			{
-				//TODO decouple
-				galleryService.RefreshGalleryImages(userId, galleryIds[i], requestId);
+				if (messagingEnabled)
+				{
+					RequestMessage requestMessage = utilityService.BuildRequestMessage(userId, "GalleryService", "RefreshGalleryImages", requestId, galleryIds[i], 0, null);
+					utilityService.SendMessageToQueue(QueueTemplate.Agg, requestMessage, "GALRFH");
+				}
+				else
+					galleryService.RefreshGalleryImages(userId, galleryIds[i], requestId);
 			}
 		}
 		catch (WallaException wallaEx) {

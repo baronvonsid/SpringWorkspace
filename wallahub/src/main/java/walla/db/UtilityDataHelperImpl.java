@@ -1,6 +1,7 @@
 package walla.db;
 
 import javax.annotation.Resource;
+import javax.jms.JMSException;
 import javax.sql.DataSource;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;
@@ -48,7 +49,7 @@ public class UtilityDataHelperImpl implements UtilityDataHelper{
 		try {			
 			conn = dataSource.getConnection();
 
-			String selectSql = "SELECT [PlatformId],[ShortName],[OperatingSystem],[MachineType],[Supported],[MajorVersion],[MinorVersion] FROM [Platform]";
+			String selectSql = "SELECT [PlatformId],[ShortName],[OperatingSystem],[MachineType],[MajorVersion],[MinorVersion] FROM [Platform]";
 			
 			sQuery = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
 			resultset = sQuery.executeQuery(selectSql);
@@ -62,9 +63,8 @@ public class UtilityDataHelperImpl implements UtilityDataHelper{
 				platform.setShortName(resultset.getString(2));
 				platform.setOperatingSystem(resultset.getString(3));
 				platform.setMachineType(resultset.getString(4));
-				platform.setSupported(resultset.getBoolean(5));
-				platform.setMajorVersion(resultset.getInt(6));
-				platform.setMinorVersion(resultset.getInt(7));
+				platform.setMajorVersion(resultset.getInt(5));
+				platform.setMinorVersion(resultset.getInt(6));
 				platformList.add(platform);
 			}
 			resultset.close();
@@ -84,6 +84,47 @@ public class UtilityDataHelperImpl implements UtilityDataHelper{
 		}
 	}
 
+	public List<AppPlatform> GetAppPlatformList(String requestId) throws WallaException
+	{
+		long startMS = System.currentTimeMillis();
+		Connection conn = null;
+		Statement sQuery = null;
+		ResultSet resultset = null;
+		
+		try {
+			conn = dataSource.getConnection();
+
+			String selectSql = "SELECT [AppId], [PlatformId] FROM [AppPlatform]";
+			
+			sQuery = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+			resultset = sQuery.executeQuery(selectSql);
+			
+			List<AppPlatform> appPlatformList = new ArrayList<AppPlatform>();
+			
+			while (resultset.next())
+			{
+				AppPlatform appPlatform = new AppPlatform();
+				appPlatform.setAppId(resultset.getInt(1));
+				appPlatform.setPlatformId(resultset.getInt(2));
+				appPlatformList.add(appPlatform);
+			}
+			resultset.close();
+
+			return appPlatformList;
+			
+		}
+		catch (SQLException sqlEx) {
+			meLogger.error(sqlEx);
+			return null;
+		}
+		finally {
+			if (resultset != null) try { if (!resultset.isClosed()) {resultset.close();} } catch (SQLException logOrIgnore) {}
+	        if (sQuery != null) try { if (!sQuery.isClosed()) {sQuery.close();} } catch (SQLException logOrIgnore) {}
+	        if (conn != null) try { if (!conn.isClosed()) {conn.close();} } catch (SQLException logOrIgnore) {}
+	        utilityService.LogMethod("UtilityDataHelperImpl","GetAppPlatformList", startMS, requestId, "");
+		}
+	}
+	
 	public List<App> GetAppList(String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
@@ -94,7 +135,7 @@ public class UtilityDataHelperImpl implements UtilityDataHelper{
 		try {			
 			conn = dataSource.getConnection();
 
-			String selectSql = "SELECT [AppId],[Name],[WSKey],[MajorVersion],[MinorVersion],[Status],[DefaultFetchSize],[DefaultThumbCacheMB],[DefaultMainCopyCacheMB],[DefaultGalleryType] FROM [App]";
+			String selectSql = "SELECT [AppId],[Name],[AppKey],[MajorVersion],[MinorVersion],[AppCRC],[Status],[UserMessage],[DefaultFetchSize],[DefaultThumbCacheMB],[DefaultMainCopyCacheMB],[DefaultGalleryType] FROM [App]";
 			
 			sQuery = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
 			resultset = sQuery.executeQuery(selectSql);
@@ -106,14 +147,16 @@ public class UtilityDataHelperImpl implements UtilityDataHelper{
 				App app = new App();
 				app.setAppId(resultset.getInt(1));
 				app.setName(resultset.getString(2));
-				app.setWSKey(resultset.getString(3));
+				app.setAppKey(resultset.getString(3));
 				app.setMajorVersion(resultset.getInt(4));
 				app.setMinorVersion(resultset.getInt(5));
-				app.setStatus(resultset.getInt(6));
-				app.setDefaultFetchSize(resultset.getInt(7));
-				app.setDefaultThumbCacheMB(resultset.getInt(8));
-				app.setDefaultMainCopyCacheMB(resultset.getInt(9));
-				app.setDefaultGalleryType(resultset.getInt(10));
+				app.setAppCRC(resultset.getLong(6));
+				app.setStatus(resultset.getInt(7));
+				app.setUserMessage(resultset.getString(8));
+				app.setDefaultFetchSize(resultset.getInt(9));
+				app.setDefaultThumbCacheMB(resultset.getInt(10));
+				app.setDefaultMainCopyCacheMB(resultset.getInt(11));
+				app.setDefaultGalleryType(resultset.getInt(12));
 				appList.add(app);
 			}
 			resultset.close();
@@ -668,8 +711,8 @@ public class UtilityDataHelperImpl implements UtilityDataHelper{
 		}
 	}
 	
-	public UtilityDataHelperImpl() {
-		meLogger.debug("UtilityDataHelperImpl object instantiated.");
+	public UtilityDataHelperImpl() throws JMSException {
+		
 	}
 	
 	public void setDataSource(DataSource dataSource) {

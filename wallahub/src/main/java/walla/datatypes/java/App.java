@@ -4,10 +4,12 @@ public class App {
 
 	private int appId;
 	private String name;
-	private String WSKey;
+	private String appKey;
 	private int majorVersion;
 	private int minorVersion;
+	private long appCRC;
 	private int status;
+	private String userMessage;
 	private int defaultFetchSize;
 	private int defaultThumbCacheMB;
 	private int defaultMainCopyCacheMB;
@@ -36,14 +38,14 @@ public class App {
 		return this.name;
 	}
 	
-	public void setWSKey(String WSKey)
+	public void setAppKey(String appKey)
 	{
-		this.WSKey = WSKey;
+		this.appKey = appKey;
 	}
 	
-	public String getWSKey()
+	public String getAppKey()
 	{
-		return this.WSKey;
+		return this.appKey;
 	}
 
 	public void setMajorVersion(int majorVersion)
@@ -66,6 +68,16 @@ public class App {
 		return this.minorVersion;
 	}
 	
+	public void setAppCRC(long appCRC)
+	{
+		this.appCRC = appCRC;
+	}
+	
+	public long getAppCRC()
+	{
+		return this.appCRC;
+	}
+	
 	public void setStatus(int status)
 	{
 		this.status = status;
@@ -74,6 +86,16 @@ public class App {
 	public int getStatus()
 	{
 		return this.status;
+	}
+	
+	public void setUserMessage(String userMessage)
+	{
+		this.userMessage = userMessage;
+	}
+	
+	public String getUserMessage()
+	{
+		return this.userMessage;
 	}
 	
 	public void setDefaultFetchSize(int defaultFetchSize)

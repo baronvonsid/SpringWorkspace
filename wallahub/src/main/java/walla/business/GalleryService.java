@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Required;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 
 @Service("GalleryService")
 public class GalleryService {
@@ -42,6 +43,8 @@ public class GalleryService {
 	
 	@Resource(name="utilityServicePooled")
 	private UtilityService utilityService;
+	
+	@Value( "${messaging.enabled}" ) private boolean messagingEnabled;
 	
 	private static final Logger meLogger = Logger.getLogger(GalleryService.class);
 
@@ -86,8 +89,13 @@ public class GalleryService {
 
 				galleryDataHelper.CreateGallery(userId, newGallery, newGalleryId, passwordHash, gallerySalt, UserTools.GetComplexString(), requestId);
 				
-				//TODO switch to messaging.
-				RefreshGalleryImages(userId, newGalleryId, requestId);
+				if (messagingEnabled)
+				{
+					RequestMessage requestMessage = utilityService.BuildRequestMessage(userId, "GalleryService", "RefreshGalleryImages", requestId, newGalleryId, 0, null);
+					utilityService.SendMessageToQueue(QueueTemplate.Agg, requestMessage, "GALRFH");
+				}
+				else
+					RefreshGalleryImages(userId, newGalleryId, requestId);
 				
 				utilityService.AddAction(ActionType.UserApp, userAppId, "GalAdd", "");
 				return HttpStatus.CREATED.value();
@@ -129,8 +137,15 @@ public class GalleryService {
 				
 				galleryDataHelper.UpdateGallery(userId, newGallery, passwordHash, gallerySalt, requestId);
 
-				//TODO switch to messaging.
-				RefreshGalleryImages(userId, newGallery.getId(), requestId);
+				if (messagingEnabled)
+				{
+					RequestMessage requestMessage = utilityService.BuildRequestMessage(userId, "GalleryService", "RefreshGalleryImages", requestId, newGallery.getId(), 0, null);
+					utilityService.SendMessageToQueue(QueueTemplate.Agg, requestMessage, "GALRFH");
+				}
+				else
+					RefreshGalleryImages(userId, newGallery.getId(), requestId);
+				
+				
 				utilityService.AddAction(ActionType.UserApp, userAppId, "GalUpd", "");
 				
 				if (!existingGallery.getName().equals(galleryName))
@@ -307,7 +322,7 @@ public class GalleryService {
 		long startMS = System.currentTimeMillis();
 		try
 		{
-			App app = cachedData.GetApp(appId, "", requestId);
+			App app = cachedData.GetApp(appId, "", 0,0,0,requestId);
 			
 			String sql = "SELECT [GalleryId] FROM [Gallery] WHERE [SystemOwned] = 1 "
 					+ "AND [GalleryType] = " + app.getDefaultGalleryType() + " AND [UserId] = " + userId;
@@ -330,7 +345,7 @@ public class GalleryService {
 		finally { utilityService.LogMethod("GalleryService","GetDefaultGallery", startMS, requestId, String.valueOf(appId)); }
 	}
 	
-	public GalleryOptions GetGalleryOptions(long userId, Date clientVersionTimestamp, CustomResponse customResponse, String requestId)
+	public GalleryOption GetGalleryOption(long userId, Date clientVersionTimestamp, CustomResponse customResponse, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		try {
@@ -356,14 +371,14 @@ public class GalleryService {
 				return null;
 			}
 			
-			GalleryOptions options = new GalleryOptions();
-			options.setPresentation(new GalleryOptions.Presentation());
+			GalleryOption options = new GalleryOption();
+			options.setPresentation(new GalleryOption.Presentation());
 			
 			for (Iterator<Presentation> iterater = presentations.iterator(); iterater.hasNext();)
 			{
 				Presentation current = (Presentation)iterater.next();
 
-				GalleryOptions.Presentation.PresentationRef ref = new GalleryOptions.Presentation.PresentationRef();
+				GalleryOption.Presentation.PresentationRef ref = new GalleryOption.Presentation.PresentationRef();
 				ref.setPresentationId(current.getPresentationId());
 				ref.setName(current.getName());
 				ref.setDescription(current.getDesc());
@@ -387,12 +402,12 @@ public class GalleryService {
 			}
 
 			
-			options.setStyle(new GalleryOptions.Style());
+			options.setStyle(new GalleryOption.Style());
 			for (Iterator<Style> iterater = style.iterator(); iterater.hasNext();)
 			{
 				Style current = (Style)iterater.next();
 
-				GalleryOptions.Style.StyleRef ref = new GalleryOptions.Style.StyleRef();
+				GalleryOption.Style.StyleRef ref = new GalleryOption.Style.StyleRef();
 				ref.setStyleId(current.getStyleId());
 				ref.setName(current.getName());
 				ref.setDescription(current.getDesc());
@@ -427,7 +442,7 @@ public class GalleryService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			return null;
 		}
-		finally {utilityService.LogMethod("GalleryService","GetGalleryOptions", startMS, requestId, "");}
+		finally {utilityService.LogMethod("GalleryService","GetGalleryOption", startMS, requestId, "");}
 	}
 
 	public Gallery GetGallerySections(long userId, Gallery requestGallery, CustomResponse customResponse, String requestId)

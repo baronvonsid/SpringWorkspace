@@ -20,6 +20,7 @@ import java.util.GregorianCalendar;
 import java.util.Iterator;
 import java.util.List;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Repository;
 
@@ -120,7 +121,7 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 		}
 	}
 
-	public void MarkImagesAsInactive(long userId, ImageList imagesToDelete, String requestId) throws WallaException 
+	public void MarkImagesAsInactive(long userId, long[] imagesToDelete, String requestId) throws WallaException 
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -134,24 +135,31 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 			conn = dataSource.getConnection();
 			conn.setAutoCommit(false);
 			
-			if (imagesToDelete.getImages() != null && imagesToDelete.getImages().getImageRef().size() > 0)
+			if (imagesToDelete != null && imagesToDelete.length > 0)
 			{
-				controlCount = 0;
+				//controlCount = 0;
 				returnCount = 0;
 				
 				String deleteSql = "UPDATE [Image] SET [Status] = 5,[RecordVersion] = [RecordVersion] + 1, [LastUpdated] = dbo.GetDateNoMS() WHERE [ImageId]= ? AND [UserId] = ?"; 
 			    ps = conn.prepareStatement(deleteSql);			   
 			    
 				//Construct update SQL statements
-				for (Iterator<ImageList.Images.ImageRef> imageIterater = imagesToDelete.getImages().getImageRef().iterator(); imageIterater.hasNext();)
+				//for (Iterator<ImageList.Images.ImageRef> imageIterater = imagesToDelete.getImages().getImageRef().iterator(); imageIterater.hasNext();)
+				//{
+				//	ImageList.Images.ImageRef currentImageRef = (ImageList.Images.ImageRef)imageIterater.next();
+				//	
+				//	ps.setLong(1,currentImageRef.getId());
+				//	ps.setLong(2,userId);
+				//	ps.addBatch();
+
+					//controlCount++;
+				//}
+				
+				for (int i = 0; i < imagesToDelete.length; i++)
 				{
-					ImageList.Images.ImageRef currentImageRef = (ImageList.Images.ImageRef)imageIterater.next();
-					
-					ps.setLong(1,currentImageRef.getId());
+					ps.setLong(1,imagesToDelete[i]);
 					ps.setLong(2,userId);
 					ps.addBatch();
-
-					controlCount++;
 				}
 				
 				//Perform updates.
@@ -191,13 +199,13 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 		}
 	}
 	
-	public ImageList GetActiveImagesInCategories(long userId, long[] categoryIds, String requestId)
+	public ImageIdList GetActiveImagesInCategories(long userId, long[] categoryIds, String requestId)
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
 		Statement statement = null;
 		ResultSet resultset = null;
-		ImageList deleteImageList = null;
+		ImageIdList deleteImageList = null;
 		try {			
 			
 			if (categoryIds.length == 0)
@@ -213,18 +221,15 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 			
 			statement = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
 			resultset = statement.executeQuery(selectSql);
-
+			
 			while (resultset.next())
 			{
 				if (deleteImageList == null)
 				{
-					deleteImageList = new ImageList();
-					deleteImageList.setImages(new ImageList.Images());
+					deleteImageList = new ImageIdList();
 				}
 				
-				ImageList.Images.ImageRef newImageRef = new ImageList.Images.ImageRef(); 
-				newImageRef.setId(resultset.getLong(1));
-				deleteImageList.getImages().getImageRef().add(newImageRef);
+				deleteImageList.getImageRef().add(resultset.getLong(1));
 			}
 			resultset.close();
 			
@@ -703,7 +708,7 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 		}		
 	}
 	
-	public long[] GetTagsLinkedToImages(long userId, ImageList imageList, String requestId) throws WallaException
+	public long[] GetTagsLinkedToImages(long userId, long[] imageList, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -713,7 +718,7 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 		try {			
 			conn = dataSource.getConnection();
 			
-			if (imageList.getImages() != null && imageList.getImages().getImageRef().size() > 0)
+			if (imageList != null && imageList.length > 0)
 			{
 				String sql = "SELECT DISTINCT TI.TagId FROM TagImage TI INNER JOIN Tag T ON TI.TagId = T.TagId "
 						+ "WHERE T.UserId=" + userId + " AND TI.ImageId IN (";
@@ -721,10 +726,15 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 				statement = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
 
 				//Construct update IN statement
-				for (Iterator<ImageList.Images.ImageRef> imageIterater = imageList.getImages().getImageRef().iterator(); imageIterater.hasNext();)
+				//for (Iterator<ImageList.Images.ImageRef> imageIterater = imageList.getImages().getImageRef().iterator(); imageIterater.hasNext();)
+				//{
+				//	ImageList.Images.ImageRef currentImageRef = (ImageList.Images.ImageRef)imageIterater.next();
+				//	sql = sql + currentImageRef.getId() + ",";
+				//}
+				
+				for (int i = 0; i < imageList.length; i++)
 				{
-					ImageList.Images.ImageRef currentImageRef = (ImageList.Images.ImageRef)imageIterater.next();
-					sql = sql + currentImageRef.getId() + ",";
+					sql = sql + imageList[i] + ",";
 				}
 				
 				sql = sql.substring(0, sql.length()-1) + ")";
@@ -763,7 +773,7 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 		}
 	}
 	
-	public long[] GetCategoriesLinkedToImages(long userId, ImageList imageList, String requestId) throws WallaException
+	public long[] GetCategoriesLinkedToImages(long userId, long[] imageList, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		Connection conn = null;
@@ -773,7 +783,7 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 		try {			
 			conn = dataSource.getConnection();
 			
-			if (imageList.getImages() != null && imageList.getImages().getImageRef().size() > 0)
+			if (imageList != null && imageList.length > 0)
 			{
 				String sql = "SELECT DISTINCT C.CategoryId FROM Category C INNER JOIN Image I ON C.CategoryId = I.CategoryId "
 						+ "WHERE C.UserId=" + userId + " AND C.[Active] = 1 AND I.ImageId IN (";
@@ -781,10 +791,15 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 				statement = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
 
 				//Construct update IN statement
-				for (Iterator<ImageList.Images.ImageRef> imageIterater = imageList.getImages().getImageRef().iterator(); imageIterater.hasNext();)
+				//for (Iterator<ImageList.Images.ImageRef> imageIterater = imageList.getImages().getImageRef().iterator(); imageIterater.hasNext();)
+				//{
+				//	ImageList.Images.ImageRef currentImageRef = (ImageList.Images.ImageRef)imageIterater.next();
+				//	sql = sql + currentImageRef.getId() + ",";
+				//}
+				
+				for (int i = 0; i < imageList.length; i++)
 				{
-					ImageList.Images.ImageRef currentImageRef = (ImageList.Images.ImageRef)imageIterater.next();
-					sql = sql + currentImageRef.getId() + ",";
+					sql = sql + imageList[i] + ",";
 				}
 				
 				sql = sql.substring(0, sql.length()-1) + ")";

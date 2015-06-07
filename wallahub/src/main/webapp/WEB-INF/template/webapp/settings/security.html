@@ -103,11 +103,13 @@
                                         <a href="../forgotpassword">I forgot my password  <i class="fa fa-frown-o"></i></a>
                                     </span>
                                 </p>
+                                
                                 <p th:if="${message != null}" class="errortext"><i class="fa fa-exclamation"></i><span style="margin-left: 5px;" th:text="${message}" class="errortext">Server error</span></p>
                             
-                            	<!-- *{#strings.length(securityMessage) > 0} -->
-                            	<p th:if="*{securityMessage != null}" class="help">
-                                <i class="fa fa-info icon"></i><span style="margin-left: 5px;" th:text="*{securityMessage}" class="errortext">Your password was last changed: 24/11/2014.  We recommend changing your password every 180 days</span></p>
+                            	<!-- *{#strings.length(message) > 0} 
+                            	<p th:if="*{message != null}" class="help">
+                                <i class="fa fa-info icon"></i><span style="margin-left: 5px;" th:text="*{message}" class="errortext">Your password was last changed: 24/11/2014.  We recommend changing your password every 180 days</span></p>
+                                -->
                         	</form>
                         </div>
                     </div>

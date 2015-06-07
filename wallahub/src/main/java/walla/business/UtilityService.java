@@ -1,11 +1,18 @@
 package walla.business;
 
+import java.io.StringWriter;
 import java.util.*;
 
 import javax.annotation.Resource;
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.Session;
+import javax.jms.TextMessage;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.Marshaller;
 
 import walla.datatypes.auto.*;
 import walla.datatypes.java.*;
@@ -15,6 +22,8 @@ import walla.utils.*;
 import org.apache.log4j.Logger;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatus;
+import org.springframework.jms.core.JmsTemplate;
+import org.springframework.jms.core.MessageCreator;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Required;
@@ -32,9 +41,16 @@ public class UtilityService {
 	@Resource(name="utilityDataHelper") private UtilityDataHelperImpl utilityDataHelper;
 	
 	@Resource(name="cachedData") private CachedData cachedData;
-	
-	private static final Logger meLogger = Logger.getLogger(UtilityService.class);
 
+    @Resource(name="logTemplate")private JmsTemplate logTemplate;
+    @Resource(name="newImageTemplate")private JmsTemplate newImageTemplate; 
+	@Resource(name="noAggTemplate")private JmsTemplate noAggTemplate; 
+	@Resource(name="emailTemplate")private JmsTemplate emailTemplate; 
+	@Resource(name="aggTemplate")private JmsTemplate aggTemplate; 
+    
+    
+    private static final Logger meLogger = Logger.getLogger(UtilityService.class);
+    
 	//*************************************************************************************************************
 	//***********************************  Web server synchronous methods *****************************************
 	//*************************************************************************************************************
@@ -44,7 +60,6 @@ public class UtilityService {
 		meLogger.debug("UtilityService object instantiated.");
 	}
 	
-	//UserTools.LogWebFormMethod("SettingsAccountPost", meLogger, startMS, request, responseJsp)
 	public void LogWebMethod(String object, String method, long startMS, HttpServletRequest request, String requestId, String response)
 	{
 		try
@@ -98,7 +113,11 @@ public class UtilityService {
 				startDate.setTime(startMS);
 				detail.setStartDate(startDate);
 				
-				if (!messagingEnabled)
+				if (messagingEnabled)
+				{
+					SendMessageToQueue(QueueTemplate.Log, detail, "METHOD");
+				}
+				else
 				{
 					utilityDataHelper.LogMethodCall(detail);
 				}
@@ -140,7 +159,11 @@ public class UtilityService {
 				
 				detail.setParams(params);
 				
-				if (!messagingEnabled)
+				if (messagingEnabled)
+				{
+					SendMessageToQueue(QueueTemplate.Log, detail, "METHOD");
+				}
+				else
 				{
 					utilityDataHelper.LogMethodCall(detail);
 				}
@@ -154,7 +177,6 @@ public class UtilityService {
 		}
 	}
 	
-	
 	public void AddAction(ActionType actionType, long id, String action, String extraInfo)
 	{
 		try
@@ -166,7 +188,11 @@ public class UtilityService {
 			event.setExtraInfo((extraInfo.length() > 200) ? extraInfo.substring(0,200) : extraInfo);
 			event.setActionDate(new Date());
 
-			if (!messagingEnabled)
+			if (messagingEnabled)
+			{
+				SendMessageToQueue(QueueTemplate.Log, event, "USREVENT");
+			}
+			else
 			{
 				utilityDataHelper.AddAction(event);
 			}
@@ -288,10 +314,10 @@ public class UtilityService {
 			event.setSessionCustomSessionIds(sessionIds);
 			event.setSessionNonceKey(customSession.getNonceKey());
 			
-			if (!messagingEnabled)
-			{
+			if (messagingEnabled)
+				SendMessageToQueue(QueueTemplate.Log, event, "SECEVENT");
+			else
 				utilityDataHelper.AddSecurityAction(event);
-			}
 		}
 		catch (WallaException wallaEx) {
 			meLogger.error("Unexpected error when adding an action");
@@ -299,8 +325,246 @@ public class UtilityService {
 		catch (Exception ex) {
 			meLogger.error("AddActionSecurity failed with an error", ex);
 		}
-
+	}
+/*
+	private String LogMethodDetailToXml(LogMethodDetail object)
+	{
+		try
+		{
+	        JAXBContext context = JAXBContext.newInstance(LogMethodDetail.class);
+	        Marshaller marshaller = context.createMarshaller();
+	        marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+		
+	        StringWriter writer = new StringWriter(); 
+	        marshaller.marshal(object, writer);
+	        
+	        return writer.toString(); 
+		}
+		catch (Exception ex)
+		{
+			meLogger.error(ex);
+			return "";
+		}
+	}
+	
+	private String UserEventToXml(UserEvent object)
+	{
+		try
+		{
+	        JAXBContext context = JAXBContext.newInstance(UserEvent.class);
+	        Marshaller marshaller = context.createMarshaller();
+	        marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+		
+	        StringWriter writer = new StringWriter(); 
+	        marshaller.marshal(object, writer);
+	        
+	        return writer.toString(); 
+		}
+		catch (Exception ex)
+		{
+			meLogger.error(ex);
+			return "";
+		}
+	}
+    
+	
+	private String todeleteSecurityEventToXml(SecurityEvent object)
+	{
+		try
+		{
+	        JAXBContext context = JAXBContext.newInstance(SecurityEvent.class);
+	        Marshaller marshaller = context.createMarshaller();
+	        marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+		
+	        StringWriter writer = new StringWriter(); 
+	        marshaller.marshal(object, writer);
+	        
+	        return writer.toString(); 
+		}
+		catch (Exception ex)
+		{
+			meLogger.error(ex);
+			return "";
+		}
 	}
 	
 
+	
+	public String RequestMessageToXml(RequestMessage object)
+	{
+		try
+		{
+	        JAXBContext context = JAXBContext.newInstance(RequestMessage.class);
+	        Marshaller marshaller = context.createMarshaller();
+	        marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+		
+	        StringWriter writer = new StringWriter(); 
+	        marshaller.marshal(object, writer);
+	        
+	        return writer.toString(); 
+		}
+		catch (Exception ex)
+		{
+			meLogger.error(ex);
+			return "";
+		}
+	}
+	*/
+	public RequestMessage BuildRequestMessage(long userId, String wallaClass, String method, String requestId, long idOne, long idTwo, long[] ids)
+	{
+		RequestMessage request = new RequestMessage();
+		request.setUserId(userId);
+		request.setWallaClass(wallaClass);
+		request.setMethod(method);
+		request.setRequestId(requestId);
+		request.setIdOne(idOne);
+		request.setIdTwo(idTwo);
+		
+		if (ids != null && ids.length > 0)
+		{
+			request.setIdList(new RequestMessage.IdList());
+			for (int i = 0; i < ids.length; i++)
+			{
+				request.getIdList().getIdRef().add(ids[i]);
+			}
+		}
+		
+		return request;
+	}
+	
+	
+	public void SendMessageToQueue(QueueTemplate templateType, Object messageBodyObject, final String messageType) throws JMSException 
+	{
+		try
+		{
+			String correlation = null;
+			if (messageBodyObject.getClass() == RequestMessage.class)
+			{
+				RequestMessage requestTemp = (RequestMessage)messageBodyObject;
+				correlation = String.valueOf(requestTemp.getUserId()) + "-" + messageType + "-" + String.valueOf(requestTemp.getIdOne());
+			}
+			
+			final String correlationFinal = correlation;
+			final String messageBody = UserTools.ObjectToXml(messageBodyObject);
+			
+			JmsTemplate template = null;
+			
+			switch (templateType)
+			{
+				case Agg:
+					template = aggTemplate;
+					break;
+				case Email:
+					template = emailTemplate;
+					break;
+				case Log:
+					template = logTemplate;
+					break;
+				case NewImage:
+					template = newImageTemplate;
+					break;
+				case NoAgg:
+					template = noAggTemplate;
+					break;		
+			}
+			
+			template.send(new MessageCreator() 
+	        {
+	    		public Message createMessage(Session session) throws JMSException 
+	    		{
+				    TextMessage tm = session.createTextMessage();
+				    tm.setStringProperty("MessageType", messageType);
+				    if (correlationFinal != null)
+				    {
+					    tm.setStringProperty("correlationId", correlationFinal);
+				        tm.setJMSCorrelationID(correlationFinal);
+				    }
+				    
+				    tm.setText(messageBody);
+				    return tm;
+	    		}
+	    	});
+		}
+		catch (Exception ex) {
+			meLogger.error("Unexpected error when posting a message to the Queue.  Fail silently.", ex);
+		}
+    }
+	
+	/*
+	public void toDeleteLogMessageToQueue(final String messageBody, final String messageType) throws JMSException 
+	{        
+		logTemplate.send(new MessageCreator() 
+        {
+    		public Message createMessage(Session session) throws JMSException 
+    		{
+			    TextMessage tm = session.createTextMessage();
+			    tm.setStringProperty("MessageType", messageType);
+			    tm.setText(messageBody);
+			    return tm;
+    		}
+    	});
+    }
+*/
+	
+	/*
+	public void AggMessageToQueue(final String messageBody, final String messageType, long userId, String method, long id) throws JMSException 
+	{   
+		final String correlation = String.valueOf(userId) + "-" + method + "-" + String.valueOf(id);
+		
+		aggTemplate.send(new MessageCreator() 
+        {
+    		public Message createMessage(Session session) throws JMSException 
+    		{
+			    TextMessage tm = session.createTextMessage();
+			    tm.setStringProperty("correlationId", correlation);
+		        tm.setJMSCorrelationID(correlation);
+		        tm.setStringProperty("MessageType", messageType);
+			    tm.setText(messageBody);
+			    return tm;
+    		}
+    	});
+    }
+
+	public void NoAggMessageToQueue(final String messageBody, final String messageType) throws JMSException 
+	{        
+		noAggTemplate.send(new MessageCreator() 
+        {
+    		public Message createMessage(Session session) throws JMSException 
+    		{
+			    TextMessage tm = session.createTextMessage();
+			    tm.setStringProperty("MessageType", messageType);
+			    tm.setText(messageBody);
+			    return tm;
+    		}
+    	});
+    }
+
+	public void NewImageMessageToQueue(final String messageBody, final String messageType) throws JMSException 
+	{        
+		newImageTemplate.send(new MessageCreator() 
+        {
+    		public Message createMessage(Session session) throws JMSException 
+    		{
+			    TextMessage tm = session.createTextMessage();
+			    tm.setStringProperty("MessageType", messageType);
+			    tm.setText(messageBody);
+			    return tm;
+    		}
+    	});
+    }
+
+	public void SendEmailMessageToQueue(final String messageBody, final String messageType) throws JMSException 
+	{        
+		emailTemplate.send(new MessageCreator() 
+        {
+    		public Message createMessage(Session session) throws JMSException 
+    		{
+			    TextMessage tm = session.createTextMessage();
+			    tm.setStringProperty("MessageType", messageType);
+			    tm.setText(messageBody);
+			    return tm;
+    		}
+    	});
+    }
+	*/
 }

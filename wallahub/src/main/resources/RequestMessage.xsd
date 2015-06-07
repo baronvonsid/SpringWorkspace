@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema xmlns="http://www.w3.org/2001/XMLSchema" targetNamespace="http://ws.fotowalla.com/RequestMessage"
+	xmlns:tns="http://ws.fotowalla.com/RequestMessage" elementFormDefault="qualified">
+
+  <element name="RequestMessage">
+    <complexType>
+      <sequence maxOccurs="1" minOccurs="0">
+        <element type="long" name="UserId" />
+        <element type="string" name="WallaClass" />
+        <element type="string" name="Method" />
+        <element type="string" name="RequestId" />
+
+        <element type="long" name="IdOne" />
+        <element type="long" name="IdTwo" />
+
+        
+        <element name="IdList">
+			<complexType>
+				<sequence>
+					<element name="IdRef" maxOccurs="unbounded" minOccurs="0">
+						<simpleType>
+							<restriction base="long"></restriction>
+						</simpleType>
+					</element>
+				</sequence>
+			</complexType>
+		</element>
+      </sequence>
+    </complexType>
+  </element>
+  
+</schema>

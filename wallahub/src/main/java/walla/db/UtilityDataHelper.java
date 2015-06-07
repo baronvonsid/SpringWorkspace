@@ -11,6 +11,7 @@ public interface UtilityDataHelper {
 
 	public List<Platform> GetPlatformList(String requestId) throws WallaException;
 	public List<App> GetAppList(String requestId) throws WallaException;
+	public List<AppPlatform> GetAppPlatformList(String requestId) throws WallaException;
 	public List<Style> GetStyleList(String requestId) throws WallaException;
 	public List<Presentation> GetPresentationList(String requestId) throws WallaException;
 	public long GetNewId(String idType, String requestId) throws WallaException;

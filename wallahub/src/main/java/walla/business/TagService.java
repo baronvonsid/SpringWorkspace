@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Required;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 
 @Service("TagService")
 public class TagService {
@@ -42,6 +43,8 @@ public class TagService {
 	
 	@Resource(name="utilityServicePooled")
 	private UtilityService utilityService;
+	
+	@Value( "${messaging.enabled}" ) private boolean messagingEnabled;
 	
 	private static final Logger meLogger = Logger.getLogger(TagService.class);
 
@@ -118,8 +121,13 @@ public class TagService {
 			
 			tagDataHelper.DeleteTag(userId, tag.getId(), tag.getVersion(), tagName, requestId);
 
-			//TODO decouple method
-			TagRippleDelete(userId, tag.getId(), requestId);
+			if (messagingEnabled)
+			{
+				RequestMessage requestMessage = utilityService.BuildRequestMessage(userId, "TagService", "TagRippleDelete", requestId, tag.getId(), 0, null);
+				utilityService.SendMessageToQueue(QueueTemplate.Agg, requestMessage, "TAGDEL");
+			}
+			else
+				TagRippleDelete(userId, tag.getId(), requestId);
 			
 			utilityService.AddAction(ActionType.UserApp, userAppId, "TagDel", tagName);
 			return HttpStatus.OK.value();
@@ -226,9 +234,14 @@ public class TagService {
 			}
 			
 			tagDataHelper.AddRemoveTagImages(userId, tag.getId(), moveList, add, requestId);
-
-			//TODO decouple method
-			TagRippleUpdate(userId, tag.getId(), requestId);
+			
+			if (messagingEnabled)
+			{
+				RequestMessage requestMessage = utilityService.BuildRequestMessage(userId, "TagService", "TagRippleUpdate", requestId, tag.getId(), 0, null);
+				utilityService.SendMessageToQueue(QueueTemplate.Agg, requestMessage, "TAGUPD");
+			}
+			else
+				TagRippleUpdate(userId, tag.getId(), requestId);
 			
 			utilityService.AddAction(ActionType.UserApp, userAppId, "TagImgChg", "");
 			
@@ -302,8 +315,13 @@ public class TagService {
 				long[] galleryIds = tagDataHelper.GetGalleriesLinkedToTag(userId, tags[ii], requestId);
 				for (int i = 0; i < galleryIds.length; i++)
 				{
-					//TODO decouple
-					galleryService.RefreshGalleryImages(userId, galleryIds[i], requestId);
+					if (messagingEnabled)
+					{
+						RequestMessage requestMessage = utilityService.BuildRequestMessage(userId, "GalleryService", "RefreshGalleryImages", requestId, galleryIds[i], 0, null);
+						utilityService.SendMessageToQueue(QueueTemplate.Agg, requestMessage, "GALRFH");
+					}
+					else
+						galleryService.RefreshGalleryImages(userId, galleryIds[i], requestId);
 				}
 			}
 		}
@@ -328,8 +346,13 @@ public class TagService {
 			long[] galleryIds = tagDataHelper.GetGalleriesLinkedToTag(userId, tagId, requestId);
 			for (int i = 0; i < galleryIds.length; i++)
 			{
-				//TODO decouple
-				galleryService.RefreshGalleryImages(userId, galleryIds[i], requestId);
+				if (messagingEnabled)
+				{
+					RequestMessage requestMessage = utilityService.BuildRequestMessage(userId, "GalleryService", "RefreshGalleryImages", requestId, galleryIds[i], 0, null);
+					utilityService.SendMessageToQueue(QueueTemplate.Agg, requestMessage, "GALRFH");
+				}
+				else
+					galleryService.RefreshGalleryImages(userId, galleryIds[i], requestId);
 			}
 		}
 		catch (WallaException wallaEx) {
@@ -354,8 +377,13 @@ public class TagService {
 			
 			for (int i = 0; i < galleryIds.length; i++)
 			{
-				//TODO decouple
-				galleryService.RefreshGalleryImages(userId, galleryIds[i], requestId);
+				if (messagingEnabled)
+				{
+					RequestMessage requestMessage = utilityService.BuildRequestMessage(userId, "GalleryService", "RefreshGalleryImages", requestId, galleryIds[i], 0, null);
+					utilityService.SendMessageToQueue(QueueTemplate.Agg, requestMessage, "GALRFH");
+				}
+				else
+					galleryService.RefreshGalleryImages(userId, galleryIds[i], requestId);
 			}
 		}
 		catch (WallaException wallaEx) {

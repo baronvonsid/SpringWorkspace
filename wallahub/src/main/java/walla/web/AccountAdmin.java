@@ -294,13 +294,23 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 				tomcatSession.setAttribute("CustomSessionState", customSession);
 			}
 
+			
 			CustomResponse customResponse = new CustomResponse();
-
+			accountService.SetAppAndPlatformWeb(2, request, customSession, customResponse, requestId);
+			if (customResponse.getResponseCode() != HttpStatus.OK.value())
+			{
+				meLogger.warn("The application/platform key failed validation.");
+				Thread.sleep(500);
+				model.addAttribute("message", "Logon failed application\browser checks when issuing a token.");
+				return responseJsp;
+			}
 			
+			//A warning might be displayed here.
+			if (customResponse.getMessage().length() > 0)
+				logon.setMessage(customResponse.getMessage());
 			
-			
+			customResponse = new CustomResponse();
 			String key = accountService.GetLogonToken(request, customSession, customResponse, requestId);
-			
 			if (customResponse.getResponseCode() == HttpStatus.OK.value())
 			{
 				logon.setKey(key);
@@ -448,8 +458,17 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 						tomcatSession.setAttribute("CustomSessionState", customSession);
 					}
 					
+					customResponse = new CustomResponse();
+					accountService.SetAppAndPlatformWeb(2, request, customSession, customResponse, requestId);
+					if (customResponse.getResponseCode() != HttpStatus.OK.value())
+					{
+						meLogger.warn("The application/platform key failed validation.");
+						message = (customResponse.getMessage() == null ? "Logon failed application\browser checks when issuing a token." : customResponse.getMessage());
+						responseJsp = RedirectToLogon(message, request);
+						return responseJsp;
+					}
+					
 					accountService.AutoLoginAdminUser(tempToken, profileName, request, customSession, customResponse, requestId);
-
 					if (customResponse.getResponseCode() == HttpStatus.OK.value())
 					{						
 						Cookie wallaSessionIdCookie = new Cookie("X-Walla-Id", UserTools.GetLatestWallaId(customSession));
@@ -636,7 +655,9 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			
 			//Convert from internal object to web facing object.
 			logon.setProfileName(customSession.getAccount().getProfileName());
-			logon.setSecurityMessage(customSession.getAccount().getSecurityMessage());
+			
+			//TODO ascertain what security message should go here.
+			//logon.setSecurityMessage(customSession.getAccount().getSecurityMessage());
 
 			if (message != null)
 				model.addAttribute("message", message);
@@ -902,7 +923,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 				customSession.setAccount(account);
 			}
 			
-			MergeSettingsToAccount(customSession.getAccount(), accountSettings);
+			//MergeSettingsToAccount(customSession.getAccount(), accountSettings);
 
 			//TODO actually implement billing.
 			
@@ -1322,7 +1343,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			+ "&message=" + UserTools.EncodeString(message, request);	
 	}
 	
-	private void MergeStorageObjects(AccountStorage request, AccountStorage session)
+	private void ToDeleteMergeStorageObjects(AccountStorage request, AccountStorage session)
 	{
 		request.setStorageMessage(session.getStorageMessage());
 		request.setStorageGBLimit(session.getStorageGBLimit());
@@ -1335,7 +1356,7 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 
 	}
 	
-	private void MergeSettingsToAccount(Account account, AccountSettings accountSettings)
+	private void ToDeleteMergeSettingsToAccount(Account account, AccountSettings accountSettings)
 	{
 		accountSettings.setProfileName(account.getProfileName());
 		accountSettings.setDescription(account.getDesc());

@@ -242,13 +242,16 @@ public class ImageController {
 			}
 
 			//Build object with one image reference.
-			ImageList.Images.ImageRef toDelete = new ImageList.Images.ImageRef();
-			toDelete.setId(imageId);
-			ImageList imagesToDelete = new ImageList();
-			imagesToDelete.setImages(new ImageList.Images());
-			imagesToDelete.getImages().getImageRef().add(toDelete);
+			//ImageList.Images.ImageRef toDelete = new ImageList.Images.ImageRef();
+			//toDelete.setId(imageId);
+			//ImageList imagesToDelete = new ImageList();
+			//imagesToDelete.setImages(new ImageList.Images());
+			//imagesToDelete.getImages().getImageRef().add(toDelete);
 			
-			responseCode = imageService.DeleteImages(customSession.getUserId(), imagesToDelete, requestId);
+			ImageIdList imageList = new ImageIdList();
+			imageList.getImageRef().add(imageId);
+			
+			responseCode = imageService.DeleteImages(customSession.getUserId(), imageList, requestId);
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
@@ -259,7 +262,7 @@ public class ImageController {
 	//  DELETE /{profileName}/images
 	@RequestMapping(value = { "/{profileName}/images" }, method = { RequestMethod.DELETE },  headers={"Accept-Charset=utf-8"}, consumes = MediaType.APPLICATION_XML_VALUE )
 	public void DeleteImageBulk(
-			@RequestBody ImageList imagesToDelete,
+			@RequestBody ImageIdList imagesToDelete,
 			@PathVariable("profileName") String profileName,
 			HttpServletRequest request,
 			HttpServletResponse response)

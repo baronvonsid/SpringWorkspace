@@ -23,6 +23,7 @@ public class CachedData {
 	private Date cacheUpdateTime = new Date();
 	private List<Platform> platforms = null;
 	private List<App> apps = null;
+	private List<AppPlatform> appPlatforms = null;
 	private List<Style> styles = null;
 	private List<Presentation> presentations = null;
 	private UtilityDataHelperImpl utilityDataHelper;
@@ -59,6 +60,10 @@ public class CachedData {
 				if (apps == null || apps.size() < 1)
 					meLogger.error("No apps could be retrieved from the database");
 				
+				appPlatforms = utilityDataHelper.GetAppPlatformList(requestId);
+				if (appPlatforms == null || appPlatforms.size() < 1)
+					meLogger.error("No app platforms could be retrieved from the database");
+				
 				styles = utilityDataHelper.GetStyleList(requestId);
 				if (styles == null || styles.size() < 1)
 					meLogger.error("No styles could be retrieved from the database");
@@ -91,7 +96,7 @@ public class CachedData {
 				if (platformId != 0)
 				{
 					//Specific lookup required.
-					if (currentPlatform.getPlatformId() == platformId && currentPlatform.getSupported() == true)
+					if (currentPlatform.getPlatformId() == platformId)
 					{
 						return currentPlatform;
 					}
@@ -99,7 +104,7 @@ public class CachedData {
 				else
 				{
 					//Try to find based on logic.  Needs to be improved when additional apps loaded.
-					if (machineType.equals(currentPlatform.getMachineType()) && majorVersion == currentPlatform.getMajorVersion() && minorVersion == currentPlatform.getMinorVersion() && currentPlatform.getSupported() == true)
+					if (machineType.equals(currentPlatform.getMachineType()) && majorVersion == currentPlatform.getMajorVersion() && minorVersion == currentPlatform.getMinorVersion())
 					{
 						return currentPlatform;
 					}
@@ -111,7 +116,7 @@ public class CachedData {
 		finally { utilityService.LogMethod("CachedData","GetPlatform", startMS, requestId, "PlatformId:" + platformId + " OSType:" + OSType + " Machine:" + machineType + " Version:" + majorVersion + "." + minorVersion); }
 	}
 	
-	public App GetApp(int appId, String key, String requestId) throws WallaException
+	public App GetApp(int appId, String key, int majorVersion, int minorVersion, long crc, String requestId) throws WallaException
 	{
 		long startMS = System.currentTimeMillis();
 		try
@@ -132,7 +137,8 @@ public class CachedData {
 				}
 				else
 				{
-					if (currentApp.getWSKey().equals(key))
+					if (currentApp.getAppKey().equals(key) && currentApp.getMajorVersion() == majorVersion
+							&& currentApp.getMinorVersion() == minorVersion && currentApp.getAppCRC() == crc)
 					{
 						return currentApp;
 					}
@@ -142,6 +148,27 @@ public class CachedData {
 			return null;
 		}
 		finally { utilityService.LogMethod("CachedData","GetApp", startMS, requestId, "AppId:" + appId + " Key:" + key); }
+	}
+	
+	public boolean GetAppPlatformSupported(int appId, int platformId, String requestId) throws WallaException
+	{
+		long startMS = System.currentTimeMillis();
+		try
+		{
+			CheckAndUpdateCache(requestId);
+			
+			//find platform object and return.
+			for (Iterator<AppPlatform> iterater = appPlatforms.iterator(); iterater.hasNext();)
+			{
+				AppPlatform current = (AppPlatform)iterater.next();
+				
+				if (appId == current.getAppId() && platformId == current.getPlatformId())
+					return true;
+			}
+			
+			return false;
+		}
+		finally { utilityService.LogMethod("CachedData","GetAppPlatformSupported", startMS, requestId, "AppId:" + appId + " PlatformId:" + platformId); }
 	}
 	
 	public List<Style> GetStyleList(String requestId) throws WallaException
