@@ -26,4 +26,16 @@
 		<nature>org.eclipse.jdt.core.javanature</nature>
 		<nature>org.eclipse.m2e.core.maven2Nature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>hubsrc</name>
+			<type>2</type>
+			<location>C:/TheDuchess/Projects/ImageWalla/Git/SpringWorkspace/wallahub/src/main/java</location>
+		</link>
+		<link>
+			<name>walla</name>
+			<type>2</type>
+			<location>C:/TheDuchess/Projects/ImageWalla/Git/SpringWorkspace/wallahub/src/main/java/walla</location>
+		</link>
+	</linkedResources>
 </projectDescription>

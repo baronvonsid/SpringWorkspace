@@ -1,0 +1,502 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xmlns:int-file="http://www.springframework.org/schema/integration/file"
+	xmlns:int-jms="http://www.springframework.org/schema/integration/jms"
+	xmlns:int-xml="http://www.springframework.org/schema/integration/xml"
+	xmlns:task="http://www.springframework.org/schema/task"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:int-stream="http://www.springframework.org/schema/integration/stream"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+						http://www.springframework.org/schema/beans/spring-beans.xsd
+						http://www.springframework.org/schema/integration
+						http://www.springframework.org/schema/integration/spring-integration.xsd
+						http://www.springframework.org/schema/integration/file
+						http://www.springframework.org/schema/integration/file/spring-integration-file.xsd
+						http://www.springframework.org/schema/integration/xml
+    					http://www.springframework.org/schema/integration/xml/spring-integration-xml.xsd
+    					http://www.springframework.org/schema/integration/jms			
+    					http://www.springframework.org/schema/integration/jms/spring-integration-jms.xsd
+    					http://www.springframework.org/schema/task 
+    					http://www.springframework.org/schema/task/spring-task-3.0.xsd
+    					http://www.springframework.org/schema/context
+    					http://www.springframework.org/schema/context/spring-context.xsd
+						http://www.springframework.org/schema/integration/stream
+						http://www.springframework.org/schema/integration/stream/spring-integration-stream.xsd">
+	
+	<context:property-placeholder location="project.properties" />
+
+	<context:annotation-config />
+	
+	<!--  
+	<context:component-scan base-package="walla.ws" />
+	<context:component-scan base-package="walla.web" />
+-->
+
+
+	<!-- Spring bean instantiation -->
+	<!-- ************************* -->
+	<bean id="connectionFactory"
+		class="org.springframework.jms.connection.CachingConnectionFactory">
+		<property name="targetConnectionFactory">
+			<bean class="org.apache.activemq.ActiveMQConnectionFactory">
+				<property name="brokerURL" value="${jms.broker.url}" />
+			</bean>
+		</property>
+		<property name="sessionCacheSize" value="10" />
+		<property name="cacheProducers" value="false" />
+	</bean>
+
+
+	<!-- ***************************** -->
+	<!-- ***************************** -->
+	<!--    Queue objects              -->
+	<bean id="logQueue" class="org.apache.activemq.command.ActiveMQQueue">
+		<constructor-arg value="${jms.broker.logqueue}" />
+	</bean>
+
+	<bean id="aggQueue" class="org.apache.activemq.command.ActiveMQQueue">
+		<constructor-arg value="${jms.broker.aggqueue}" />
+	</bean>
+	
+	<bean id="emailQueue" class="org.apache.activemq.command.ActiveMQQueue">
+		<constructor-arg value="${jms.broker.emailqueue}" />
+	</bean>
+	
+	<bean id="noAggQueue" class="org.apache.activemq.command.ActiveMQQueue">
+		<constructor-arg value="${jms.broker.noaggqueue}" />
+	</bean>
+	
+	<bean id="newImageQueue" class="org.apache.activemq.command.ActiveMQQueue">
+		<constructor-arg value="${jms.broker.newimagequeue}" />
+	</bean>
+		
+
+	<!-- ***************************** -->
+	<!-- ***************************** -->
+	<!-- Adaptors and inbound channels -->
+	<int-jms:message-driven-channel-adapter id="logQueueAdaptor" 
+		connection-factory="connectionFactory" destination="logQueue" 
+		channel="inboundLogChannel" concurrent-consumers="${process.numListeners}" error-channel="errorChannel" />
+	
+	<int-jms:message-driven-channel-adapter id="aggQueueAdaptor" 
+		connection-factory="connectionFactory" destination="aggQueue" 
+		channel="inboundAggChannel" concurrent-consumers="${process.numListeners}" error-channel="errorChannel" />
+
+	<int-jms:message-driven-channel-adapter id="emailQueueAdaptor" 
+		connection-factory="connectionFactory" destination="emailQueue" 
+		channel="inboundEmailChannel" concurrent-consumers="${process.numListeners}" error-channel="errorChannel" />
+
+	<int-jms:message-driven-channel-adapter id="noAggQueueAdaptor" 
+		connection-factory="connectionFactory" destination="noAggQueue" 
+		channel="inboundNoAggChannel" concurrent-consumers="${process.numListeners}" error-channel="errorChannel" />
+	
+	<int-jms:message-driven-channel-adapter id="newImageQueueAdaptor" 
+		connection-factory="connectionFactory" destination="newImageQueue" 
+		channel="inboundNewImageChannel" concurrent-consumers="${process.numListeners}" error-channel="errorChannel" />
+		
+	<int:channel id="inboundLogChannel" />
+	<int:channel id="inboundAggChannel" />
+	<int:channel id="inboundEmailChannel" />
+	<int:channel id="inboundNoAggChannel" />
+	<int:channel id="inboundNewImageChannel" />
+	
+	<!--  
+	    <int:interceptors>
+	        <int:wire-tap channel="logger"/>
+	    </int:interceptors>
+	    -->
+
+	<!-- ******************** -->
+	<!-- ******************** -->
+	<!--       Routers        -->
+	<int:header-value-router input-channel="inboundLogChannel" header-name="MessageType">
+  		<int:mapping value="METHOD" channel="processLogMethodChannel" />
+  		<int:mapping value="USEREVENT" channel="processLogUserEventChannel" />
+  		<int:mapping value="SECEVENT" channel="processLogSecEventChannel" />
+	</int:header-value-router>
+
+
+	<int:aggregator input-channel="inboundAggChannel" send-partial-result-on-expiry="true" message-store="myMessageStore"
+					output-channel="postAggChannel" send-timeout="1000" release-strategy="releaseStrategy"
+					expire-groups-upon-completion="true">
+	</int:aggregator>
+
+	<int:channel id="postAggChannel" />
+
+
+	<!-- ********************* -->
+	<!-- ********************* -->
+	<!--       End points      -->
+	<int:service-activator input-channel="processLogMethodChannel" ref="messagingController" method="processLogMethodMessage" />
+	<int:service-activator input-channel="processLogUserEventChannel" ref="messagingController" method="processLogUserEventMessage" />
+	<int:service-activator input-channel="processLogSecEventChannel" ref="messagingController" method="processLogSecEventMessage" />
+
+
+	<int:service-activator input-channel="postAggChannel" ref="messagingController" method="processAggMessages" />
+	<int:service-activator input-channel="inboundEmailChannel" ref="messagingController" method="processEmailMessage" />
+	<int:service-activator input-channel="inboundNoAggChannel" ref="messagingController" method="processRequestMessage" />
+	<int:service-activator input-channel="inboundNewImageChannel" ref="messagingController" method="processRequestMessage" />
+
+	<!-- ******************* -->
+	<!-- ******************* -->
+	<!-- Aggregation Process -->
+	<bean id="releaseStrategy" class="org.springframework.integration.aggregator.TimeoutCountSequenceSizeReleaseStrategy">
+		<constructor-arg index="0" value="${process.aggregationCount}" />
+		<constructor-arg index="1" value="${process.aggregationTimeout}" />
+	</bean>
+
+	<bean id="myMessageStore" class="org.springframework.integration.store.SimpleMessageStore" />
+	
+	<bean id="myReaper" class="org.springframework.integration.store.MessageGroupStoreReaper">
+		<property name="messageGroupStore" ref="myMessageStore" />
+		<property name="timeout" value="${process.reaperTimeout}" />
+	</bean>
+	
+	<task:scheduler id="myScheduler" />
+	
+	<task:scheduled-tasks scheduler="myScheduler">
+		<task:scheduled ref="myReaper" method="run" fixed-rate="${process.reaperSchedulerTime}"/>
+	</task:scheduled-tasks>	
+
+
+
+	<!-- ***************************************************************************************** -->
+	<!-- ***************************************************************************************** -->
+	<!-- ***************************    Main process logic    ************************************ -->
+	<!-- ***************************************************************************************** -->
+	
+	<!-- Input -->
+	<!-- ***** -->
+	
+	<!--
+	<int-jms:message-driven-channel-adapter id="inboundMessageAdaptor" 
+		connection-factory="connectionFactory" destination="SourceQueue" 
+		channel="inboundMessagesChannel" concurrent-consumers="${process.numListeners}" error-channel="errorChannel" />
+	
+	<int:channel id="inboundMessagesChannel">
+	    <int:interceptors>
+	        <int:wire-tap channel="messageLoggingChannel"/>
+	    </int:interceptors>
+	</int:channel>
+	
+	<int:header-value-router input-channel="inboundMessagesChannel" header-name="aggIt">
+  		<int:mapping value="true" channel="preAggMessagesChannel" />
+  		<int:mapping value="false" channel="nonAggMessagesChannel" />
+	</int:header-value-router>
+	
+	<int:channel id="nonAggMessagesChannel">
+	    <int:interceptors>
+	        <int:wire-tap channel="messageLoggingChannel"/>
+	    </int:interceptors>
+	</int:channel>
+	
+	<int:service-activator input-channel="nonAggMessagesChannel"
+		ref="processController" method="processMessage" />
+	
+	<int:channel id="preAggMessagesChannel">
+	    <int:interceptors>
+	        <int:wire-tap channel="messageLoggingChannel"/>
+	    </int:interceptors>
+	</int:channel>
+	
+	<int:aggregator input-channel="preAggMessagesChannel" send-partial-result-on-expiry="true" message-store="myMessageStore"
+					output-channel="aggregatedMessagesChannel" send-timeout="1000" release-strategy="releaseStrategy"
+					expire-groups-upon-completion="true">
+	</int:aggregator>
+
+	<int:channel id="aggMessagesChannel">
+	    <int:interceptors>
+	        <int:wire-tap channel="messageLoggingChannel"/>
+	    </int:interceptors>
+	</int:channel>
+	
+	<int:service-activator input-channel="aggregatedMessagesChannel"
+		ref="processController" method="processAggMessage" />
+-->
+
+	<!-- ************************** -->
+	<!-- Logging and Error handling -->
+	
+	<!-- 
+	<int:channel id="messageLoggingChannel"></int:channel>
+	<int:logging-channel-adapter id="messageLoggingChannelAdaptor" level="DEBUG" channel="messageLoggingChannel" />
+	
+	<int:logging-channel-adapter id="logger" level="DEBUG" log-full-message="true" />
+	
+	
+	<int:channel id="errorChannel"></int:channel>	
+	<int:logging-channel-adapter id="errorChannelLoggerAdaptor" level="ERROR" channel="errorChannel"  />	
+	-->
+	
+	
+	
+	
+	<!-- Messaging only controllers -->
+	<!--  <bean id="processController" class="walla.messaging.MessagingController">	
+	</bean> -->
+	
+	<bean id="messagingController" class="walla.messaging.MessagingController" scope="prototype">
+	</bean>
+
+
+
+	<bean id="amqConnectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
+		<property name="brokerURL">
+	    	<value>${jms.broker.url}</value>
+	    </property>
+	</bean>
+
+		<bean id="logTemplate" class="org.springframework.jms.core.JmsTemplate">
+		    <property name="connectionFactory" ref="amqConnectionFactory" />
+		</bean>
+
+		<bean id="aggTemplate" class="org.springframework.jms.core.JmsTemplate">
+		    <property name="connectionFactory" ref="amqConnectionFactory" />
+		</bean>
+
+		<bean id="emailTemplate" class="org.springframework.jms.core.JmsTemplate">
+		    <property name="connectionFactory" ref="amqConnectionFactory" />
+		</bean>
+
+		<bean id="noAggTemplate" class="org.springframework.jms.core.JmsTemplate">
+		    <property name="connectionFactory" ref="amqConnectionFactory" />
+		</bean>
+
+		<bean id="newImageTemplate" class="org.springframework.jms.core.JmsTemplate">
+		    <property name="connectionFactory" ref="amqConnectionFactory" />
+		</bean>	
+
+
+<!--
+	<bean id="messagingPoolTargetSource" class="org.springframework.aop.target.CommonsPoolTargetSource">
+	  <property name="targetBeanName" value="messagingControllerTarget"/>
+	  <property name="maxSize" value="2"/>
+	  <property name="maxIdle" value="2"/>
+	  <property name="minIdle" value="2"/>
+	</bean>
+	
+	<bean id="messagingServicePooled" class="org.springframework.aop.framework.ProxyFactoryBean">
+	  <property name="targetSource" ref="messagingPoolTargetSource"/>
+	</bean>
+-->
+
+
+	<!-- Standard walla hub objects -->
+		
+	<bean id="meSqlDataSource" class="org.apache.tomcat.jdbc.pool.DataSource"
+	    destroy-method="close">
+	    <property name="driverClassName" value="com.microsoft.sqlserver.jdbc.SQLServerDriver" />
+	    <property name="url" value="${db.connectionString}" />
+	    <property name="username" value="${db.userName}" />
+	    <property name="password" value="${db.password}" />
+	    <property name="initialSize" value="2" />
+	    <property name="maxActive" value="20" />
+	    <property name="maxIdle" value="20" />
+	</bean>
+
+	<bean id="tagDataHelper" class="walla.db.TagDataHelperImpl" scope="prototype">
+		<property name="dataSource" ref="meSqlDataSource" />
+	</bean>
+
+	<bean id="utilityDataHelper" class="walla.db.UtilityDataHelperImpl" scope="prototype">
+		<property name="dataSource" ref="meSqlDataSource" />
+	</bean>
+	
+	<bean id="imageDataHelper" class="walla.db.ImageDataHelperImpl" scope="prototype">
+		<property name="dataSource" ref="meSqlDataSource" />
+	</bean>
+	
+	<bean id="categoryDataHelper" class="walla.db.CategoryDataHelperImpl" scope="prototype">
+		<property name="dataSource" ref="meSqlDataSource" />
+	</bean>
+	
+	<bean id="galleryDataHelper" class="walla.db.GalleryDataHelperImpl" scope="prototype">
+		<property name="dataSource" ref="meSqlDataSource" />
+	</bean>
+	
+	<bean id="accountDataHelper" class="walla.db.AccountDataHelperImpl" scope="prototype">
+		<property name="dataSource" ref="meSqlDataSource" />
+	</bean>
+	
+	<bean id="tagServiceTarget" class="walla.business.TagService" scope="prototype">
+		<!-- 
+		<property name="tagDataHelper" ref="tagDataHelper" />
+		<property name="cachedData" ref="cachedData" />
+		<property name="utilityDataHelper" ref="utilityDataHelper" />
+		<property name="galleryService" ref="galleryService" />
+		<property name="utilityService" ref="utilityServicePooled" />
+		-->
+	</bean>
+
+	<bean id="tagPoolTargetSource" class="org.springframework.aop.target.CommonsPoolTargetSource">
+	  <property name="targetBeanName" value="tagServiceTarget"/>
+	  <property name="maxSize" value="2"/>
+	  <property name="maxIdle" value="2"/>
+	  <property name="minIdle" value="2"/>
+	</bean>
+
+	<bean id="tagServicePooled" class="org.springframework.aop.framework.ProxyFactoryBean">
+	  <property name="targetSource" ref="tagPoolTargetSource"/>
+	</bean>
+
+
+
+	<bean id="categoryServiceTarget" class="walla.business.CategoryService" scope="prototype">
+
+	</bean>
+
+	<bean id="categoryPoolTargetSource" class="org.springframework.aop.target.CommonsPoolTargetSource">
+	  <property name="targetBeanName" value="categoryServiceTarget"/>
+	  <property name="maxSize" value="2"/>
+	  <property name="maxIdle" value="2"/>
+	  <property name="minIdle" value="2"/>
+	</bean>
+	
+	<bean id="categoryServicePooled" class="org.springframework.aop.framework.ProxyFactoryBean">
+	  <property name="targetSource" ref="categoryPoolTargetSource"/>
+	</bean>
+
+	<bean id="galleryServiceTarget" class="walla.business.GalleryService" scope="prototype">
+
+	</bean>
+
+	<bean id="galleryPoolTargetSource" class="org.springframework.aop.target.CommonsPoolTargetSource">
+	  <property name="targetBeanName" value="galleryServiceTarget"/>
+	  <property name="maxSize" value="2"/>
+	  <property name="maxIdle" value="2"/>
+	  <property name="minIdle" value="2"/>
+	</bean>
+	
+	<bean id="galleryServicePooled" class="org.springframework.aop.framework.ProxyFactoryBean">
+	  <property name="targetSource" ref="galleryPoolTargetSource"/>
+	</bean>
+
+	<bean id="cachedData" class="walla.db.CachedData">
+		<property name="utilityDataHelper" ref="utilityDataHelper" />
+	</bean>
+
+	<bean id="imageServiceTarget" class="walla.business.ImageService" scope="prototype">
+
+	</bean>
+
+	<bean id="imagePoolTargetSource" class="org.springframework.aop.target.CommonsPoolTargetSource">
+	  <property name="targetBeanName" value="imageServiceTarget"/>
+	  <property name="maxSize" value="2"/>
+	  <property name="maxIdle" value="2"/>
+	  <property name="minIdle" value="2"/>
+	</bean>
+	
+	<bean id="imageServicePooled" class="org.springframework.aop.framework.ProxyFactoryBean">
+	  <property name="targetSource" ref="imagePoolTargetSource"/>
+	</bean>
+
+
+	<bean id="accountServiceTarget" class="walla.business.AccountService" scope="prototype">
+
+	</bean>
+
+	<bean id="accountPoolTargetSource" class="org.springframework.aop.target.CommonsPoolTargetSource">
+	  <property name="targetBeanName" value="accountServiceTarget"/>
+	  <property name="maxSize" value="2"/>
+	  <property name="maxIdle" value="2"/>
+	  <property name="minIdle" value="2"/>
+	</bean>
+	
+	<bean id="accountServicePooled" class="org.springframework.aop.framework.ProxyFactoryBean">
+	  <property name="targetSource" ref="accountPoolTargetSource"/>
+	</bean>
+
+	<bean id="utilityServiceTarget" class="walla.business.UtilityService" scope="prototype">
+
+	</bean>
+
+	<bean id="utilityPoolTargetSource" class="org.springframework.aop.target.CommonsPoolTargetSource">
+	  <property name="targetBeanName" value="utilityServiceTarget"/>
+	  <property name="maxSize" value="2"/>
+	  <property name="maxIdle" value="2"/>
+	  <property name="minIdle" value="2"/>
+	</bean>
+	
+	<bean id="utilityServicePooled" class="org.springframework.aop.framework.ProxyFactoryBean">
+	  <property name="targetSource" ref="utilityPoolTargetSource"/>
+	</bean>
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+		
+</beans>
+	
+		
+	<!--  
+	
+	******************* the graveyard. RIP.
+	
+	
+	<int:channel id="requestXmlToObjectChannel">
+	</int:channel>
+	
+	
+		<int:channel id="OutcomeRoutingChannel" />
+
+	<int:header-value-router id="SuccessRouter"
+		header-name="success" input-channel="OutcomeRoutingChannel"
+		resolution-required="false" >
+		<int:mapping value="true" channel="SuccessChannel" />
+		<int:mapping value="false" channel="ErrorChannel" />
+	</int:header-value-router>
+	
+	<int:service-activator input-channel="requestXmlToObjectChannel"
+		ref="processController" method="RequestTriage" output-channel="requestObjectToXmlChannel" />
+
+	<int:channel id="requestObjectToXmlChannel" />
+
+	<int-xml:marshalling-transformer id="requestMarshalTransform"
+		marshaller="unmarshaller" output-channel="OutcomeRoutingChannel"
+		input-channel="requestObjectToXmlChannel" result-transformer="toStringTransformer" />
+	
+	<bean id="unmarshaller" class="org.springframework.oxm.jaxb.Jaxb2Marshaller">
+		<property name="marshallerProperties">
+			<map value-type="java.lang.Boolean" key-type="java.lang.String">
+				<entry key="jaxb.formatted.output" value="true" />
+			</map>
+		</property>
+		<property name="classesToBeBound">
+			<list>
+				<value>walla.messaging.CustomRequest</value>
+			</list>
+		</property>
+	</bean>
+
+	<bean id="toStringTransformer"
+		class="org.springframework.integration.xml.transformer.ResultToStringTransformer" />
+	
+	<int-stream:stdout-channel-adapter id="stdoutAdapter" channel="standardOutAdaptor" />
+			
+	<int:logging-channel-adapter id="logger" level="DEBUG" log-full-message="true" />
+
+	<int-stream:stdout-channel-adapter id="stdoutAdapter" channel="logger" />
+
+		
+	 expression="'Processing file: ' + headers.file_name + ' (' + headers.file_size 
+		+ ' bytes) <int:channel id="errorChannel" /> <int:chain input-channel="errorChannel"> 
+		<int:service-activator ref="errorMessageHandler" method="handleMessage" /> 
+		<int:router ref="errorMessageRouter" method="routeByPayloadType" /> </int:chain> 
+		<int:channel id="errorOutputChannel" /> 
+-->
+
+
+
+
+
