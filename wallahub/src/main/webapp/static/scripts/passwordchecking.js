@@ -31,12 +31,14 @@
     $("#newPassword").keyup(
     function(event)
     {
-    	var noofchar=/^.*(?=.{6,}).*$/;
+    	/*Should be at least 8 chars and one upper and lower case char.*/
+    	
+    	var noofchar=/^.*(?=.{8,}).*$/;
     	var checkspace=/\s/;
-    	var best=/^.*(?=.{6,})(?=.*[A-Z])(?=.*[\d])(?=.*[\W]).*$/;
-    	var strong=/^[a-zA-Z\d\W_]*(?=[a-zA-Z\d\W_]{6,})(((?=[a-zA-Z\d\W_]*[A-Z])(?=[a-zA-Z\d\W_]*[\d]))|((?=[a-zA-Z\d\W_]*[A-Z])(?=[a-zA-Z\d\W_]*[\W_]))|((?=[a-zA-Z\d\W_]*[\d])(?=[a-zA-Z\d\W_]*[\W_])))[a-zA-Z\d\W_]*$/;
-    	var weak=/^[a-zA-Z\d\W_]*(?=[a-zA-Z\d\W_]{6,})(?=[a-zA-Z\d\W_]*[A-Z]|[a-zA-Z\d\W_]*[\d]|[a-zA-Z\d\W_]*[\W_])[a-zA-Z\d\W_]*$/;
-    	var bad=/^((^[a-z]{6,}$)|(^[A-Z]{6,}$)|(^[\d]{6,}$)|(^[\W_]{6,}$))$/;
+    	var best=/^.*(?=.{8,})(?=.*[A-Z])(?=.*[\d])(?=.*[\W]).*$/;
+    	var strong=/^[a-zA-Z\d\W_]*(?=[a-zA-Z\d\W_]{8,})(((?=[a-zA-Z\d\W_]*[A-Z])(?=[a-zA-Z\d\W_]*[\d]))|((?=[a-zA-Z\d\W_]*[A-Z])(?=[a-zA-Z\d\W_]*[\W_]))|((?=[a-zA-Z\d\W_]*[\d])(?=[a-zA-Z\d\W_]*[\W_])))[a-zA-Z\d\W_]*$/;
+    	var weak=/^[a-zA-Z\d\W_]*(?=[a-zA-Z\d\W_]{8,})(?=[a-zA-Z\d\W_]*[A-Z]|[a-zA-Z\d\W_]*[\d]|[a-zA-Z\d\W_]*[\W_])[a-zA-Z\d\W_]*$/;
+    	var bad=/^((^[a-z]{8,}$)|(^[A-Z]{8,}$)|(^[\d]{8,}$)|(^[\W_]{8,}$))$/;
     	
 		if ($("#newPassword").val().length < 1)
 		{

@@ -11,7 +11,7 @@
 	</appender>
 
 	<appender name="rollingfile" class="org.apache.log4j.RollingFileAppender">
-	    <param name="file" value="C:\\temp\\Logging\\wallahub\\wallahub.log"/>
+	    <param name="file" value="C:\\temp\\Logging\\wallahub\\hub.log"/>
 	    <param name="MaxFileSize" value="2MB"/>
 	    <param name="MaxBackupIndex" value="2"/>
 	    <layout class="org.apache.log4j.PatternLayout"> 
@@ -20,7 +20,7 @@
 	</appender>
 	
 	<!-- Application Loggers -->
-	<logger name="walla.*">
+	<logger name="walla">
 		<level value="debug" />
 	</logger>
 	
@@ -62,6 +62,10 @@
 	</logger>
 
 	<logger name="org.thymeleaf">
+		<level value="warn" />
+	</logger>
+
+	<logger name="org.apache.activemq">
 		<level value="warn" />
 	</logger>
 

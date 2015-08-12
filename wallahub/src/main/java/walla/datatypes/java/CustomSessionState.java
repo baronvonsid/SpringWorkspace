@@ -10,7 +10,7 @@ public class CustomSessionState {
 	private String profileName = "";
 	private long userId = -1;
 	private ArrayList<Long> uploadReceivedImageIds = null;
-	private long userAppId = -1;
+	//private long userAppId = -1;
 	private int platformId = -1;
 	private int appId = -1;
 	private boolean isHuman = false;
@@ -27,6 +27,8 @@ public class CustomSessionState {
 	private Date failedLogonLast = null;
 	private String remoteAddress = "";
 	
+	
+	private UserApp userApp = null;
 	private Account account = null;
 	private AccountStorage accountStorage = null;
 	private AccountActionSummary accountActions = null;
@@ -58,15 +60,15 @@ public class CustomSessionState {
         return this.uploadReceivedImageIds;
     }
 	    
-	public long getUserAppId()
-	{
-		return this.userAppId;
-	}
+	//public long getUserAppId()
+	//{
+	//	return this.userAppId;
+	//}
 	
-	public void setUserAppId(long value)
-	{
-		this.userAppId = value;
-	}
+	//public void setUserAppId(long value)
+	//{
+	//	this.userAppId = value;
+	//}
 	
 	public int getPlatformId()
 	{
@@ -203,6 +205,16 @@ public class CustomSessionState {
 	public void setRemoteAddress(String value)
 	{
 		this.remoteAddress = value;
+	}
+	
+	public UserApp getUserApp()
+	{
+		return this.userApp;
+	}
+	
+	public void setUserApp(UserApp value)
+	{
+		this.userApp = value;
 	}
 	
 	public Account getAccount()

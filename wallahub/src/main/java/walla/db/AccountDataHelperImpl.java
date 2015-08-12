@@ -1001,7 +1001,7 @@ public class AccountDataHelperImpl implements AccountDataHelper {
 		PreparedStatement ps = null;
 		ResultSet resultset = null;
 
-		try {			
+		try {
 			conn = dataSource.getConnection();
 
 			String selectSql = "SELECT [UserAppId] FROM [dbo].[UserApp] WHERE [UserId] = ? AND [AppId] = ? AND [PlatformId] = ? AND [MachineName] = ?";

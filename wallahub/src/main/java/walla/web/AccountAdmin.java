@@ -105,7 +105,6 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 	@RequestMapping(value="/newaccount", method=RequestMethod.GET)
 	public String NewAccountGet(
 			@RequestParam(value="accountType", required=true) int accountType,
-			NewAccount newAccount,
 			Model model,
 			HttpServletRequest request,
 			HttpServletResponse response)
@@ -119,25 +118,55 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 			Thread.sleep(300);
 			response.addHeader("Cache-Control", "no-cache");
 			
+			//Check for existing session.
+			CustomSessionState customSession = null;
+			try
+			{
+				customSession =  UserTools.GetInitialAdminSession(request, meLogger);
+			}
+			catch (WallaException wallaEx)
+			{
+				//Unexpected action,  forbidden.
+				Thread.sleep(10000);
+				model.addAttribute("message", "Request failed security checks.");
+				return responseJsp;
+			}
 			
-			//TODO add remote address to the DB, to check for other sessions, from other IPs coming in.
-			
-			HttpSession tomcatSession = request.getSession(true);
-			
-			CustomSessionState customSession = (CustomSessionState)tomcatSession.getAttribute("CustomSessionState");
 			if (customSession == null)
 			{
+				//Existing session is not valid, so start again.
+				HttpSession tomcatSession = request.getSession(false);
+				if (tomcatSession != null)
+					tomcatSession.invalidate();
+				
+				tomcatSession = request.getSession(true);
 				customSession = new CustomSessionState();
 				tomcatSession.setAttribute("CustomSessionState", customSession);
 			}
-			
+
 			CustomResponse customResponse = new CustomResponse();
+			accountService.SetAppAndPlatformWeb(2, request, customSession, customResponse, requestId);
+			if (customResponse.getResponseCode() != HttpStatus.OK.value())
+			{
+				meLogger.warn("The application/platform key failed validation.");
+				Thread.sleep(500);
+				model.addAttribute("message", "Logon failed application\browser checks when issuing a token.");
+				return responseJsp;
+			}
+			
+			//A warning might be displayed here.
+			if (customResponse.getMessage().length() > 0)
+				model.addAttribute("message", customResponse.getMessage());
+
+			customResponse = new CustomResponse();
 			String key = accountService.GetNewUserToken(request, customSession, customResponse, requestId);
 
 			if (customResponse.getResponseCode() == HttpStatus.OK.value())
 			{
+				NewAccount newAccount = new NewAccount();
 				newAccount.setKey(key);
 				newAccount.setAccountType(accountType);
+				model.addAttribute("newAccount", newAccount);
 				responseJsp = "webapp/newaccount";
 			}
 			else
@@ -201,6 +230,19 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 					accountService.CreateAccount(account, customResponse, customSession, requestId);
 					if (customResponse.getResponseCode() == HttpStatus.CREATED.value())
 					{
+						UserApp userApp = accountService.GetUserAppWeb(customSession.getUserId(), customSession.getAppId(), customSession.getPlatformId(), customResponse, requestId);
+						if (userApp != null)
+						{
+							synchronized(customSession) {
+								customSession.setUserApp(userApp);
+							}
+						}
+						else
+						{
+							model.addAttribute("message", "Unexpected error, profile could not be logged on at this time.");
+						}
+						
+						
 						Cookie wallaSessionIdCookie = new Cookie("X-Walla-Id", UserTools.GetLatestWallaId(customSession));
 						wallaSessionIdCookie.setPath("/wallahub/");
 						response.addCookie(wallaSessionIdCookie);
@@ -375,16 +417,25 @@ public class AccountAdmin extends WebMvcConfigurerAdapter {
 				responseJsp = RedirectToLogon("Request failed security checks.",request);
 				return responseJsp;
 			}
-				
-				
-				
-			CustomResponse customResponse = new CustomResponse();
 			
-
+			CustomResponse customResponse = new CustomResponse();
 			accountService.LogonCheck(logon, request, customSession, customResponse, requestId);
 			
 			if (customResponse.getResponseCode() == HttpStatus.OK.value())
 			{
+				UserApp userApp = accountService.GetUserAppWeb(customSession.getUserId(), customSession.getAppId(), customSession.getPlatformId(), customResponse, requestId);
+				if (userApp != null)
+				{
+					synchronized(customSession) {
+						customSession.setUserApp(userApp);
+					}
+				}
+				else
+				{
+					String message = customResponse.getMessage() == null ? "Logon failed, internal error." : customResponse.getMessage();
+					responseJsp = RedirectToLogonMaintainReferrer(message,request, referrer);
+				}
+				
 				if (referrer == null || referrer.length() < 1)
 					responseJsp = "redirect:" + customSession.getProfileName() + "/settings/account";
 				else

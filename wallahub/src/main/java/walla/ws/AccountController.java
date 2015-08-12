@@ -46,7 +46,7 @@ import walla.utils.*;
 
 	/*
 
-	GetNewUserToken() GET /newusertoken
+	GetNewUserToken() POST /newusertoken
 	CreateUpdateAccount() PUT/POST /{profileName}
 	GetAccountMeta() GET /{profileName}
 	//AckEmailConfirm() GET /{profileName}/{validationString}
@@ -81,10 +81,11 @@ public class AccountController {
 	@Resource(name="utilityServicePooled")
 	private UtilityService utilityService;
 	
-	//GET /newusertoken
-	@RequestMapping(value="/newusertoken", method=RequestMethod.GET, produces=MediaType.APPLICATION_XML_VALUE,
+	//POST /newusertoken
+	@RequestMapping(value="/newusertoken", method=RequestMethod.POST, produces=MediaType.APPLICATION_XML_VALUE,
 			consumes = MediaType.APPLICATION_XML_VALUE, headers={"Accept-Charset=utf-8"} )
 	public @ResponseBody Logon GetNewUserToken(
+			@RequestBody AppDetail appDetail,
 			HttpServletRequest request, 
 			HttpServletResponse response)
 	{	
@@ -94,21 +95,49 @@ public class AccountController {
 		Logon responseLogon = new Logon();
 		try
 		{
-			Thread.sleep(300);
+			Thread.sleep(100);
 			response.addHeader("Cache-Control", "no-cache");
 			
 			//TODO add remote address to the DB, to check for other sessions, from other IPs coming in.
+			CustomSessionState customSession = null;
+			try
+			{
+				customSession =  UserTools.GetInitialAdminSession(request, meLogger);
+			}
+			catch (WallaException wallaEx)
+			{
+				//Unexpected action,  forbidden.
+				Thread.sleep(10000);
+				responseCode = wallaEx.getCustomStatus();
+				return null;
+			}
 			
-			HttpSession tomcatSession = request.getSession(true);
-			
-			CustomSessionState customSession = (CustomSessionState)tomcatSession.getAttribute("CustomSessionState");
 			if (customSession == null)
 			{
+				//Existing session is not valid, so start again.
+				HttpSession tomcatSession = request.getSession(false);
+				if (tomcatSession != null)
+					tomcatSession.invalidate();
+				
+				tomcatSession = request.getSession(true);
 				customSession = new CustomSessionState();
 				tomcatSession.setAttribute("CustomSessionState", customSession);
 			}
 			
 			CustomResponse customResponse = new CustomResponse();
+			accountService.SetAppAndPlatformWS(appDetail, customSession, customResponse, requestId);
+			if (customResponse.getResponseCode() != HttpStatus.OK.value())
+			{
+				meLogger.warn("The application/platform key failed validation.");
+				responseCode = customResponse.getResponseCode();
+				Thread.sleep(500);
+				return null;
+			}
+			
+			//A warning might be displayed here.
+			if (customResponse.getMessage().length() > 0)
+				responseLogon.setMessage(customResponse.getMessage());
+
 			String key = accountService.GetNewUserToken(request, customSession, customResponse, requestId);
 			responseCode = customResponse.getResponseCode();
 			
@@ -285,26 +314,12 @@ public class AccountController {
 				return null;
 			}
 			
-			CustomSessionState customSession = UserTools.GetValidAdminSession(profileName, request, meLogger);
+			CustomSessionState customSession = UserTools.GetValidAdminSession(profileName, request, meLogger, true);
 			if (customSession == null)
 			{
 				responseCode = HttpStatus.UNAUTHORIZED.value();
 				return null;
 			}
-
-			/*
-			if (customSession.getPlatformId() < 1 || customSession.getAppId() < 1)
-			{
-				responseCode = HttpStatus.BAD_REQUEST.value();
-				meLogger.warn("CreateUpdateUserApp request failed because no platform/app was setup, User:" + profileName);
-				return null;
-			}
-*/
-			
-			
-			
-			
-			
 			
 			CustomResponse customResponse = new CustomResponse();
 			
@@ -349,7 +364,7 @@ public class AccountController {
 		{
 			response.addHeader("Cache-Control", "no-cache");
 			
-			CustomSessionState customSession = UserTools.GetValidAdminSession(profileName, request, meLogger);
+			CustomSessionState customSession = UserTools.GetValidAdminSession(profileName, request, meLogger, true);
 			if (customSession == null)
 			{
 				responseCode = HttpStatus.UNAUTHORIZED.value();
@@ -369,7 +384,7 @@ public class AccountController {
 			if (userApp != null)
 			{
 				synchronized(customSession) {
-					customSession.setUserAppId(userApp.getId());
+					customSession.setUserApp(userApp);
 				}
 			}
 			
@@ -664,6 +679,22 @@ public class AccountController {
 		{
 			response.addHeader("Cache-Control", "no-cache");
 			
+			
+			CustomSessionState customSession = null;
+			try
+			{
+				customSession =  UserTools.GetInitialAdminSession(request, meLogger);
+			}
+			catch (WallaException wallaEx)
+			{
+				//Unexpected action,  forbidden.
+				Thread.sleep(10000);
+				meLogger.warn("Logon request made, but invalid session present.");
+				responseCode = HttpStatus.UNAUTHORIZED.value();
+				return;
+			}
+			
+			/*
 			HttpSession tomcatSession = request.getSession(false);
 			if (tomcatSession == null)
 			{
@@ -679,6 +710,7 @@ public class AccountController {
 				responseCode = HttpStatus.UNAUTHORIZED.value();
 				return;
 			}
+			*/
 			
 			if (logon == null)
 			{
@@ -709,7 +741,7 @@ public class AccountController {
 	}
 
 	//POST /logout
-	@RequestMapping(value = { "/{profileName}/logout" }, method = { RequestMethod.POST }, 
+	@RequestMapping(value = { "/logout" }, method = { RequestMethod.POST }, 
 			headers={"Accept-Charset=utf-8"})
 	public void Logout(
 			HttpServletRequest request,
@@ -811,7 +843,7 @@ public class AccountController {
 					" UserID:" + customSession.getUserId() +
 					" PlatformId:" + customSession.getPlatformId() +
 					" AppId:" + customSession.getAppId() +
-					" UserAppId:" + customSession.getUserAppId() +
+					" UserAppId:" + ((customSession.getUserApp() == null) ? -1 : customSession.getUserApp().getId()) +
 					" LogonKey:" + customSession.getNonceKey() +
 					" Authenticated:" + customSession.isAuthenticated();
 		}

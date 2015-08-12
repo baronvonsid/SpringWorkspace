@@ -92,7 +92,7 @@ public class GalleryController {
 				return;
 			}
 	
-			responseCode = galleryService.CreateUpdateGallery(customSession.getUserId(), newGallery, galleryName, customSession.getUserAppId(), requestId);
+			responseCode = galleryService.CreateUpdateGallery(customSession.getUserId(), newGallery, galleryName, customSession.getUserApp().getId(), requestId);
 			if (responseCode == HttpStatus.MOVED_PERMANENTLY.value())
 			{
 				String newLocation = "/" + profileName + "/gallery/" + newGallery.getName();
@@ -128,7 +128,7 @@ public class GalleryController {
 				return;
 			}
 	
-			responseCode = galleryService.DeleteGallery(customSession.getUserId(), existingGallery, galleryName, customSession.getUserAppId(), requestId);
+			responseCode = galleryService.DeleteGallery(customSession.getUserId(), existingGallery, galleryName, customSession.getUserApp().getId(), requestId);
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);

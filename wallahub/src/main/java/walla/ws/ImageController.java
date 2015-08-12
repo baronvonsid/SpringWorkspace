@@ -142,7 +142,7 @@ public class ImageController {
 			//Use status to work if create or update
 			if (imageMeta.getStatus() == 4)
 			{
-				responseCode = imageService.CreateUpdateImageMeta(customSession.getUserId(), imageMeta, imageId, customSession.getUserAppId(), requestId);	
+				responseCode = imageService.CreateUpdateImageMeta(customSession.getUserId(), imageMeta, imageId, customSession.getUserApp().getId(), requestId);	
 			}
 			else if (imageMeta.getStatus() == 1)
 			{
@@ -162,7 +162,7 @@ public class ImageController {
 					synchronized(customSession) {
 						customSession.getUploadFilesReceived().remove(foundIndex);
 					}
-					responseCode = imageService.CreateUpdateImageMeta(customSession.getUserId(), imageMeta, imageId, customSession.getUserAppId(), requestId);
+					responseCode = imageService.CreateUpdateImageMeta(customSession.getUserId(), imageMeta, imageId, customSession.getUserApp().getId(), requestId);
 				}
 				else
 				{

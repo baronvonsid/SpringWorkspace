@@ -85,7 +85,7 @@ public class CategoryController {
 			}
 	
 			CustomResponse customResponse = new CustomResponse();
-			long newCategoryId = categoryService.CreateCategory(customSession.getUserId(), newCategory, customResponse, customSession.getUserAppId(), requestId);
+			long newCategoryId = categoryService.CreateCategory(customSession.getUserId(), newCategory, customResponse, customSession.getUserApp().getId(), requestId);
 	
 			responseCode = customResponse.getResponseCode();
 			return "<CategoryId>" + newCategoryId + "</CategoryId>";
@@ -122,7 +122,7 @@ public class CategoryController {
 				return;
 			}
 	
-			responseCode = categoryService.UpdateCategory(customSession.getUserId(), newCategory, categoryId, customSession.getUserAppId(), requestId);
+			responseCode = categoryService.UpdateCategory(customSession.getUserId(), newCategory, categoryId, customSession.getUserApp().getId(), requestId);
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
@@ -156,7 +156,7 @@ public class CategoryController {
 				return;
 			}
 	
-			responseCode = categoryService.DeleteCategory(customSession.getUserId(), existingCategory, categoryId, customSession.getUserAppId(), requestId);
+			responseCode = categoryService.DeleteCategory(customSession.getUserId(), existingCategory, categoryId, customSession.getUserApp().getId(), requestId);
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
@@ -270,7 +270,7 @@ public class CategoryController {
 				return;
 			}
 	
-			responseCode = categoryService.MoveToNewCategory(customSession.getUserId(), categoryId, imageIdList, customSession.getUserAppId(), requestId);
+			responseCode = categoryService.MoveToNewCategory(customSession.getUserId(), categoryId, imageIdList, customSession.getUserApp().getId(), requestId);
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);

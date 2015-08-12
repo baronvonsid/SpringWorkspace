@@ -108,7 +108,7 @@ public class TagController {
 				return;
 			}
 	
-			responseCode = tagService.CreateUpdateTag(customSession.getUserId(), newTag, tagName, customSession.getUserAppId(), requestId);
+			responseCode = tagService.CreateUpdateTag(customSession.getUserId(), newTag, tagName, customSession.getUserApp().getId(), requestId);
 			if (responseCode == HttpStatus.MOVED_PERMANENTLY.value())
 			{
 				String newLocation = "/" + profileName + "/tag/" + newTag.getName();
@@ -148,7 +148,7 @@ public class TagController {
 				return;
 			}
 	
-			responseCode = tagService.DeleteTag(customSession.getUserId(), existingTag, tagName, customSession.getUserAppId(), requestId);
+			responseCode = tagService.DeleteTag(customSession.getUserId(), existingTag, tagName, customSession.getUserApp().getId(), requestId);
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
@@ -260,7 +260,7 @@ public class TagController {
 				return;
 			}
 	
-			responseCode = tagService.AddRemoveTagImages(customSession.getUserId(), tagName, moveList, true, customSession.getUserAppId(), requestId);
+			responseCode = tagService.AddRemoveTagImages(customSession.getUserId(), tagName, moveList, true, customSession.getUserApp().getId(), requestId);
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);
@@ -293,7 +293,7 @@ public class TagController {
 				return;
 			}
 	
-			responseCode = tagService.AddRemoveTagImages(customSession.getUserId(), tagName, moveList, false, customSession.getUserAppId(), requestId);
+			responseCode = tagService.AddRemoveTagImages(customSession.getUserId(), tagName, moveList, false, customSession.getUserApp().getId(), requestId);
 		}
 		catch (Exception ex) {
 			meLogger.error(ex);

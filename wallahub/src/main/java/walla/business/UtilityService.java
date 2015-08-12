@@ -190,7 +190,7 @@ public class UtilityService {
 
 			if (messagingEnabled)
 			{
-				SendMessageToQueue(QueueTemplate.Log, event, "USREVENT");
+				SendMessageToQueue(QueueTemplate.Log, event, "USEREVENT");
 			}
 			else
 			{
@@ -299,7 +299,7 @@ public class UtilityService {
 			event.setSessionFailedLogonLast(customSession.getFailedLogonLast());
 			event.setSessionProfileName(customSession.getProfileName());
 			event.setSessionUserId(customSession.getUserId());
-			event.setSessionUserAppId(customSession.getUserAppId());
+			event.setSessionUserAppId((customSession.getUserApp() != null) ? customSession.getUserApp().getId() : -1);
 			event.setSessionPlatformId(customSession.getPlatformId());
 			event.setSessionAppId(customSession.getAppId());
 			event.setSessionGalleryTempKey(customSession.getGalleryTempKey());

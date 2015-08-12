@@ -522,6 +522,7 @@ public class AccountService {
 	{
 		long startMS = System.currentTimeMillis();
 		try {
+			
 			if (proposedUserApp.getMachineName() == null || proposedUserApp.getMachineName().isEmpty())
 			{
 				meLogger.warn("CreateUserApp didn't receive a machine name, this is mandatory.");
@@ -644,6 +645,49 @@ public class AccountService {
 			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
 		finally { utilityService.LogMethod("AccountService","UpdateUserApp", startMS, requestId, String.valueOf(updatedUserApp.getId())); }
+	}
+	
+	public UserApp GetUserAppWeb(long userId, int appId, int platformId, CustomResponse customResponse, String requestId)
+	{
+		long startMS = System.currentTimeMillis();
+		try 
+		{
+			UserApp proposedUserApp = new UserApp();
+			proposedUserApp.setMachineName("Browser");
+			proposedUserApp.setBlocked(false);
+			proposedUserApp.setAutoUpload(false);
+			
+			long userAppId = CreateUserApp(userId, appId, platformId, proposedUserApp, customResponse, requestId);
+			if (userAppId == 0)
+			{
+				String error = "UserApp was created\found";
+				meLogger.warn(error);
+				customResponse.setResponseCode(HttpStatus.NOT_FOUND.value());
+				return null;
+			}
+			
+			UserApp userApp = accountDataHelper.GetUserApp(userId, userAppId, requestId);
+			if (userApp == null)
+			{
+				String error = "GetUserApp didn't return a valid UserApp object using id: " + userAppId;
+				meLogger.warn(error);
+				customResponse.setResponseCode(HttpStatus.NOT_FOUND.value());
+				return null;
+			}
+			
+			customResponse.setResponseCode(HttpStatus.OK.value());
+			return userApp;
+		}
+		catch (WallaException wallaEx) {
+			customResponse.setResponseCode(wallaEx.getCustomStatus());
+			return null;
+		}
+		catch (Exception ex) {
+			meLogger.error(ex);
+			customResponse.setResponseCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			return null;
+		}
+		finally { utilityService.LogMethod("AccountService","GetUserAppWeb", startMS, requestId, "App:" + String.valueOf(appId) + " Platform:" + String.valueOf(platformId)); }
 	}
 	
 	public UserApp GetUserApp(long userId, int appId, int platformId, long userAppId, CustomResponse customResponse, String requestId)
@@ -906,7 +950,7 @@ public class AccountService {
 			//TODO look up existing user agents and check if supported.  For now just log these for research.
 			String userAgent = request.getHeader("user-agent");
 			meLogger.info("User agent: " + userAgent);
-			int platformId = 1000;  // Temp hardocded.
+			int platformId = 100;  // Temp hardocded.
 			
 			/* Check if app supported on this platform */		
 			Boolean isPlatformSupported = cachedData.GetAppPlatformSupported(appId, platformId, requestId);	
@@ -964,6 +1008,7 @@ public class AccountService {
 				customSession.setNonceKey(newKey);
 				customSession.setHuman(false);
 				customSession.setRemoteAddress(request.getRemoteAddr());
+				customSession.setAuthenticated(false);
 			}
 			
 			customResponse.setResponseCode(HttpStatus.OK.value());
@@ -1129,6 +1174,7 @@ public class AccountService {
 			    }
 			}
 
+			/* Done elsewhere
 			if (customSession.getRemoteAddress().compareTo(request.getRemoteAddr()) != 0)
 			{
 		    	message = "IP address of the session has changed since the logon key was issued.";
@@ -1137,6 +1183,7 @@ public class AccountService {
 		    	customResponse.setResponseCode(HttpStatus.FORBIDDEN.value());
 		    	return;
 			}
+			*/
 			
 			if ((profileName == null && email == null) || password == null || requestKey == null)
 			{

@@ -12,6 +12,7 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
@@ -31,6 +32,7 @@ import walla.datatypes.auto.Account;
 import walla.datatypes.auto.Gallery;
 import walla.datatypes.java.*;
 
+
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -38,6 +40,7 @@ import javax.servlet.http.HttpSession;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
+import javax.xml.bind.Unmarshaller;
 
 import org.apache.log4j.Logger;
 import org.springframework.http.HttpStatus;
@@ -330,25 +333,38 @@ public final class UserTools {
         return writer.toString(); 
 	}
 	
+	
+	public static Object XmlToObject(String request, Class<?> toClass) throws JAXBException
+	{
+        JAXBContext context = JAXBContext.newInstance(toClass);
+        Unmarshaller unmarshaller = context.createUnmarshaller();
+        //unmarshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+
+        StringReader st = new StringReader(request);
+        Object returnObject = unmarshaller.unmarshal(st);
+
+        return returnObject; 
+	}
+	
 	public static CustomSessionState GetInitialAdminSession(HttpServletRequest request, Logger meLogger) throws WallaException
 	{
 		HttpSession session = request.getSession(false);
 		if (session == null)
 		{
-			meLogger.warn("The tomcat session has not been established.");
+			meLogger.debug("The tomcat session has not been established.");
 			return null;
 		}
 
 		CustomSessionState customSession = (CustomSessionState)session.getAttribute("CustomSessionState");
 		if (customSession == null)
 		{
-			meLogger.warn("The custom session state has not been established.");
+			meLogger.debug("The custom session state has not been established.");
 			return null;
 		}
 			
 		if (customSession.isAuthenticated())
 		{
-			meLogger.warn("The session has already been authorised.");
+			meLogger.warn("The session has already been authorised.  Should establish a new logon context.");
 			return null;
 		}	
 		
@@ -363,6 +379,11 @@ public final class UserTools {
 	}
 	
 	public static CustomSessionState GetValidAdminSession(String requestProfileName, HttpServletRequest request, Logger meLogger)
+	{
+		return GetValidAdminSession(requestProfileName, request, meLogger, false);
+	}
+	
+	public static CustomSessionState GetValidAdminSession(String requestProfileName, HttpServletRequest request, Logger meLogger, boolean ignoreUserApp)
 	{
 		HttpSession session = request.getSession(false);
 		if (session == null)
@@ -427,6 +448,24 @@ public final class UserTools {
 			return null;
 		}
 		
+		if (customSession.getAppId() < 1)
+		{
+			meLogger.warn("App id has not been set for this session.");
+			return null;
+		}
+		
+		if (customSession.getPlatformId() < 1)
+		{
+			meLogger.warn("Platform id has not been set for this session.");
+			return null;
+		}
+		
+		if (customSession.getUserApp() == null && !ignoreUserApp)
+		{
+			meLogger.warn("User app id has not been set for this session.");
+			return null;
+		}
+		
 		return customSession;
 	}
 
@@ -471,6 +510,18 @@ public final class UserTools {
 			return null;
 		}
 
+		if (customSession.getAppId() < 1)
+		{
+			meLogger.warn("App id has not been set for this session.");
+			return null;
+		}
+		
+		if (customSession.getPlatformId() < 1)
+		{
+			meLogger.warn("Platform id has not been set for this session.");
+			return null;
+		}
+		
 		//TODO add isHuman check.
 		
 		return customSession;
