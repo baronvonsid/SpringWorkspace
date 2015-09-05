@@ -326,7 +326,8 @@ public class UtilityService {
 			meLogger.error("AddActionSecurity failed with an error", ex);
 		}
 	}
-/*
+
+	/*
 	private String LogMethodDetailToXml(LogMethodDetail object)
 	{
 		try
