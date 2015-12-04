@@ -137,7 +137,7 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 			
 			if (imagesToDelete != null && imagesToDelete.length > 0)
 			{
-				//controlCount = 0;
+				controlCount = 0;
 				returnCount = 0;
 				
 				String deleteSql = "UPDATE [Image] SET [Status] = 5,[RecordVersion] = [RecordVersion] + 1, [LastUpdated] = dbo.GetDateNoMS() WHERE [ImageId]= ? AND [UserId] = ?"; 
@@ -160,6 +160,7 @@ public class ImageDataHelperImpl implements ImageDataHelper {
 					ps.setLong(1,imagesToDelete[i]);
 					ps.setLong(2,userId);
 					ps.addBatch();
+					controlCount++;
 				}
 				
 				//Perform updates.

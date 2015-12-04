@@ -294,7 +294,7 @@ public class UtilityService {
 			String requestUrl = (request.getRequestURL() != null) ? request.getRequestURL().toString() : "";
 			event.setRequestRequestURL((requestUrl.length() > 200) ? requestUrl.substring(0,200) : requestUrl);
 			
-			event.setSessionRemoteAddress(customSession.getRemoteAddress());
+			event.setSessionRemoteAddress((customSession.getRemoteAddress() != null) ? customSession.getRemoteAddress() : "");
 			event.setSessionFailedLogonCount(customSession.getFailedLogonCount());
 			event.setSessionFailedLogonLast(customSession.getFailedLogonLast());
 			event.setSessionProfileName(customSession.getProfileName());

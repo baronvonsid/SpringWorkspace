@@ -54,6 +54,7 @@ import walla.utils.*;
 	
 	CreateUpdateUserApp() PUT /{profileName}/userapp
 	GetUserAppMarkSession() GET /{profileName}/userapp/{userAppId}
+	GetSessionUserApp GET /{profileName}/userapp
 	
 	-- deleted CheckClientApp() POST /clientapp
 	-- deleted SetClientApp PUT /{profileName}/clientapp
@@ -397,6 +398,46 @@ public class AccountController {
 		}
 		finally { utilityService.LogWebMethod("AccountController","GetUserAppMarkSession", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
 	}
+
+	// GET /{profileName}/userapp
+	@RequestMapping(value = { "/{profileName}/userapp" }, method = { RequestMethod.GET }, 
+			headers={"Accept-Charset=utf-8"}, produces=MediaType.APPLICATION_XML_VALUE )
+	public @ResponseBody UserApp GetSessionUserApp(
+			@PathVariable("profileName") String profileName,
+			HttpServletRequest request,
+			HttpServletResponse response)
+	{
+		long startMS = System.currentTimeMillis();
+		String requestId = UserTools.GetRequestId();
+		int responseCode = HttpStatus.INTERNAL_SERVER_ERROR.value();
+		try
+		{
+			response.addHeader("Cache-Control", "no-cache");
+			
+			CustomSessionState customSession = UserTools.GetValidAdminSession(profileName, request, meLogger, true);
+			if (customSession == null)
+			{
+				responseCode = HttpStatus.UNAUTHORIZED.value();
+				return null;
+			}
+			
+			if (customSession.getUserApp() == null)
+			{
+				responseCode = HttpStatus.NOT_ACCEPTABLE.value();
+				return null;
+			}
+			else
+			{
+				responseCode = HttpStatus.OK.value();
+				return customSession.getUserApp();
+			}
+		}
+		catch (Exception ex) {
+			meLogger.error(ex);
+			return null;
+		}
+		finally { utilityService.LogWebMethod("AccountController","GetSessionUserApp", startMS, request, requestId, String.valueOf(responseCode)); response.setStatus(responseCode); }
+	}	
 	
 	// GET /profilename/{profileName}
 	@RequestMapping(value="/profilename/{profileName}", method=RequestMethod.GET, 
