@@ -40,7 +40,7 @@ public class HttpClientBuilder {
 	/**
 	 * default value of the socket timeout: 3000ms.
 	 */
-    public static final Integer DEFAULT_SO_TO = 3000;
+    public static final Integer DEFAULT_SO_TO = 30000;
     /**
      * default value of the proxy port: 80.
      */
